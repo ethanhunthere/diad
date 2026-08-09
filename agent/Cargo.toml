@@ -17,16 +17,12 @@ crossterm = "0.28"
 
 # Daemon — HTTP + WebSocket server
 axum = { version = "0.8", features = ["ws"] }
-tower-http = { version = "0.6", features = ["fs", "trace"] }
 rust-embed = "8"
 portable-pty = "0.8"
 tokio-tungstenite = "0.26"
-http = "1"
-url = "2"
 
 # HTTP client with streaming
 reqwest = { version = "0.12", features = ["json", "stream", "blocking"] }
-reqwest-eventsource = "0.5"
 
 # Async trait support
 async-trait = "0.1"
@@ -55,7 +51,6 @@ clap = { version = "4", features = ["derive"] }
 
 # Error handling
 anyhow = "1"
-thiserror = "2"
 
 # Utilities
 chrono = { version = "0.4", features = ["serde"] }
@@ -63,8 +58,6 @@ uuid = { version = "1", features = ["v4", "serde"] }
 directories = "5"
 futures = "0.3"
 futures-util = "0.3"
-tokio-stream = "0.1"
-pin-project = "1"
 bytes = "1"
 glob = "0.3"
 shellexpand = "3"
@@ -72,10 +65,8 @@ urlencoding = "2"
 regex = "1"
 
 [dev-dependencies]
-tokio-test = "0.4"
 tempfile = "3"
 tower = { version = "0.5", features = ["util"] }
-http-body-util = "0.1"
 
 [profile.release]
 opt-level = 3
