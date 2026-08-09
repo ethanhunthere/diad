@@ -1,0 +1,210 @@
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@xterm/xterm/css/xterm.css";
+@import "highlight.js/styles/github-dark.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------ */
+/* COPPER OBSIDIAN — DIAD AGENT design system                          */
+/* ------------------------------------------------------------------ */
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    @apply bg-obsidian text-ink font-sans antialiased;
+    font-size: 13.5px;
+    letter-spacing: 0.01em;
+  }
+
+  ::selection {
+    background: rgba(200, 127, 74, 0.35);
+    color: #fff;
+  }
+
+  /* Scrollbars — thin, glassy, invisible until hovered */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(200, 127, 74, 0.45);
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  /* Glass panel — the signature DIAD surface */
+  .glass {
+    background: rgba(20, 16, 13, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .panel {
+    @apply rounded-panel border border-border-subtle bg-surface;
+  }
+
+  .control {
+    @apply rounded-control;
+  }
+
+  /* Primary copper button */
+  .btn-copper {
+    @apply inline-flex items-center gap-2 rounded-control bg-copper px-3 py-1.5
+      text-sm font-semibold text-[#1a0f07] transition-colors duration-100
+      hover:bg-copper-hover disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 rounded-control border border-border-subtle
+      bg-transparent px-3 py-1.5 text-sm text-ink transition-colors duration-100
+      hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-icon {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-control
+      text-dim transition-colors duration-100 hover:bg-surface-2 hover:text-ink;
+  }
+
+  /* Inputs */
+  .input {
+    @apply w-full rounded-control border border-border-subtle bg-obsidian/60
+      px-3 py-2 text-sm text-ink placeholder:text-faint outline-none
+      transition-colors duration-100 focus:border-copper/60 focus:ring-1
+      focus:ring-copper/30;
+  }
+
+  /* Small dim label */
+  .label {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-faint;
+  }
+
+  /* Code blocks inside chat */
+  .chat-pre {
+    @apply my-2 overflow-x-auto rounded-control border border-border-subtle
+      bg-[#0d0b09] p-3 font-mono text-[12.5px] leading-relaxed text-ink;
+  }
+  .chat-pre code {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    background: transparent;
+  }
+
+  /* Markdown body */
+  .md-body p {
+    @apply my-1.5 leading-relaxed;
+  }
+  .md-body h1,
+  .md-body h2,
+  .md-body h3,
+  .md-body h4 {
+    @apply my-2 font-semibold text-ink;
+  }
+  .md-body h1 {
+    @apply text-lg;
+  }
+  .md-body h2 {
+    @apply text-base;
+  }
+  .md-body h3 {
+    @apply text-sm;
+  }
+  .md-body ul {
+    @apply my-1.5 list-disc pl-5;
+  }
+  .md-body ol {
+    @apply my-1.5 list-decimal pl-5;
+  }
+  .md-body li {
+    @apply my-0.5;
+  }
+  .md-body a {
+    @apply text-copper hover:text-copper-hover underline underline-offset-2;
+  }
+  .md-body code:not(pre code) {
+    @apply rounded bg-surface-2 px-1 py-0.5 font-mono text-[12px] text-copper;
+  }
+  .md-body blockquote {
+    @apply my-2 border-l-2 border-copper/50 pl-3 text-dim italic;
+  }
+  .md-body hr {
+    @apply my-3 border-border-subtle;
+  }
+  .md-body table {
+    @apply my-2 w-full border-collapse text-left text-sm;
+  }
+  .md-body th,
+  .md-body td {
+    @apply border border-border-subtle px-2 py-1;
+  }
+}
+
+/* xterm overrides — blend into the panel */
+.xterm {
+  height: 100%;
+}
+.xterm .xterm-viewport {
+  background-color: transparent !important;
+  scrollbar-width: thin;
+}
+.xterm .xterm-screen {
+  padding: 4px 0;
+}
+
+/* CodeMirror overrides */
+.cm-editor {
+  height: 100%;
+  background: transparent !important;
+  font-size: 13px;
+}
+.cm-editor.cm-focused {
+  outline: none !important;
+}
+.cm-editor .cm-gutters {
+  background: transparent !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: #5c534a !important;
+}
+.cm-editor .cm-activeLine,
+.cm-editor .cm-activeLineGutter {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+.cm-editor .cm-cursor {
+  border-left-color: #c87f4a !important;
+  border-left-width: 2px;
+}
+.cm-editor .cm-selectionBackground,
+.cm-editor .cm-focused .cm-selectionBackground {
+  background: rgba(200, 127, 74, 0.25) !important;
+}
+.cm-editor .cm-scroller {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  line-height: 1.55;
+}

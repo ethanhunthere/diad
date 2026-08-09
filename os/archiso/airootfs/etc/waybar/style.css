@@ -1,0 +1,36 @@
+* {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+}
+
+#waybar {
+  background: transparent;
+  border: none;
+}
+
+#clock,
+#workspaces {
+  background: rgba(46, 32, 24, 0.65);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #eadbcf;
+  padding: 4px 14px;
+  margin: 6px 3px;
+}
+
+#workspaces button {
+  background: transparent;
+  border: none;
+  color: #eadbcf;
+  padding: 0 10px;
+  border-radius: 12px;
+}
+
+#workspaces button.active {
+  background: #8b5e3c;
+  color: #ffffff;
+}
+
+#workspaces button:hover {
+  background: rgba(139, 94, 60, 0.35);
+}

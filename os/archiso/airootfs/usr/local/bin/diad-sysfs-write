@@ -1,0 +1,73 @@
+#!/usr/bin/env sh
+# =============================================================================
+# DIAD — sysfs writer helper (least-privilege sudo target)
+# =============================================================================
+# Replaces `sudo sh -c "echo X > /sys/..."` so the `diad` user never gets a
+# root shell. The sudoers drop-in grants NOPASSWD to THIS script only; the
+# script itself validates both the value and the target path against a strict
+# allowlist before writing anything to sysfs.
+#
+# Usage: diad-sysfs-write <value> <sysfs-path>
+#
+# Security contract:
+#   - value must match ^[0-9]+$ or be an allowlisted governor name
+#   - path must start with /sys/devices/ and match one of the allowlisted
+#     glob patterns below (no user-controlled components reach the path)
+#   - values and paths are never echoed back to the caller in a way that
+#     could be confused with command output
+#
+# The paths below are the ONLY writable targets. Adding a new consumer
+# requires editing BOTH this script and /etc/sudoers.d/diad is not needed
+# (script is a single sudo target), but the path MUST be reviewed here.
+
+set -u
+
+VALUE="${1:-}"
+PATH_SPEC="${2:-}"
+
+if [ -z "$VALUE" ] || [ -z "$PATH_SPEC" ]; then
+    echo "diad-sysfs-write: usage: diad-sysfs-write <value> <sysfs-path>" >&2
+    exit 1
+fi
+
+# --- Validate the value: digits, or one of the known governor names -------
+case "$VALUE" in
+    ''|*[!0-9]*)
+        case "$VALUE" in
+            performance|powersave|schedutil|ondemand|conservative|userspace)
+                ;;
+            *)
+                echo "diad-sysfs-write: invalid value" >&2
+                exit 1
+                ;;
+        esac
+        ;;
+    *) ;;
+esac
+
+# --- Validate the target against the allowlist (glob match) ---------------
+# shellcheck disable=SC2254
+case "$PATH_SPEC" in
+    /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor) ;;
+    /sys/devices/system/cpu/cpu*/cpufreq/scaling_max_freq) ;;
+    /sys/devices/system/cpu/intel_pstate/no_turbo) ;;
+    /sys/devices/system/cpu/amd_pstate/no_turbo) ;;
+    /sys/devices/platform/thinkpad_acpi/hwmon/hwmon*/fan1_level) ;;
+    *)
+        echo "diad-sysfs-write: path not allowlisted" >&2
+        exit 1
+        ;;
+esac
+
+# --- Write the value to every matching path -------------------------------
+for f in $PATH_SPEC; do
+    if [ -w "$f" ]; then
+        echo "$VALUE" > "$f" || {
+            echo "diad-sysfs-write: write failed: $f" >&2
+            exit 1
+        }
+        echo "wrote:$f"
+    fi
+done
+
+exit 0

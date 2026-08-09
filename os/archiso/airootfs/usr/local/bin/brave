@@ -1,0 +1,22 @@
+#!/usr/bin/env sh
+# =============================================================================
+# DIAD — Brave Browser launcher
+# =============================================================================
+# Brave ships via Flatpak (Flathub) in the DIAD ISO because the `brave-bin`
+# AUR package cannot be built inside mkarchiso. The first-run wizard installs
+# it (`diad-first-run.sh` → "Install Brave"); this shim lets Sway and the
+# supervisor launch it with a plain `brave` command.
+#
+# Exits QUIETLY (no stderr spam) while the Flatpak app is not installed —
+# the supervisor polls for it every 5 s and retries.
+# =============================================================================
+
+if ! command -v flatpak >/dev/null 2>&1; then
+    exit 1
+fi
+
+if ! flatpak list --app --columns=application 2>/dev/null | grep -qx 'com.brave.Browser'; then
+    exit 1
+fi
+
+exec /usr/bin/flatpak run com.brave.Browser "$@"

@@ -1,0 +1,96 @@
+[package]
+name = "diad-agent"
+version = "0.1.0"
+edition = "2021"
+description = "DIAD Agent — Intent-driven TUI for the DIAD Operating System"
+authors = ["DIAD Project"]
+license = "MIT"
+repository = "https://github.com/diad-project/diad"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# TUI
+ratatui = "0.28"
+crossterm = "0.28"
+
+# Daemon — HTTP + WebSocket server
+axum = { version = "0.8", features = ["ws"] }
+tower-http = { version = "0.6", features = ["fs", "trace"] }
+rust-embed = "8"
+portable-pty = "0.8"
+tokio-tungstenite = "0.26"
+http = "1"
+url = "2"
+
+# HTTP client with streaming
+reqwest = { version = "0.12", features = ["json", "stream", "blocking"] }
+reqwest-eventsource = "0.5"
+
+# Async trait support
+async-trait = "0.1"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Configuration
+config = "0.14"
+toml = "0.8"
+
+# Secrets (libsecret / keyring)
+# sync-secret-service = real DBus org.freedesktop.secrets persistence
+# (GNOME Keyring / KWallet). Without any feature the keyring crate silently
+# falls back to a per-entry mock store that persists nothing — the vault
+# probes for a real store and falls back to in-memory-only if absent.
+keyring = { version = "3", features = ["sync-secret-service"] }
+
+# Logging & tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# CLI arguments
+clap = { version = "4", features = ["derive"] }
+
+# Error handling
+anyhow = "1"
+thiserror = "2"
+
+# Utilities
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+directories = "5"
+futures = "0.3"
+futures-util = "0.3"
+tokio-stream = "0.1"
+pin-project = "1"
+bytes = "1"
+glob = "0.3"
+shellexpand = "3"
+urlencoding = "2"
+regex = "1"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3"
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+opt-level = 0
+
+[lib]
+name = "diad_agent"
+path = "src/lib.rs"
+
+[[bin]]
+name = "diad-agent"
+path = "src/main.rs"

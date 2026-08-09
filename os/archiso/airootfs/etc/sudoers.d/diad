@@ -1,0 +1,18 @@
+# =============================================================================
+# DIAD — passwordless sudo for DIAD Agent system-control tools
+# =============================================================================
+# Grants the 'diad' user NOPASSWD access to exactly the binaries the DIAD
+# Agent's hardware tools invoke. Nothing else is granted — least privilege.
+# Keep this list in sync with every `run_privileged` call site under
+# agent/src/tools/ (hardware.rs, hardware_universal.rs, input.rs, power.rs,
+# security.rs, update.rs, exec.rs). `sh` is deliberately NOT whitelisted —
+# sysfs writes go through the validated /usr/local/bin/diad-sysfs-write
+# helper instead of `sudo sh -c`.
+#
+# NOTE: sudoers.d files must:
+#   - be owned by root:root
+#   - have mode 0440
+#   - contain no '.' in the filename (diad is fine)
+# =============================================================================
+
+diad ALL=(ALL) NOPASSWD: /usr/bin/nmcli, /usr/bin/systemctl, /usr/bin/brightnessctl, /usr/bin/wpctl, /usr/bin/bluetoothctl, /usr/bin/powerprofilesctl, /usr/bin/upower, /usr/bin/nft, /usr/bin/swaylock, /usr/bin/pacman, /usr/bin/checkupdates, /usr/bin/hostnamectl, /usr/bin/timedatectl, /usr/bin/sed, /usr/bin/tee, /usr/bin/mount, /usr/bin/umount, /usr/bin/wget, /usr/bin/install, /usr/bin/modprobe, /usr/bin/smartctl, /usr/bin/eject, /usr/bin/mkfs, /usr/bin/fsck, /usr/bin/parted, /usr/bin/dd, /usr/bin/hdparm, /usr/bin/lpadmin, /usr/bin/lpoptions, /usr/bin/iw, /usr/bin/traceroute, /usr/bin/tcpdump, /usr/bin/nload, /usr/bin/nvidia-smi, /usr/bin/kill, /usr/bin/rm, /usr/bin/sha256sum, /usr/local/bin/diad-sysfs-write

@@ -1,0 +1,14 @@
+[Unit]
+Description=DIAD nftables firewall
+After=network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+# Leading '-' makes a failure non-fatal — a firewall hiccup must never
+# block or fail the boot of the live ISO.
+ExecStart=-/usr/sbin/nft -f /etc/nftables.conf
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

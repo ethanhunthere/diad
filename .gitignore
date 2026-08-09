@@ -1,0 +1,49 @@
+# === Rust ===
+target/
+**/*.rs.bk
+*.swp
+*.swo
+*~
+
+# === Node / frontend ===
+node_modules/
+dist/
+*.tsbuildinfo
+
+# === Environment ===
+.env
+.env.*
+*.env
+
+# === IDE ===
+.idea/
+.vscode/
+*.sublime-*
+.DS_Store
+
+# === Build artifacts ===
+*.iso
+work/
+out/
+build/
+
+# === OS artifacts ===
+*.img
+*.qcow2
+*.vdi
+*.vmdk
+
+# === Diad runtime ===
+~/.diad/logs/
+~/.diad/sessions/
+
+# === Keyring ===
+*.key
+*.pem
+*.cert
+
+# === Misc ===
+*.log
+*.tmp
+core
+.core

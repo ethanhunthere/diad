@@ -1,0 +1,393 @@
+import { create } from "zustand";
+import type {
+  ChatMessage,
+  ConfirmPrompt,
+  EditDiffCard,
+  FileEntryDto,
+  OnboardingStep,
+  OpenFile,
+  ProviderEntryDto,
+  SecretPrompt,
+  SettingsState,
+  Toast,
+  ToolCallCard,
+  ViewId,
+} from "../lib/types";
+import { nextId } from "../lib/format";
+
+// ---------------------------------------------------------------------------
+// DIAD AGENT — global UI store (zustand)
+// ---------------------------------------------------------------------------
+
+interface Stats {
+  tokens: number;
+  latency_ms: number;
+  battery: string;
+  wifi: string;
+  cwd: string;
+}
+
+interface StoreState {
+  // -- connection -----------------------------------------------------------
+  wsConnected: boolean;
+  daemonVersion: string;
+  /** Set by useWebSocket once the socket is live. */
+  send: ((msg: unknown) => void) | null;
+
+  // -- provider / model ------------------------------------------------------
+  provider: string;
+  model: string;
+  connected: boolean;
+  streaming: boolean;
+  providers: ProviderEntryDto[];
+  models: string[];
+
+  // -- views -----------------------------------------------------------------
+  view: ViewId;
+  activityBarCollapsed: boolean;
+  paletteOpen: boolean;
+  settingsOpen: boolean;
+
+  // -- chat ------------------------------------------------------------------
+  messages: ChatMessage[];
+  input: string;
+  pendingSecret: SecretPrompt | null;
+  pendingConfirm: ConfirmPrompt | null;
+  /** provider name awaiting a key (connect flow). */
+  pendingConnectProvider: string | null;
+
+  // -- files / editor ---------------------------------------------------------
+  explorerPath: string;
+  explorerEntries: FileEntryDto[];
+  explorerLoading: boolean;
+  openFiles: OpenFile[];
+  activeFile: string | null;
+
+  // -- terminal ----------------------------------------------------------------
+  termBuffer: string;
+  termCols: number;
+  termRows: number;
+
+  // -- stats / status ----------------------------------------------------------
+  stats: Stats;
+  workspace: string;
+
+  // -- misc ---------------------------------------------------------------------
+  toasts: Toast[];
+  onboarding: OnboardingStep | null;
+  settings: SettingsState;
+  agents: string[];
+}
+
+const initialSettings: SettingsState = {
+  theme: "copper",
+  defaultProvider: "",
+  defaultModel: "",
+  storagePath: "",
+  firewall: true,
+  loaded: false,
+};
+
+interface StoreActions {
+  // connection
+  setSend: (send: (msg: unknown) => void) => void;
+  setWsConnected: (v: boolean) => void;
+
+  // provider/model
+  setProviderModel: (p: { provider?: string; model?: string; connected?: boolean; streaming?: boolean; version?: string }) => void;
+  setProviders: (entries: ProviderEntryDto[]) => void;
+  setModels: (models: string[], current: string) => void;
+
+  // view
+  setView: (v: ViewId) => void;
+  toggleActivityBar: () => void;
+  setPaletteOpen: (v: boolean) => void;
+
+  // chat
+  appendMessage: (m: Omit<ChatMessage, "tools" | "diffs" | "timestamp" | "id"> & { id?: string }) => string;
+  appendToken: (id: string, text: string) => void;
+  finishStream: (id: string) => void;
+  setInput: (v: string) => void;
+  addToolCard: (msgId: string, card: Omit<ToolCallCard, "status" | "collapsed">) => void;
+  resolveToolCard: (requestId: string, status: ToolCallCard["status"], result?: { success: boolean; output: string; status_line: string }) => void;
+  addDiffCard: (msgId: string, card: Omit<EditDiffCard, "status">) => void;
+  resolveDiffCard: (requestId: string, status: EditDiffCard["status"]) => void;
+  toggleToolCard: (msgId: string, requestId: string) => void;
+  setPendingSecret: (p: SecretPrompt | null) => void;
+  setPendingConfirm: (p: ConfirmPrompt | null) => void;
+  setPendingConnectProvider: (p: string | null) => void;
+
+  // files
+  setExplorer: (path: string, entries: FileEntryDto[], loading: boolean) => void;
+  openFile: (path: string, content: string) => void;
+  setFileContent: (path: string, content: string) => void;
+  closeFile: (path: string) => void;
+  setActiveFile: (path: string | null) => void;
+  markFileSaved: (path: string) => void;
+
+  // terminal
+  appendTermOutput: (data: string) => void;
+  setTermSize: (cols: number, rows: number) => void;
+
+  // stats
+  setStats: (s: Partial<Stats>) => void;
+  setWorkspace: (w: string) => void;
+
+  // misc
+  toast: (t: Omit<Toast, "id">) => void;
+  dismissToast: (id: string) => void;
+  setOnboarding: (s: OnboardingStep | null) => void;
+  setSettings: (s: Partial<SettingsState>) => void;
+  setAgents: (a: string[]) => void;
+}
+
+export type Store = StoreState & StoreActions;
+
+export const useStore = create<Store>((set, get) => ({
+  wsConnected: false,
+  daemonVersion: "",
+  send: null,
+
+  provider: "",
+  model: "",
+  connected: false,
+  streaming: false,
+  providers: [],
+  models: [],
+
+  view: "chat",
+  activityBarCollapsed: false,
+  paletteOpen: false,
+  settingsOpen: false,
+
+  messages: [],
+  input: "",
+  pendingSecret: null,
+  pendingConfirm: null,
+  pendingConnectProvider: null,
+
+  explorerPath: "",
+  explorerEntries: [],
+  explorerLoading: false,
+  openFiles: [],
+  activeFile: null,
+
+  termBuffer: "",
+  termCols: 80,
+  termRows: 24,
+
+  stats: { tokens: 0, latency_ms: 0, battery: "", wifi: "", cwd: "" },
+  workspace: "",
+
+  toasts: [],
+  onboarding: null,
+  settings: initialSettings,
+  agents: [],
+
+  // ---------------------------------------------------------------------------
+
+  setSend: (send) => set({ send }),
+
+  setWsConnected: (v) => {
+    set({ wsConnected: v });
+    if (!v) {
+      // Drop streaming flags so the UI never gets stuck mid-turn.
+      set((s) => ({
+        streaming: false,
+        messages: s.messages.map((m) => (m.streaming ? { ...m, streaming: false } : m)),
+      }));
+    }
+  },
+
+  setProviderModel: (p) =>
+    set((s) => ({
+      provider: p.provider ?? s.provider,
+      model: p.model ?? s.model,
+      connected: p.connected ?? s.connected,
+      streaming: p.streaming ?? s.streaming,
+      daemonVersion: p.version ?? s.daemonVersion,
+    })),
+
+  setProviders: (entries) => set({ providers: entries }),
+
+  setModels: (models, current) => set({ models, model: current || models[0] || "" }),
+
+  setView: (v) => set({ view: v }),
+  toggleActivityBar: () => set((s) => ({ activityBarCollapsed: !s.activityBarCollapsed })),
+  setPaletteOpen: (v) => set({ paletteOpen: v }),
+
+  appendMessage: (m) => {
+    const id = m.id ?? nextId("msg");
+    set((s) => ({
+      messages: [
+        ...s.messages,
+        { ...m, id, tools: [], diffs: [], timestamp: Date.now() },
+      ],
+    }));
+    return id;
+  },
+
+  appendToken: (id, text) =>
+    set((s) => ({
+      messages: s.messages.map((m) =>
+        m.id === id ? { ...m, content: m.content + text, streaming: true } : m,
+      ),
+    })),
+
+  finishStream: (id) =>
+    set((s) => ({
+      streaming: s.streaming && s.messages.some((m) => m.id === id),
+      messages: s.messages.map((m) =>
+        m.id === id ? { ...m, streaming: false } : m,
+      ),
+    })),
+
+  setInput: (v) => set({ input: v }),
+
+  addToolCard: (msgId, card) =>
+    set((s) => ({
+      messages: s.messages.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              tools: [
+                ...m.tools,
+                {
+                  ...card,
+                  status: card.confirmRequired ? "pending" : "done",
+                  collapsed: false,
+                },
+              ],
+            }
+          : m,
+      ),
+    })),
+
+  resolveToolCard: (requestId, status, result) =>
+    set((s) => ({
+      messages: s.messages.map((m) => ({
+        ...m,
+        tools: m.tools.map((t) =>
+          t.requestId === requestId
+            ? {
+                ...t,
+                status,
+                resultOutput: result?.output,
+                resultSuccess: result?.success,
+                resultStatus: result?.status_line,
+              }
+            : t,
+        ),
+      })),
+    })),
+
+  addDiffCard: (msgId, card) =>
+    set((s) => ({
+      messages: s.messages.map((m) =>
+        m.id === msgId
+          ? { ...m, diffs: [...m.diffs, { ...card, status: "pending" }] }
+          : m,
+      ),
+    })),
+
+  resolveDiffCard: (requestId, status) =>
+    set((s) => ({
+      messages: s.messages.map((m) => ({
+        ...m,
+        diffs: m.diffs.map((d) => (d.requestId === requestId ? { ...d, status } : d)),
+      })),
+    })),
+
+  toggleToolCard: (msgId, requestId) =>
+    set((s) => ({
+      messages: s.messages.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              tools: m.tools.map((t) =>
+                t.requestId === requestId ? { ...t, collapsed: !t.collapsed } : t,
+              ),
+            }
+          : m,
+      ),
+    })),
+
+  setPendingSecret: (p) => set({ pendingSecret: p }),
+  setPendingConfirm: (p) => set({ pendingConfirm: p }),
+  setPendingConnectProvider: (p) => set({ pendingConnectProvider: p }),
+
+  setExplorer: (path, entries, loading) =>
+    set({ explorerPath: path, explorerEntries: entries, explorerLoading: loading }),
+
+  openFile: (path, content) =>
+    set((s) => {
+      const exists = s.openFiles.some((f) => f.path === path);
+      return {
+        openFiles: exists
+          ? s.openFiles
+          : [...s.openFiles, { path, content, dirty: false }],
+        activeFile: path,
+        view: "editor",
+      };
+    }),
+
+  setFileContent: (path, content) =>
+    set((s) => ({
+      openFiles: s.openFiles.map((f) => (f.path === path ? { ...f, content, dirty: true } : f)),
+    })),
+
+  closeFile: (path) =>
+    set((s) => {
+      const idx = s.openFiles.findIndex((f) => f.path === path);
+      const openFiles = s.openFiles.filter((f) => f.path !== path);
+      let activeFile = s.activeFile;
+      if (activeFile === path) {
+        const next = openFiles[Math.max(0, idx - 1)];
+        activeFile = next ? next.path : null;
+        if (!activeFile) {
+          set({ view: s.view === "editor" ? "explorer" : s.view });
+        }
+      }
+      return { openFiles, activeFile };
+    }),
+
+  setActiveFile: (path) => set({ activeFile: path }),
+
+  markFileSaved: (path) =>
+    set((s) => ({
+      openFiles: s.openFiles.map((f) => (f.path === path ? { ...f, dirty: false } : f)),
+    })),
+
+  appendTermOutput: (data) =>
+    set((s) => ({
+      termBuffer: (s.termBuffer + data).slice(-(64 * 1024)),
+    })),
+
+  setTermSize: (cols, rows) => set({ termCols: cols, termRows: rows }),
+
+  setStats: (partial) => set((s) => ({ stats: { ...s.stats, ...partial } })),
+  setWorkspace: (w) => set({ workspace: w }),
+
+  toast: (t) => {
+    const id = nextId("toast");
+    set((s) => ({ toasts: [...s.toasts.slice(-4), { ...t, id }] }));
+    if (t.ttl > 0) {
+      setTimeout(() => get().dismissToast(id), t.ttl);
+    }
+  },
+
+  dismissToast: (id) =>
+    set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+
+  setOnboarding: (s) => set({ onboarding: s }),
+  setSettings: (s) => set((state) => ({ settings: { ...state.settings, ...s } })),
+  setAgents: (a) => set({ agents: a }),
+}));
+
+/** Convenience: send an envelope-wrapped message if the socket is live. */
+export function sendMsg(msg: unknown): boolean {
+  const s = useStore.getState();
+  if (!s.send) return false;
+  s.send({ v: 1, msg });
+  return true;
+}

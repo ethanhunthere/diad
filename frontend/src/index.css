@@ -1,0 +1,307 @@
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------ */
+/* COPPER OBSIDIAN — base layer                                        */
+/* ------------------------------------------------------------------ */
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    @apply bg-obsidian text-ink font-sans antialiased;
+    font-size: 14px;
+    letter-spacing: 0.01em;
+  }
+
+  ::selection {
+    background: rgba(200, 127, 74, 0.35);
+  }
+
+  /* Scrollbars — thin, obsidian-tinted */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #2a221c transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: #2a221c;
+    border-radius: 8px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: #3a2f26;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Component utilities                                                 */
+/* ------------------------------------------------------------------ */
+
+@layer components {
+  /* Frosted glass panel — the DIAD AGENT signature surface */
+  .glass {
+    background: rgba(20, 16, 13, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .panel {
+    @apply bg-surface border border-border-subtle rounded-panel;
+  }
+
+  .control {
+    @apply rounded-control border border-border-subtle bg-surface-2/60
+      px-3 py-1.5 text-sm text-ink placeholder:text-faint
+      focus:outline-none focus:border-copper/60 focus:ring-1 focus:ring-copper/30
+      transition-all duration-150 ease-out;
+  }
+
+  .btn {
+    @apply inline-flex items-center gap-1.5 rounded-control border border-border-subtle
+      bg-surface-2/70 px-3 py-1.5 text-sm text-ink hover:bg-surface-3 hover:border-border-strong
+      active:scale-[0.98] transition-all duration-150 ease-out cursor-pointer select-none;
+  }
+
+  .btn-primary {
+    @apply btn border-copper/50 bg-copper/15 text-copper-hover
+      hover:bg-copper/25 hover:border-copper;
+  }
+
+  .btn-danger {
+    @apply btn border-danger/40 bg-danger/10 text-danger
+      hover:bg-danger/20 hover:border-danger;
+  }
+
+  .btn-ghost {
+    @apply btn border-transparent bg-transparent hover:bg-surface-2;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-border-subtle
+      bg-surface-2/70 px-2 py-0.5 text-[11px] text-dim;
+  }
+
+  /* Icon button used in the top bar */
+  .icon-btn {
+    @apply inline-flex h-7 w-7 items-center justify-center rounded-control
+      text-dim hover:text-ink hover:bg-surface-2 transition-colors duration-150 ease-out
+      cursor-pointer select-none;
+  }
+
+  /* Keyboard hint pill (e.g. "⌘K") */
+  .kbd {
+    @apply rounded border border-border-strong bg-surface-2 px-1.5 py-0.5
+      font-mono text-[10px] text-dim;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Chat markdown                                                       */
+/* ------------------------------------------------------------------ */
+
+.markdown {
+  @apply text-[13.5px] leading-relaxed text-ink;
+}
+.markdown > *:first-child {
+  margin-top: 0;
+}
+.markdown > *:last-child {
+  margin-bottom: 0;
+}
+.markdown p {
+  @apply my-1.5;
+}
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
+  @apply font-semibold text-ink mt-4 mb-1.5;
+}
+.markdown h1 {
+  @apply text-lg;
+}
+.markdown h2 {
+  @apply text-base;
+}
+.markdown h3 {
+  @apply text-[15px];
+}
+.markdown ul {
+  @apply list-disc pl-5 my-1.5 space-y-0.5;
+}
+.markdown ol {
+  @apply list-decimal pl-5 my-1.5 space-y-0.5;
+}
+.markdown li > ul,
+.markdown li > ol {
+  @apply my-0.5;
+}
+.markdown code {
+  @apply rounded bg-surface-2 border border-border-subtle px-1.5 py-0.5
+    font-mono text-[12px] text-copper-hover;
+}
+.markdown pre {
+  @apply my-2 rounded-panel border border-border-subtle bg-[#0D0A08] p-3 overflow-x-auto;
+}
+.markdown pre code {
+  @apply bg-transparent border-0 p-0 text-[12.5px] text-ink leading-relaxed;
+}
+.markdown blockquote {
+  @apply border-l-2 border-copper/50 pl-3 my-2 text-dim italic;
+}
+.markdown a {
+  @apply text-copper-hover underline underline-offset-2 hover:text-copper;
+}
+.markdown table {
+  @apply my-2 w-full border-collapse text-[12.5px];
+}
+.markdown th,
+.markdown td {
+  @apply border border-border-subtle px-2.5 py-1 text-left;
+}
+.markdown th {
+  @apply bg-surface-2 text-dim font-medium;
+}
+.markdown hr {
+  @apply my-3 border-border-subtle;
+}
+
+/* highlight.js — obsidian-tinted token colors */
+.hljs-comment,
+.hljs-quote {
+  color: #5c534a;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-name {
+  color: #e0955c;
+}
+.hljs-string,
+.hljs-attr,
+.hljs-template-tag,
+.hljs-template-variable {
+  color: #6fbf8b;
+}
+.hljs-number,
+.hljs-literal,
+.hljs-symbol,
+.hljs-bullet {
+  color: #e0b060;
+}
+.hljs-title,
+.hljs-section,
+.hljs-function .hljs-title {
+  color: #c87f4a;
+}
+.hljs-type,
+.hljs-class .hljs-title,
+.hljs-meta {
+  color: #b9a48f;
+}
+.hljs-variable,
+.hljs-params {
+  color: #ede6de;
+}
+.hljs-operator,
+.hljs-punctuation {
+  color: #8a7f75;
+}
+
+/* ------------------------------------------------------------------ */
+/* xterm.js — obsidian terminal theme                                  */
+/* ------------------------------------------------------------------ */
+
+.xterm .xterm-viewport {
+  background-color: #0d0a08 !important;
+}
+.xterm .xterm-screen {
+  background-color: #0d0a08 !important;
+}
+.xterm {
+  padding: 6px;
+}
+
+/* ------------------------------------------------------------------ */
+/* CodeMirror — obsidian theme overrides                               */
+/* ------------------------------------------------------------------ */
+
+.cm-editor {
+  background: #0d0a08 !important;
+  font-family: "JetBrains Mono", ui-monospace, monospace !important;
+  font-size: 13px;
+  height: 100%;
+}
+.cm-editor .cm-gutters {
+  background: #0d0a08 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: #5c534a !important;
+}
+.cm-editor .cm-activeLine {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+.cm-editor .cm-activeLineGutter {
+  background: rgba(255, 255, 255, 0.03) !important;
+  color: #8a7f75 !important;
+}
+.cm-editor .cm-cursor {
+  border-left-color: #e0955c !important;
+}
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused .cm-selectionBackground {
+  background: rgba(200, 127, 74, 0.25) !important;
+}
+.cm-editor .cm-scroller {
+  line-height: 1.55;
+}
+
+/* ------------------------------------------------------------------ */
+/* Misc                                                                */
+/* ------------------------------------------------------------------ */
+
+/* Subtle copper glow for streaming indicator */
+@keyframes copper-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 4px rgba(200, 127, 74, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(200, 127, 74, 0.7);
+  }
+}
+.streaming-dot {
+  animation: copper-glow 1.4s ease-in-out infinite;
+}
+
+/* Diff card line coloring */
+.diff-add {
+  background: rgba(111, 191, 139, 0.12);
+  color: #8fd4a8;
+}
+.diff-del {
+  background: rgba(224, 122, 122, 0.12);
+  color: #eba3a3;
+}
