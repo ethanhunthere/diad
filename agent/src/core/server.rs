@@ -888,7 +888,7 @@ async fn handle_client_msg(state: &DaemonState, conn: &Conn, msg: ClientMsg) {
             conn.prompts.resolve_diff(&id, false);
         }
         ClientMsg::SpawnTui => {
-            crate::daemon::spawn_tui();
+            crate::core::spawn_tui();
         }
         ClientMsg::TermInput { data } => {
             let tx = conn.tx.clone();

@@ -2,8 +2,8 @@ use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 use clap::Parser;
 use diad_agent::config::settings::DiadConfig;
-use diad_agent::daemon::server::DaemonState;
-use diad_agent::daemon::{daemon_alive, open_gui, wait_for_daemon, DAEMON_PORT};
+use diad_agent::core::server::DaemonState;
+use diad_agent::core::{daemon_alive, open_gui, wait_for_daemon, DAEMON_PORT};
 use diad_agent::providers::ProviderFactory;
 use diad_agent::tui::app::{App, AppMode};
 use diad_agent::tui::event::{Event, EventLoop};
@@ -94,7 +94,7 @@ async fn ensure_daemon(brain: &Brain, port: u16) -> anyhow::Result<()> {
     }
     let state = Arc::clone(&brain.state);
     tokio::spawn(async move {
-        if let Err(e) = diad_agent::daemon::server::serve(state, port).await {
+        if let Err(e) = diad_agent::core::server::serve(state, port).await {
             tracing::error!("daemon serve error: {e}");
         }
     });
@@ -134,7 +134,7 @@ async fn main() -> anyhow::Result<()> {
     // ---- --daemon: headless service ----
     if cli.daemon {
         tracing::info!("DIAD AGENT daemon mode (headless)");
-        return diad_agent::daemon::server::serve(Arc::clone(&brain.state), cli.port).await;
+        return diad_agent::core::server::serve(Arc::clone(&brain.state), cli.port).await;
     }
 
     // ---- Default: daemon + GUI ----

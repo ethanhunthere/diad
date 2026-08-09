@@ -18,7 +18,7 @@ use tokio_tungstenite::MaybeTlsStream;
 use tokio_tungstenite::WebSocketStream;
 use tokio::net::TcpStream;
 
-use crate::daemon::protocol::{ClientMsg, Envelope, ServerMsg, PROTOCOL_VERSION};
+use crate::core::protocol::{ClientMsg, Envelope, ServerMsg, PROTOCOL_VERSION};
 use crate::providers::ProviderEntry;
 use crate::tui::event::Event;
 
@@ -36,7 +36,7 @@ pub struct DaemonClient {
 impl DaemonClient {
     /// Connect to the daemon, spawn the writer task and return the client.
     pub async fn connect(events: UnboundedSender<Event>) -> anyhow::Result<Self> {
-        let url = crate::daemon::ws_url();
+        let url = crate::core::ws_url();
         let (ws, _resp) = tokio_tungstenite::connect_async(&url).await?;
 
         // Split: the writer owns the sink; the reader owns the stream.
@@ -204,7 +204,7 @@ impl ClientHandle {
 
     /// Open the GUI (used by F9).
     pub fn open_gui(&self) {
-        crate::daemon::open_gui();
+        crate::core::open_gui();
     }
 }
 
@@ -345,8 +345,8 @@ fn map_server_msg(msg: ServerMsg, events: &UnboundedSender<Event>, out: &Unbound
 
 /// Convenience: try to connect; if the daemon is down, start one first.
 pub async fn connect_or_spawn(events: UnboundedSender<Event>) -> anyhow::Result<DaemonClient> {
-    if !crate::daemon::daemon_alive().await {
-        crate::daemon::wait_for_daemon(std::time::Duration::from_secs(1)).await;
+    if !crate::core::daemon_alive().await {
+        crate::core::wait_for_daemon(std::time::Duration::from_secs(1)).await;
     }
     DaemonClient::connect(events).await
 }

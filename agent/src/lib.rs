@@ -11,7 +11,7 @@
 
 pub mod auth;
 pub mod config;
-pub mod daemon;
+pub mod core;
 pub mod orchestrator;
 pub mod providers;
 pub mod tools;
