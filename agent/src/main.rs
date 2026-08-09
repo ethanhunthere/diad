@@ -2,7 +2,7 @@ use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 use clap::Parser;
 use diad_agent::config::settings::DiadConfig;
-use diad_agent::core::server::DaemonState;
+use diad_agent::core::daemon::DaemonState;
 use diad_agent::core::{daemon_alive, open_gui, wait_for_daemon, DAEMON_PORT};
 use diad_agent::providers::ProviderFactory;
 use diad_agent::tui::app::{App, AppMode};

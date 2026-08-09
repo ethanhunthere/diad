@@ -14,11 +14,12 @@ pub mod notes;
 pub mod protocol;
 pub mod pty;
 pub mod rest;
+pub mod daemon;
 pub mod server;
 pub mod usage;
 
 pub use protocol::{ClientMsg, ServerMsg};
-pub use server::DaemonState;
+pub use daemon::DaemonState;
 
 /// The loopback port the daemon listens on.
 pub const DAEMON_PORT: u16 = 7860;

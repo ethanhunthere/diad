@@ -31,7 +31,7 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc::unbounded_channel;
 
 use super::protocol::{FileEntryDto, PROTOCOL_VERSION, ServerMsg};
-use super::server::{handle_chat_send, next_id, Conn, DaemonState, PromptBroker};
+use super::daemon::{handle_chat_send, next_id, Conn, DaemonState, PromptBroker};
 
 // ---------------------------------------------------------------------------
 // Request / response types
@@ -545,7 +545,7 @@ async fn api_file_list(
 
 /// Non-emoji, git-aware directory listing (matches the GUI's file tree).
 fn list_entries(dir: &str) -> Vec<FileEntryDto> {
-    super::server::list_dir_entries(dir)
+    super::daemon::list_dir_entries(dir)
 }
 
 async fn api_file_read(
