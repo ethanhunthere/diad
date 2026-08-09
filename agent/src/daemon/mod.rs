@@ -35,10 +35,7 @@ pub fn ws_url() -> String {
 
 /// Is a daemon already listening on the loopback port?
 pub async fn daemon_alive() -> bool {
-    match tokio::net::TcpStream::connect(("127.0.0.1", DAEMON_PORT)).await {
-        Ok(_) => true,
-        Err(_) => false,
-    }
+    tokio::net::TcpStream::connect(("127.0.0.1", DAEMON_PORT)).await.is_ok()
 }
 
 /// Wait (bounded) for the daemon to accept connections.

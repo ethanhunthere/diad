@@ -179,9 +179,9 @@ impl DebugSession {
 
     /// Parse `*stopped` records and update the snapshot (called by reader).
     fn ingest(&self, line: &str) {
-        if line.starts_with("~\"") {
+        if let Some(quoted) = line.strip_prefix("~\"") {
             // Console output: strip MI quoting.
-            let text = line[2..]
+            let text = quoted
                 .trim_end_matches('"')
                 .replace("\\n", "\n")
                 .replace("\\t", "\t")
@@ -250,7 +250,6 @@ impl DebugSession {
                 self.bps.lock().unwrap().insert(bp.number, bp);
                 self.refresh_breakpoints();
             }
-            return;
         }
     }
 
@@ -338,10 +337,10 @@ fn extract_field(line: &str, key: &str) -> Option<String> {
     let mut i = 0;
     while i < bytes.len() {
         if let Some(stripped) = line[i..].strip_prefix(key) {
-            if stripped.starts_with('=') {
+            if let Some(after_eq) = stripped.strip_prefix('=') {
                 let prev_ok = i == 0 || matches!(bytes[i - 1] as char, ',' | '{' | '[' | ' ' | '\t');
                 if prev_ok {
-                    return Some(strip_value(&stripped[1..]));
+                    return Some(strip_value(after_eq));
                 }
             }
         }
@@ -374,12 +373,14 @@ fn strip_value(v: &str) -> String {
         return out;
     }
     // Unquoted: stop at the first top-level comma.
+    // `char_indices()` yields byte offsets, which are what string slicing needs
+    // (a char index from `enumerate()` would panic on multi-byte UTF-8).
     let mut depth = 0i32;
-    for (idx, ch) in v.chars().enumerate() {
+    for (byte_idx, ch) in v.char_indices() {
         match ch {
             '{' | '[' => depth += 1,
             '}' | ']' => depth -= 1,
-            ',' if depth == 0 => return v[..idx].to_string(),
+            ',' if depth == 0 => return v[..byte_idx].to_string(),
             _ => {}
         }
     }
@@ -454,7 +455,7 @@ fn parse_variables(line: &str) -> Option<Vec<VarDto>> {
             value = strip_value(v);
         }
         i += 1;
-        if i % 3 == 0 {
+        if i.is_multiple_of(3) {
             vars.push(VarDto { name: name.clone(), value: value.clone(), kind: kind.clone() });
             name.clear();
             kind.clear();

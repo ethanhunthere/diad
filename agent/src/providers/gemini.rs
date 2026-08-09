@@ -64,20 +64,6 @@ struct GeminiContent {
 #[serde(untagged)]
 enum GeminiPart {
     Text { text: String },
-    FunctionCall { function_call: GeminiFunctionCall },
-    FunctionResponse { function_response: GeminiFunctionResponse },
-}
-
-#[derive(Serialize)]
-struct GeminiFunctionCall {
-    name: String,
-    args: serde_json::Value,
-}
-
-#[derive(Serialize)]
-struct GeminiFunctionResponse {
-    name: String,
-    response: serde_json::Value,
 }
 
 #[derive(Serialize)]

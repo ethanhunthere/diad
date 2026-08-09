@@ -54,9 +54,9 @@ pub fn run_privileged(args: &[&str]) -> anyhow::Result<ToolResult> {
     #[cfg(test)]
     {
         let program = args.first().copied().unwrap_or("?");
-        return Ok(ToolResult::ok(format!(
+        Ok(ToolResult::ok(format!(
             "[test mode] would run: sudo {program}"
-        )));
+        )))
     }
 
     #[cfg(not(test))]

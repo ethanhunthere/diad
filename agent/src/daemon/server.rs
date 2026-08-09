@@ -982,7 +982,7 @@ async fn handle_client_msg(state: &DaemonState, conn: &Conn, msg: ClientMsg) {
                 current,
             });
             let _ = conn.tx.send(ServerMsg::System {
-                message: format!("[system] Provider switched — pick a model."),
+                message: "[system] Provider switched — pick a model.".to_string(),
             });
         }
         ClientMsg::ModelSwitch { model } => {
@@ -1136,7 +1136,7 @@ fn apply_config_set(state: &DaemonState, key: &str, value: serde_json::Value) {
             }
         }
         _ => {
-            let _ = state.broadcast(ServerMsg::Error {
+            state.broadcast(ServerMsg::Error {
                 id: None,
                 message: format!("config.set: unknown key '{key}'"),
             });

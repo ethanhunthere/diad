@@ -393,10 +393,7 @@ async fn request_confirmation(tx: &UnboundedSender<Event>, label: String) -> boo
         label,
         reply: reply_tx,
     });
-    match reply_rx.recv().await {
-        Some(answer) => answer,
-        None => false,
-    }
+    reply_rx.recv().await.unwrap_or_default()
 }
 
 /// Request approval for a proposed file edit and await the answer.
@@ -414,10 +411,7 @@ async fn request_edit_approval(
         diff,
         reply: reply_tx,
     });
-    match reply_rx.recv().await {
-        Some(answer) => answer,
-        None => false,
-    }
+    reply_rx.recv().await.unwrap_or_default()
 }
 
 /// Build a small unified diff between two file contents (line based).

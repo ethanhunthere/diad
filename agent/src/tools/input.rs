@@ -60,6 +60,7 @@ pub fn airplane_mode(enabled: bool) -> anyhow::Result<ToolResult> {
 
 /// Build the exact nmcli argument vector for an airplane-mode request.
 /// Exposed for unit testing (avoids spawning real commands in tests).
+#[cfg(test)]
 fn airplane_mode_args(enabled: bool) -> Vec<&'static str> {
     if enabled {
         vec!["nmcli", "radio", "wifi", "off"]

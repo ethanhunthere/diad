@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 //! DIAD AGENT — Core library
 //!
 //! The DIAD AGENT is the intent-driven interface of the DIAD Operating

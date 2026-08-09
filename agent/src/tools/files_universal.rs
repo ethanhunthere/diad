@@ -410,7 +410,7 @@ pub fn get_file_info_deep(path: &str) -> anyhow::Result<ToolResult> {
     let meta_out = if meta.success { meta.output.clone() } else { String::new() };
     let hash = sha256_of(path)?;
     let hash_out = if hash.success {
-        hash.output.trim().split_whitespace().next().unwrap_or("unknown").to_string()
+        hash.output.split_whitespace().next().unwrap_or("unknown").to_string()
     } else {
         format!("(sha256 unavailable: {})", hash.error.unwrap_or_default())
     };
@@ -731,11 +731,10 @@ pub fn clean_old_downloads(days: u64) -> anyhow::Result<ToolResult> {
             continue;
         }
         if let Ok(modified) = entry.metadata().and_then(|m| m.modified()) {
-            if modified < cutoff {
-                if std::fs::remove_file(&path).is_ok() {
+            if modified < cutoff
+                && std::fs::remove_file(&path).is_ok() {
                     removed += 1;
                 }
-            }
         }
     }
     Ok(ToolResult::ok(format!("removed {removed} files older than {days} days")))
@@ -761,7 +760,7 @@ pub fn find_duplicate_downloads() -> anyhow::Result<ToolResult> {
     for f in files {
         let h = sha256_of(&f)?;
         if h.success {
-            if let Some(hash) = h.output.trim().split_whitespace().next() {
+            if let Some(hash) = h.output.split_whitespace().next() {
                 by_hash.entry(hash.to_string()).or_default().push(f.clone());
             }
         }
@@ -1343,7 +1342,7 @@ pub fn get_duplicate_files(path: &str) -> anyhow::Result<ToolResult> {
     for f in files {
         let h = sha256_of(&f)?;
         if h.success {
-            if let Some(hash) = h.output.trim().split_whitespace().next() {
+            if let Some(hash) = h.output.split_whitespace().next() {
                 by_hash.entry(hash.to_string()).or_default().push(f.clone());
             }
         }
@@ -1657,7 +1656,7 @@ pub fn encrypt_archive(archive: &str, password: &str, output: &str) -> anyhow::R
     if !Path::new(archive).exists() {
         return Ok(ToolResult::err(format!("archive not found: {archive}")));
     }
-    run(&["7z", "a", "-y", "-p", &format!("-mhe=on"), output, archive])
+    run(&["7z", "a", "-y", "-p", "-mhe=on", output, archive])
 }
 
 /// Split an archive into fixed-size parts (split).

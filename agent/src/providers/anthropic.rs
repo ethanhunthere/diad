@@ -131,8 +131,6 @@ struct AnthropicSseEvent {
 struct AnthropicDelta {
     #[serde(default)]
     text: Option<String>,
-    #[serde(rename = "type", default)]
-    delta_type: Option<String>,
     #[serde(default)]
     partial_json: Option<String>,
     #[serde(default)]

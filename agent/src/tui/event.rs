@@ -154,3 +154,9 @@ impl EventLoop {
             .ok_or_else(|| anyhow::anyhow!("Event loop channel closed"))
     }
 }
+
+impl Default for EventLoop {
+    fn default() -> Self {
+        Self::new()
+    }
+}

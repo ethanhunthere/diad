@@ -288,12 +288,15 @@ fn error_response(status: StatusCode, message: impl Into<String>) -> Response {
 
 /// The sandboxed, tilde-expanded absolute path for a request, or an error
 /// response if the path is outside the allowlist.
-fn allowed_path(state: &DaemonState, raw: &str) -> Result<std::path::PathBuf, Response> {
+///
+/// The error is boxed: `axum::http::Response` is >128 bytes, and returning it
+/// unboxed from a small `Result` would force a large stack copy on every call.
+fn allowed_path(state: &DaemonState, raw: &str) -> Result<std::path::PathBuf, Box<Response>> {
     if !state.registry.is_path_allowed(raw) {
-        return Err(error_response(
+        return Err(Box::new(error_response(
             StatusCode::FORBIDDEN,
             format!("path not allowed by sandbox: {raw}"),
-        ));
+        )));
     }
     Ok(std::path::PathBuf::from(shellexpand::tilde(raw).as_ref()))
 }
@@ -520,7 +523,7 @@ async fn api_file_list(
     let path2 = path.clone();
     let path_buf = match allowed_path(&state, &path) {
         Ok(p) => p,
-        Err(resp) => return resp,
+        Err(resp) => return *resp,
     };
 
     match blocking(move || {
@@ -555,7 +558,7 @@ async fn api_file_read(
     };
     let path_buf = match allowed_path(&state, &path) {
         Ok(p) => p,
-        Err(resp) => return resp,
+        Err(resp) => return *resp,
     };
 
     match blocking(move || std::fs::read_to_string(&path_buf)).await {
@@ -581,11 +584,11 @@ async fn api_file_write(
 ) -> Response {
     let path_buf = match allowed_path(&state, &req.path) {
         Ok(p) => p,
-        Err(resp) => return resp,
+        Err(resp) => return *resp,
     };
 
     // Writing outside the sandbox root requires an explicit confirm flag.
-    let is_outside = path_buf.starts_with(std::env::temp_dir()) == false
+    let is_outside = !path_buf.starts_with(std::env::temp_dir())
         && state.registry.allowed_paths().iter().all(|a| {
             let a = std::path::PathBuf::from(shellexpand::tilde(a).as_ref());
             !path_buf.starts_with(&a)
@@ -667,7 +670,7 @@ async fn api_git_status(
     };
     let path_buf = match allowed_path(&state, &path) {
         Ok(p) => p,
-        Err(resp) => return resp,
+        Err(resp) => return *resp,
     };
 
     match blocking(move || {
@@ -713,7 +716,7 @@ async fn api_git_commit(
     }
     let path_buf = match allowed_path(&state, &req.path) {
         Ok(p) => p,
-        Err(resp) => return resp,
+        Err(resp) => return *resp,
     };
     if !req.confirm {
         return error_response(
@@ -778,7 +781,7 @@ async fn api_git_diff(
 ) -> Response {
     let path_buf = match allowed_path(&state, &params.path) {
         Ok(p) => p,
-        Err(resp) => return resp,
+        Err(resp) => return *resp,
     };
     let root = match git_work_tree(&path_buf) {
         Some(r) => r,
@@ -796,7 +799,7 @@ async fn api_git_diff(
         if let Some(f) = &file {
             cmd.arg("--").arg(f);
         }
-        Ok::<_, std::io::Error>(cmd.output()?)
+        cmd.output()
     })
     .await
     {
@@ -834,7 +837,7 @@ async fn api_git_log(
 ) -> Response {
     let path_buf = match allowed_path(&state, &params.path) {
         Ok(p) => p,
-        Err(resp) => return resp,
+        Err(resp) => return *resp,
     };
     let root = match git_work_tree(&path_buf) {
         Some(r) => r,
@@ -847,7 +850,7 @@ async fn api_git_log(
             .arg("-C")
             .arg(&root_for_cmd)
             .arg("log")
-            .arg(&format!("--max-count={limit}"))
+            .arg(format!("--max-count={limit}"))
             .arg("--pretty=format:%h%x1f%H%x1f%an%x1f%ad%x1f%s")
             .arg("--date=short")
             .output()?;
@@ -886,7 +889,7 @@ async fn api_git_branch(
 ) -> Response {
     let path_buf = match allowed_path(&state, &params.path) {
         Ok(p) => p,
-        Err(resp) => return resp,
+        Err(resp) => return *resp,
     };
     let root = match git_work_tree(&path_buf) {
         Some(r) => r,
@@ -896,7 +899,7 @@ async fn api_git_branch(
     match blocking(move || {
         // Note: `git branch --format` does NOT interpret %x escapes, so use a
         // literal unit-separator byte in the format string.
-        let fmt = format!("%(refname:short)\u{1f}%(HEAD)\u{1f}%(upstream:short)");
+        let fmt = "%(refname:short)\u{1f}%(HEAD)\u{1f}%(upstream:short)".to_string();
         let out = std::process::Command::new("git")
             .arg("-C")
             .arg(&root_for_cmd)
@@ -1141,7 +1144,7 @@ async fn api_projects_list(
     let root_raw = params.root.unwrap_or_else(|| "~".to_string());
     let root = match allowed_path(&state, &root_raw) {
         Ok(p) => p,
-        Err(resp) => return resp,
+        Err(resp) => return *resp,
     };
     let limit = params.limit.unwrap_or(50).clamp(1, 200);
     let root_display = root.display().to_string();
@@ -1851,7 +1854,7 @@ mod tests {
             .clone()
             .oneshot(
                 axum::http::Request::builder()
-                    .uri(&format!("/git/status?path={path}"))
+                    .uri(format!("/git/status?path={path}"))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -1868,7 +1871,7 @@ mod tests {
             .clone()
             .oneshot(
                 axum::http::Request::builder()
-                    .uri(&format!("/git/diff?path={path}"))
+                    .uri(format!("/git/diff?path={path}"))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -1886,7 +1889,7 @@ mod tests {
             .clone()
             .oneshot(
                 axum::http::Request::builder()
-                    .uri(&format!("/git/log?path={path}"))
+                    .uri(format!("/git/log?path={path}"))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -1904,7 +1907,7 @@ mod tests {
         let resp = app
             .oneshot(
                 axum::http::Request::builder()
-                    .uri(&format!("/git/branch?path={path}"))
+                    .uri(format!("/git/branch?path={path}"))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -1914,7 +1917,7 @@ mod tests {
         let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert!(!v["current"].as_str().unwrap_or("").is_empty());
-        assert!(v["branches"].as_array().unwrap().len() >= 1);
+        assert!(!v["branches"].as_array().unwrap().is_empty());
     }
 
     #[tokio::test]
@@ -1925,7 +1928,7 @@ mod tests {
         let resp = app
             .oneshot(
                 axum::http::Request::builder()
-                    .uri(&format!("/git/status?path={path}"))
+                    .uri(format!("/git/status?path={path}"))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -2016,7 +2019,7 @@ mod tests {
         let resp = app
             .oneshot(
                 axum::http::Request::builder()
-                    .uri(&format!("/projects/list?root={root}"))
+                    .uri(format!("/projects/list?root={root}"))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -2372,7 +2375,7 @@ mod tests {
             .clone()
             .oneshot(
                 axum::http::Request::builder()
-                    .uri(&format!("/sessions/export-json?id={new_id}"))
+                    .uri(format!("/sessions/export-json?id={new_id}"))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )

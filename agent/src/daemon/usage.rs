@@ -144,11 +144,12 @@ pub fn aggregate(records: &[UsageRecord]) -> UsageSummary {
     let total_completion_tokens = records.iter().map(|r| r.completion_tokens).sum();
     let est_cost_usd: f64 = by_provider.iter().map(|p| p.est_cost_usd).sum();
     let failed_requests = records.iter().filter(|r| !r.success).count() as u64;
-    let avg_latency_ms = if total_requests > 0 {
-        records.iter().map(|r| r.latency_ms).sum::<u64>() / total_requests
-    } else {
-        0
-    };
+    let avg_latency_ms = records
+        .iter()
+        .map(|r| r.latency_ms)
+        .sum::<u64>()
+        .checked_div(total_requests)
+        .unwrap_or(0);
 
     UsageSummary {
         total_requests,
@@ -527,7 +528,7 @@ mod tests {
         let manager = SessionManager::new_with_dir(dir.clone());
         let mut s = Session::new("T", "openai");
         for i in 0..6 {
-            s.add_message("user", &format!("repeat keyword test {i}"));
+            s.add_message("user", format!("repeat keyword test {i}"));
         }
         manager.save_session(&s).unwrap();
         let hits = recall(&manager, "repeat keyword", 2);

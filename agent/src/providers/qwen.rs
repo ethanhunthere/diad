@@ -98,8 +98,6 @@ struct QwenDelta {
 #[derive(Deserialize)]
 struct QwenToolCallDelta {
     #[serde(default)]
-    index: usize,
-    #[serde(default)]
     id: Option<String>,
     function: Option<QwenFunctionDelta>,
 }

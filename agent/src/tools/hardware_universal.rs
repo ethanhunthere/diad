@@ -67,9 +67,9 @@ fn run_privileged(args: &[&str]) -> anyhow::Result<ToolResult> {
     #[cfg(test)]
     {
         let program = args.first().copied().unwrap_or("?");
-        return Ok(ToolResult::ok(format!(
+        Ok(ToolResult::ok(format!(
             "[test mode] would run: sudo {program}"
-        )));
+        )))
     }
     #[cfg(not(test))]
     {
@@ -214,7 +214,7 @@ pub fn configure_pen(pressure: Option<u32>, eraser: bool) -> anyhow::Result<Tool
         let id = line
             .split("id:")
             .nth(1)
-            .and_then(|s| s.trim().split_whitespace().next())
+            .and_then(|s| s.split_whitespace().next())
             .map(|s| s.to_string());
         let Some(id) = id else { continue };
         if !valid_identifier(&id) {
@@ -395,15 +395,9 @@ pub fn delete_fingerprint(finger: &str) -> anyhow::Result<ToolResult> {
 
 /// Enable fingerprint sudo via PAM (fprintd-auth stack).
 pub fn enable_fingerprint_sudo(enabled: bool) -> anyhow::Result<ToolResult> {
-    let rule = if enabled {
-        "auth sufficient pam_fprintd.so"
-    } else {
-        "auth sufficient pam_fprintd.so"
-    };
     // Write a PAM drop-in for the `sudo` service.
     let dir = "/etc/pam.d";
     let file = format!("{dir}/sudo");
-    let _ = rule;
     if enabled {
         // Check the file exists and mention fprintd; if not, we can't safely
         // modify system PAM from here — report instructions.
@@ -1149,10 +1143,10 @@ pub fn get_battery_health() -> anyhow::Result<ToolResult> {
         }
         if in_battery {
             if let Some(v) = t.strip_prefix("energy-full:") {
-                energy_full = v.trim().split_whitespace().next().unwrap_or("0").parse().unwrap_or(0.0);
+                energy_full = v.split_whitespace().next().unwrap_or("0").parse().unwrap_or(0.0);
             }
             if let Some(v) = t.strip_prefix("energy-full-design:") {
-                energy_full_design = v.trim().split_whitespace().next().unwrap_or("0").parse().unwrap_or(0.0);
+                energy_full_design = v.split_whitespace().next().unwrap_or("0").parse().unwrap_or(0.0);
             }
             if t.is_empty() {
                 break;
