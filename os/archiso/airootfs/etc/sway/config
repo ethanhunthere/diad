@@ -33,18 +33,17 @@ input type:touchpad {
 }
 
 # ---- Appearance ----
-# No title bars on windows
-default_border none
-default_floating_border none
+# PROMPT-2 S2.5 — visible titlebars on every window: normal border + frame.
+# The brown titlebar carries the "DIAD · <app_id>" title, so every window
+# (GUI app-windows, foot/TUI, Telegram, Slack, Brave) has an obvious chrome
+# edge — this is what the waybar [–][□][×] buttons control.
+default_border normal
+default_floating_border normal
 
-# Hide window decorations
-# Flatpak Brave reports app_id com.brave.Browser (the plain `brave` shim
-# app_id no longer exists), so match both spellings. The DIAD AGENT GUI is a
-# Brave app window matched by its "DIAD AGENT" title.
-for_window [title="DIAD AGENT"] border pixel 1
-for_window [app_id="foot"] border pixel 1
-for_window [app_id="brave-browser"] border pixel 1
-for_window [app_id="com.brave.Browser"] border pixel 1
+# Every window gets the DIAD title frame. Flatpak Brave reports app_id
+# com.brave.Browser; the shim app_id and chromium report their own ids —
+# %app_id shows whichever the client actually exposes.
+for_window [*] title_format "DIAD · %app_id"
 
 # PROMPT-2 S1 — auto-focus at boot (no user click ever needed): the GUI
 # app-window (chromium, URL :7860) and any foot window grab focus when they
@@ -58,11 +57,11 @@ focus_follows_mouse no
 gaps inner 4
 gaps outer 0
 
-# Colors
-client.focused          #4a9eff #4a9eff #1a1a2e #4a9eff #4a9eff
-client.unfocused        #2a2a3e #2a2a3e #1a1a2e #2a2a3e #2a2a3e
-client.focused_inactive #2a2a3e #2a2a3e #1a1a2e #2a2a3e #2a2a3e
-client.urgent           #ff4444 #ff4444 #1a1a2e #ff4444 #ff4444
+# Colors — brown/copper titlebars (DIAD palette), red for urgent.
+client.focused          #8b5e3c #8b5e3c #ffffff #8b5e3c #8b5e3c
+client.unfocused        #2a2a3e #2a2a3e #888888 #2a2a3e #2a2a3e
+client.focused_inactive #333355 #333355 #cccccc #333355 #333355
+client.urgent           #e06c75 #e06c75 #ffffff #e06c75 #e06c75
 
 # ---- Workspace Assignment ----
 # Workspace 1: DIAD AGENT GUI — Brave app window titled "DIAD AGENT"
@@ -100,8 +99,16 @@ exec diad-supervisor.sh
 
 # ---- Keybindings ----
 
-# Exit Sway
-bindsym $mod+Shift+q exit
+# PROMPT-2 S2.4 — window controls (keyboard mirrors the waybar buttons):
+#   Super+M        minimize (move to scratchpad)
+#   Super+Shift+M  restore (scratchpad show)
+#   Super+F        maximize (fullscreen toggle)
+#   Super+Shift+Q  close focused window
+# Exit Sway moved to Super+Shift+E (sway's default exit binding).
+bindsym $mod+m move scratchpad
+bindsym $mod+Shift+m scratchpad show
+bindsym $mod+Shift+q kill
+bindsym $mod+Shift+e exit
 
 # Start terminal
 bindsym $mod+Return exec $term

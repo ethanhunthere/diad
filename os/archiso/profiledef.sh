@@ -99,6 +99,7 @@ file_permissions=(
     ["/usr/local/bin/diad-splash.sh"]="0:0:755"
     ["/usr/local/bin/diad-storage-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-supervisor.sh"]="0:0:755"
+    ["/usr/local/bin/diad-windowctl"]="0:0:755"
     ["/usr/local/bin/diad-set-password"]="0:0:755"
     ["/usr/local/bin/diad-sysfs-write"]="0:0:755"
     ["/usr/local/bin/diad-clone-disk"]="0:0:755"

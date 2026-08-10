@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# =============================================================================
+# DIAD — window control for the waybar buttons (PROMPT-2 S2).
+# =============================================================================
+# Waybar custom modules call this with a fixed action word:
+#   minimize | maximize | close | restore
+# Every action operates on the FOCUSED window via swaymsg, so the buttons
+# work identically for GUI app-windows, foot/TUI windows, Telegram, Slack,
+# Brave — anything focused (PROMPT-2 S2.4).
+#
+#   minimize → move scratchpad
+#   maximize → fullscreen toggle
+#   close    → kill
+#   restore  → scratchpad show
+#
+# Keyboard equivalents stay: Super+M / Super+F / Super+Shift+Q (restore via
+# Super+Shift+M), bound in /etc/sway/config.
+# =============================================================================
+
+set -u
+
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+action="${1:-}"
+case "${action}" in
+    minimize)
+        swaymsg move scratchpad
+        ;;
+    maximize)
+        swaymsg fullscreen toggle
+        ;;
+    close)
+        swaymsg kill
+        ;;
+    restore)
+        swaymsg scratchpad show
+        ;;
+    *)
+        notify-send "diad-windowctl: unknown action '${action}' (minimize|maximize|close|restore)" -u critical
+        exit 1
+        ;;
+esac
+exit 0
