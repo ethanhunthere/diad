@@ -95,6 +95,7 @@ file_permissions=(
     ["/usr/local/bin/diad-hardware-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-network-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-power-setup.sh"]="0:0:755"
+    ["/usr/local/bin/diad-power.sh"]="0:0:755"
     ["/usr/local/bin/diad-splash.sh"]="0:0:755"
     ["/usr/local/bin/diad-storage-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-supervisor.sh"]="0:0:755"

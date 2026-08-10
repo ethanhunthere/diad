@@ -5,7 +5,7 @@
   "spacing": 4,
   "modules-left": ["clock"],
   "modules-center": ["sway/workspaces"],
-  "modules-right": [],
+  "modules-right": ["custom/suspend", "custom/reboot", "custom/power"],
   "clock": {
     "format": "{:%H:%M}",
     "interval": 10,
@@ -20,5 +20,20 @@
       "1": [],
       "2": []
     }
+  },
+  "custom/suspend": {
+    "format": "⏾",
+    "tooltip": "Sleep",
+    "on-click": "/usr/local/bin/diad-power.sh suspend"
+  },
+  "custom/reboot": {
+    "format": "↻",
+    "tooltip": "Restart",
+    "on-click": "/usr/local/bin/diad-power.sh reboot"
+  },
+  "custom/power": {
+    "format": "⏻",
+    "tooltip": "Shutdown",
+    "on-click": "/usr/local/bin/diad-power.sh power"
   }
 }

@@ -34,3 +34,26 @@
 #workspaces button:hover {
   background: rgba(139, 94, 60, 0.35);
 }
+
+/* MASTER FIX S3 — power buttons (sleep / restart / shutdown) */
+#custom-suspend,
+#custom-reboot,
+#custom-power {
+  background: rgba(46, 32, 24, 0.65);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #eadbcf;
+  padding: 4px 10px;
+  margin: 6px 3px;
+}
+
+#custom-suspend:hover,
+#custom-reboot:hover,
+#custom-power:hover {
+  background: rgba(139, 94, 60, 0.35);
+}
+
+/* Shutdown is the destructive one — tint it warm-red so it stands apart. */
+#custom-power {
+  color: #e06c75;
+}
