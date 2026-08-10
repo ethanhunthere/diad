@@ -1,15 +1,27 @@
 #!/usr/bin/env bash
 #
-# DIAD — Session supervisor
+# DIAD — Session supervisor  (MASTER FIX S4 — resilient boot chain)
 # =============================================================================
-# Entry point launched by Sway on login. Runs the onboarding wizard and all
-# setup scripts, then launches the two DIAD surfaces:
-#   • workspace 1: DIAD AGENT (daemon + Brave app window on 127.0.0.1:7860)
-#   • workspace 2: Brave browser
+# Entry point launched by Sway on login (exactly once, `exec diad-supervisor.sh`
+# in /etc/sway/config — sway itself no longer starts waybar; this script owns
+# it). Ordered, non-blocking boot:
 #
-# A failing setup step never blocks the desktop (no `set -e`). The first-run
-# wizard opens in its OWN foot window and never blocks the rest of the session.
+#   (a) idempotent storage/display/network/power setup (marker-gated inside)
+#   (b) DIAD daemon — wait for 127.0.0.1:7860/health up to 10 s (20 x 0.5 s);
+#       on timeout log the daemon tail and set FALLBACK=1
+#   (c) workspace 1: daemon healthy → DIAD AGENT GUI (brave --app); otherwise
+#       foot diad-agent --tui (guaranteed surface either way)
+#   (d) workspace 2: browser respawn loop (5 s, quiet) — the brave shim
+#       resolves flatpak com.brave.Browser → chromium → notify-send
+#   (e) workspace 3: DIAD Launchpad respawn loop (5 s, quiet), only while the
+#       daemon serves it
+#   (f) first-run wizard (independent window — never blocks the boot)
+#   (g) steady state: waybar/mako/cliphist watchdogs (10 s) + daemon health
+#       (restart max 2, then TUI fallback) + periodic log rotation
 #
+# Every step degrades without blocking the desktop (`set -uo pipefail`).
+# =============================================================================
+
 set -uo pipefail
 
 HOME_DIR="${HOME:-/home/diad}"
@@ -47,13 +59,52 @@ rotate_logs() {
     done
 }
 
+# ---- Health / window-count helpers ----
+daemon_healthy() {
+    curl -sf http://127.0.0.1:7860/health >/dev/null 2>&1
+}
+
+# Number of real browser windows on any workspace, EXCLUDING the DIAD AGENT
+# GUI and the DIAD Launchpad (both are also browser app-windows). Uses sway's
+# window tree when available; falls back to a process count pre-sway.
+browser_window_count() {
+    if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
+        swaymsg -t get_tree 2>/dev/null \
+            | jq -r '.. | objects | select(.type? == "con" and (.app_id? // "" | test("brave|chromium"))) | (.name? // "")' 2>/dev/null \
+            | grep -cvE '^(DIAD AGENT|DIAD Launchpad)$' || true
+    else
+        pgrep -fc 'brave|chromium' 2>/dev/null || echo 0
+    fi
+}
+
+launchpad_window_count() {
+    if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
+        swaymsg -t get_tree 2>/dev/null \
+            | jq -r '.. | objects | select(.type? == "con" and (.name? // "" == "DIAD Launchpad")) | .name' 2>/dev/null \
+            | wc -l
+    else
+        pgrep -fc -- '--app=http://127.0.0.1:7860/launch' 2>/dev/null || echo 0
+    fi
+}
+
+# The brave shim always exists on the ISO; it can only actually open a
+# browser if flatpak com.brave.Browser OR chromium is present (S1 fallback).
+browser_possible() {
+    if command -v flatpak >/dev/null 2>&1 \
+        && flatpak list --app --columns=application 2>/dev/null | grep -qx 'com.brave.Browser'; then
+        return 0
+    fi
+    command -v chromium >/dev/null 2>&1
+}
+
+# =============================================================================
 log "supervisor: session start"
 rotate_logs
 
-# ---- First-boot hardware/network/power setup (marker-gated inside) ----
-# Run BEFORE the wizard so NetworkManager/power-profiles-daemon are up when
-# the wizard asks about Wi-Fi or Brave.
-for script in diad-hardware-setup.sh diad-network-setup.sh diad-power-setup.sh; do
+# ---- (a) idempotent setup — run BEFORE the wizard so NetworkManager /
+#      power-profiles-daemon / displays are ready ----
+for script in diad-hardware-setup.sh diad-network-setup.sh diad-power-setup.sh \
+    diad-display-setup.sh diad-storage-setup.sh; do
     if command -v "${script}" >/dev/null 2>&1; then
         "${script}" >> "${LOG_FILE}" 2>&1 || log "supervisor: ${script} failed (non-fatal)"
     else
@@ -61,31 +112,16 @@ for script in diad-hardware-setup.sh diad-network-setup.sh diad-power-setup.sh; 
     fi
 done
 
-# ---- First-run onboarding (independent window — never blocks boot) ----
-if [[ ! -f "${DIAD_HOME}/.first-run-complete" ]]; then
-    log "supervisor: launching first-run wizard..."
-    foot --app-id=foot --title "DIAD Setup" -e diad-first-run.sh >/dev/null 2>&1 &
-fi
-
-# ---- Every-boot display/storage setup ----
-for script in diad-display-setup.sh diad-storage-setup.sh; do
-    if command -v "${script}" >/dev/null 2>&1; then
-        "${script}" >> "${LOG_FILE}" 2>&1 || log "supervisor: ${script} failed (non-fatal)"
-    else
-        log "supervisor: ${script} not found"
-    fi
-done
-
-# ---- Launch DIAD daemon (headless, serves the GUI + WS API) ----
-# The daemon must be up BEFORE the GUI window opens: it serves the static
-# frontend on http://127.0.0.1:7860 and the JSON API on /ws.
+# ---- (b) DIAD daemon ----
+FALLBACK=0
+DAEMON_RESTARTS=0
+DAEMON_GRACE_UNTIL=0
 if command -v diad-agent >/dev/null 2>&1; then
     nohup diad-agent --daemon >> "${DIAD_HOME}/daemon.log" 2>&1 &
     log "supervisor: DIAD daemon starting (pid $!)"
-    # Wait up to 20 s for the health endpoint.
     healthy=0
-    for _ in $(seq 1 40); do
-        if curl -sf http://127.0.0.1:7860/health >/dev/null 2>&1; then
+    for _ in $(seq 1 20); do            # max 10 s (20 x 0.5 s)
+        if daemon_healthy; then
             healthy=1
             break
         fi
@@ -94,61 +130,59 @@ if command -v diad-agent >/dev/null 2>&1; then
     if [[ ${healthy} -eq 1 ]]; then
         log "supervisor: DIAD daemon healthy on 127.0.0.1:7860"
     else
-        log "supervisor: DIAD daemon did not become healthy — tail of log:"
+        log "supervisor: DIAD daemon not healthy after 10 s — TUI fallback"
         tail -n 5 "${DIAD_HOME}/daemon.log" >> "${LOG_FILE}" 2>&1 || true
+        FALLBACK=1
     fi
 else
-    log "supervisor: diad-agent not found"
+    log "supervisor: diad-agent not found — TUI fallback"
+    FALLBACK=1
 fi
 
-# ---- Launch DIAD AGENT GUI on workspace 1 (Brave app window) ----
-# The GUI is the static frontend served by the daemon itself, opened as a
-# chromeless app window. Fall back to the default browser if brave is gone.
-if command -v brave >/dev/null 2>&1; then
+# ---- (c) workspace 1: DIAD AGENT GUI, or TUI fallback ----
+if [[ ${FALLBACK} -eq 1 ]]; then
+    foot --app-id=foot --title "DIAD AGENT" -e diad-agent --tui >/dev/null 2>&1 &
+    log "supervisor: TUI fallback opened on workspace 1"
+else
     brave --app=http://127.0.0.1:7860 >/dev/null 2>&1 &
     log "supervisor: DIAD AGENT GUI opened on workspace 1"
-else
-    xdg-open http://127.0.0.1:7860 >/dev/null 2>&1 &
-    log "supervisor: brave not found, using default browser"
 fi
 
-# ---- Launch Brave on workspace 2 (waits for first-run to install it) ----
-# Brave ships via Flatpak; the first-run wizard installs it. Poll every 5 s
-# until the Flatpak app exists (or the wizard finishes without it), then
-# launch once. The brave shim exits quietly while it is not installed yet.
-# NOTE: the DIAD AGENT GUI (workspace 1) is also a Brave app window, so match
-# the --new-window flag to avoid skipping this launch while the GUI runs.
-if command -v brave >/dev/null 2>&1; then
-    for _ in $(seq 1 120); do
-        if flatpak list --app --columns=application 2>/dev/null | grep -qx 'com.brave.Browser'; then
-            if ! pgrep -f -- '--new-window' >/dev/null 2>&1; then
+# ---- (f) first-run wizard (independent window — never blocks the boot) ----
+if [[ ! -f "${DIAD_HOME}/.first-run-complete" ]]; then
+    log "supervisor: launching first-run wizard..."
+    foot --app-id=foot --title "DIAD Setup" -e diad-first-run.sh >/dev/null 2>&1 &
+fi
+
+# ---- (d) workspace 2: browser respawn loop (5 s, quiet) ----
+if browser_possible; then
+    (
+        brave --new-window >/dev/null 2>&1 &
+        while true; do
+            if [[ $(browser_window_count) -eq 0 ]]; then
                 brave --new-window >/dev/null 2>&1 &
-                log "supervisor: Brave launched"
-            else
-                log "supervisor: Brave already running"
             fi
-            break
-        fi
-        # Stop waiting as soon as the wizard finished without installing it
-        if [[ -f "${DIAD_HOME}/.first-run-complete" ]]; then
-            log "supervisor: first-run complete, Brave not installed — skipping"
-            break
+            sleep 5
+        done
+    ) >> "${LOG_FILE}" 2>&1 &
+    log "supervisor: browser respawn loop started (workspace 2)"
+else
+    log "supervisor: no browser available (flatpak brave not installed, chromium missing)"
+fi
+
+# ---- (e) workspace 3: DIAD Launchpad respawn loop (5 s, quiet) ----
+(
+    while true; do
+        if daemon_healthy && [[ $(launchpad_window_count) -eq 0 ]]; then
+            brave --app=http://127.0.0.1:7860/launch >/dev/null 2>&1 &
         fi
         sleep 5
     done
-else
-    log "supervisor: brave not found"
-fi
+) >> "${LOG_FILE}" 2>&1 &
+log "supervisor: launchpad respawn loop started (workspace 3)"
 
-# ---- Waybar watchdog (F-14, spec 6.6) + mako/cliphist (A7 parity)
-#      + periodic log rotation ----
-# Sway starts waybar once at boot; if it dies nothing restarts it. This loop
-# is the supervisor's steady state: check waybar every 10 s, relaunch it with
-# the same flags Sway used (also what makes `diad-conf-write waybar-mode`
-# take effect — that handler pkill's waybar and this loop brings it back
-# with the freshly installed config). mako and the cliphist wl-paste watcher
-# get the same treatment, and logs are rotated every 10 cycles to amortize
-# the stat cost.
+# ---- (g) steady state: waybar/mako/cliphist watchdogs + daemon health
+#          (restart max 2, then TUI fallback) + periodic log rotation ----
 cycles=0
 while true; do
     if ! pgrep -x waybar >/dev/null 2>&1; then
@@ -163,6 +197,21 @@ while true; do
     if ! pgrep -f "wl-paste --watch" >/dev/null 2>&1; then
         log "supervisor: cliphist watcher not running — relaunching"
         wl-paste --watch cliphist store >/dev/null 2>&1 &
+    fi
+    # Daemon health: restart max 2 times, then hand workspace 1 to the TUI.
+    # A 30 s grace window after each restart stops the 10 s poll from
+    # counting a slow start-up as another failure.
+    if [[ ${FALLBACK} -eq 0 ]] && ! daemon_healthy; then
+        if [[ ${DAEMON_RESTARTS} -lt 2 ]]; then
+            DAEMON_RESTARTS=$((DAEMON_RESTARTS + 1))
+            DAEMON_GRACE_UNTIL=$(( $(date +%s) + 30 ))
+            log "supervisor: daemon unhealthy — restart ${DAEMON_RESTARTS}/2"
+            nohup diad-agent --daemon >> "${DIAD_HOME}/daemon.log" 2>&1 &
+        elif [[ $(date +%s) -ge ${DAEMON_GRACE_UNTIL} ]]; then
+            log "supervisor: daemon restart limit reached — TUI fallback"
+            foot --app-id=foot --title "DIAD AGENT" -e diad-agent --tui >/dev/null 2>&1 &
+            FALLBACK=1
+        fi
     fi
     cycles=$((cycles + 1))
     if [[ $((cycles % 10)) -eq 0 ]]; then

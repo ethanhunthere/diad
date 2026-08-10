@@ -9,6 +9,7 @@ import { StatusBar } from "./components/StatusBar";
 import { CommandPalette } from "./components/CommandPalette";
 import { ToastStack } from "./components/ToastStack";
 import { OnboardingWizard } from "./panels/OnboardingWizard";
+import { Launchpad } from "./panels/Launchpad";
 import { MaskedInputModal } from "./components/MaskedInputModal";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { useGlobalKeys } from "./hooks/useGlobalKeys";
@@ -68,6 +69,12 @@ function breakpointFor(width: number): "TINY" | "COMPACT" | "NORMAL" | "WIDE" | 
  * layout is flex with fr/minmax throughout and survives down to 640x480.
  */
 export default function App() {
+  // MASTER FIX S4/S5: the launchpad is served by the SPA fallback at /launch
+  // (the daemon's static handler serves index.html at ANY path). It renders
+  // standalone — no chrome, no panels — and sets its own document.title so
+  // sway can assign it to workspace 3.
+  const isLaunchpad = window.location.pathname === "/launch";
+
   useWebSocket();
   useGlobalKeys();
 
@@ -134,6 +141,12 @@ export default function App() {
         /* daemon offline — MID defaults apply */
       });
   }, []);
+
+  // MASTER FIX S4: standalone launchpad page — early-return before any of
+  // the main GUI chrome so it stays a tiny, dedicated launcher.
+  if (isLaunchpad) {
+    return <Launchpad />;
+  }
 
   return (
     <div ref={rootRef} className="flex h-full flex-col bg-obsidian text-ink">

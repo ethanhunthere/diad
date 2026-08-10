@@ -68,11 +68,14 @@ assign [app_id="com.brave.Browser"] 2
 # ---- Autostart ----
 # Launch mako (notification daemon) before anything that may notify.
 exec mako
-# Launch Waybar (top bar: clock left, workspaces center, nothing right)
-exec waybar -c /etc/waybar/config -s /etc/waybar/style.css
 
 # Launch DIAD: first-run onboarding, hardware/display/network/power setup,
-# DIAD daemon, then the DIAD AGENT GUI (workspace 1) + Brave (workspace 2).
+# DIAD daemon, then the DIAD AGENT GUI (workspace 1) + Brave (workspace 2) +
+# DIAD Launchpad (workspace 3).
+#
+# MASTER FIX S4: the supervisor owns waybar — it is NOT started here anymore
+# (its 10 s watchdog relaunches it with /etc/waybar/config + style.css, which
+# is also what makes `diad-conf-write waybar-mode` take effect).
 exec diad-supervisor.sh
 
 # ---- Keybindings ----
