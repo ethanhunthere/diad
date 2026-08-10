@@ -224,7 +224,10 @@ pub fn api_router() -> Router<Arc<DaemonState>> {
         // ~/.diad/.gui-fallback-reason when the GUI failed twice at boot;
         // the next GUI start reads it (GET) and clears it (DELETE) after
         // surfacing the toast.
-        .route("/gui/fallback", get(api_gui_fallback).delete(api_gui_fallback_clear))
+        .route(
+            "/gui/fallback",
+            get(api_gui_fallback).delete(api_gui_fallback_clear),
+        )
         // Chat
         .route("/chat", post(api_chat))
         // Providers

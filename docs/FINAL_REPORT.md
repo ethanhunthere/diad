@@ -168,6 +168,27 @@ usage in the codebase.
 
 ---
 
+## 6.6 PROMPT-2 S5 — regression gates (boot-focus + window buttons)
+
+| Gate | Command | Result |
+|------|---------|--------|
+| Build | `cargo build` | ✅ 0 errors, 0 warnings |
+| Tests | `cargo test` (all targets) | ✅ 367 passed, 0 failed |
+| Clippy | `cargo clippy --all-targets -- -D warnings` | ✅ 0 findings |
+| Format | `cargo fmt --check` | ✅ clean |
+| Shell syntax | `bash -n` on supervisor + `ls *.sh \| xargs -n1 bash -n` | ✅ all clean |
+| Sudoers | `visudo -cf /etc/sudoers.d/diad` | ✅ parsed OK |
+| Frontend | `npm run build` (frontend/) | ✅ EXIT 0, all chunks within budget |
+| Legacy names | `rg -i "diod\|intentos" agent/src frontend/src os/archiso/airootfs` | ✅ 0 hits |
+| Waybar modules | `jq -e '."custom/winmin" and ."custom/winmax" and ."custom/winclose" and ."custom/suspend" and ."custom/reboot" and ."custom/power"'` on config, config.compact, config.full | ✅ all 3 pass |
+| Waybar invariant | `modules-left=["clock"]`, `modules-center=["sway/workspaces"]`, right = win\* then power\* (full: pulseaudio/battery/tray first) | ✅ all 3 |
+| sway waybar | `grep -c "exec waybar" /etc/sway/config` | ✅ 0 (exactly once, owned by supervisor) |
+| shellcheck | NOT RUN — not installed on build host | ⚠️ skip |
+
+Boot-focus sanity (PROMPT-2 S1–S4): `for_window [app_id="chromium" title="*7860*"] focus, move to workspace 1` + `for_window [app_id="foot"] focus, move to workspace 1` present; `focus_follows_mouse no` set; supervisor writes `~/.diad/.gui-fallback-reason` only on double GUI failure and the agent exposes GET/DELETE `/api/v1/gui/fallback` (one-shot toast); daemon health probe uses `/api/v1/status`.
+
+---
+
 ## 7. GOOGLE ENGINEER TEST — 10-step walkthrough
 
 A senior engineer cloning this repo and reading in order can fully understand
