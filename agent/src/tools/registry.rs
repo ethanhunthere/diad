@@ -7,7 +7,8 @@
 //! tools via a process-wide snapshot.
 
 use std::collections::HashMap;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 use super::files::files_universal;
 use super::files::filesystem;
@@ -57,7 +58,20 @@ pub(crate) fn registered_tools_snapshot() -> &'static [ToolDefinition] {
 pub struct ToolRegistry {
     tools: HashMap<String, RegisteredTool>,
     allowed_paths: Vec<String>,
+    /// Short-TTL cache of deterministic tool results (spec 7.2): identical
+    /// calls inside one agentic loop (file_list, system info, process list)
+    /// hit the cache instead of re-running. Cleared on idle stage 1.
+    cache: Mutex<HashMap<String, (Instant, ToolResult)>>,
 }
+
+/// Tools whose result is deterministic over a ~2 s window (spec 7.2).
+const DETERMINISTIC_TOOLS: &[&str] = &["file_list", "get_system_info", "list_processes"];
+
+/// Cache lifetime for deterministic tool results.
+const TOOL_CACHE_TTL: Duration = Duration::from_secs(2);
+
+/// Hard cap on cached entries (LRU-ish: oldest evicted first).
+const TOOL_CACHE_CAP: usize = 64;
 
 struct RegisteredTool {
     definition: ToolDefinition,
@@ -74,6 +88,7 @@ impl ToolRegistry {
         Self {
             tools: HashMap::new(),
             allowed_paths,
+            cache: Mutex::new(HashMap::new()),
         }
     }
 
@@ -112,7 +127,35 @@ impl ToolRegistry {
             )
         })?;
 
+        // Deterministic tools get a 2 s TTL cache (spec 7.2).
+        if DETERMINISTIC_TOOLS.contains(&name) {
+            let key = format!(
+                "{name}:{}",
+                serde_json::to_string(&params).unwrap_or_default()
+            );
+            if let Some(hit) = cache_lookup(
+                &mut self.cache.lock().unwrap_or_else(|e| e.into_inner()),
+                &key,
+                Instant::now(),
+            ) {
+                return Ok(hit);
+            }
+            let result = (tool.handler)(params)?;
+            cache_store(
+                &mut self.cache.lock().unwrap_or_else(|e| e.into_inner()),
+                key,
+                result.clone(),
+                Instant::now(),
+            );
+            return Ok(result);
+        }
+
         (tool.handler)(params)
+    }
+
+    /// Drop all cached tool results (idle stage 1, spec 3.2).
+    pub fn clear_cache(&self) {
+        self.cache.lock().unwrap_or_else(|e| e.into_inner()).clear();
     }
 
     /// List all registered tool definitions.
@@ -1251,5 +1294,97 @@ mod tests {
                 "banned tool present: {banned}"
             );
         }
+    }
+}
+
+/// TTL lookup: returns the cached result only while fresh, evicting stale
+/// entries as a side effect. Pure over the passed map + clock.
+fn cache_lookup(
+    cache: &mut HashMap<String, (Instant, ToolResult)>,
+    key: &str,
+    now: Instant,
+) -> Option<ToolResult> {
+    match cache.get(key) {
+        Some((stored_at, result)) if now.duration_since(*stored_at) < TOOL_CACHE_TTL => {
+            Some(result.clone())
+        }
+        Some(_) => {
+            cache.remove(key);
+            None
+        }
+        None => None,
+    }
+}
+
+/// Insert with a size cap: when full, evict the oldest entry first.
+fn cache_store(
+    cache: &mut HashMap<String, (Instant, ToolResult)>,
+    key: String,
+    result: ToolResult,
+    now: Instant,
+) {
+    if cache.len() >= TOOL_CACHE_CAP {
+        if let Some(oldest) = cache
+            .iter()
+            .min_by_key(|(_, (at, _))| *at)
+            .map(|(k, _)| k.clone())
+        {
+            cache.remove(&oldest);
+        }
+    }
+    cache.insert(key, (now, result));
+}
+
+#[cfg(test)]
+mod cache_tests {
+    use super::*;
+
+    fn ok_result(text: &str) -> ToolResult {
+        ToolResult::ok(text.to_string())
+    }
+
+    #[test]
+    fn cache_hits_within_ttl_and_expires() {
+        let mut cache = HashMap::new();
+        let t0 = Instant::now();
+        cache_store(&mut cache, "k".into(), ok_result("v"), t0);
+
+        assert!(cache_lookup(&mut cache, "k", t0).is_some());
+        assert!(cache_lookup(
+            &mut cache,
+            "k",
+            t0 + TOOL_CACHE_TTL - Duration::from_millis(1)
+        )
+        .is_some());
+        assert!(cache_lookup(&mut cache, "k", t0 + TOOL_CACHE_TTL).is_none());
+        assert!(cache.is_empty(), "stale entry must be evicted");
+    }
+
+    #[test]
+    fn cache_cap_evicts_oldest() {
+        let mut cache = HashMap::new();
+        let t0 = Instant::now();
+        for i in 0..=TOOL_CACHE_CAP {
+            cache_store(
+                &mut cache,
+                format!("k{i}"),
+                ok_result("v"),
+                t0 + Duration::from_millis(i as u64),
+            );
+        }
+        assert_eq!(cache.len(), TOOL_CACHE_CAP);
+        assert!(!cache.contains_key("k0"), "oldest entry evicted");
+        assert!(cache.contains_key(&format!("k{}", TOOL_CACHE_CAP)));
+    }
+
+    #[test]
+    fn registry_clear_cache_empties_store() {
+        let registry = ToolRegistry::new(vec![]);
+        {
+            let mut cache = registry.cache.lock().unwrap();
+            cache_store(&mut cache, "k".into(), ok_result("v"), Instant::now());
+        }
+        registry.clear_cache();
+        assert!(registry.cache.lock().unwrap().is_empty());
     }
 }

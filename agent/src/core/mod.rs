@@ -11,6 +11,7 @@
 
 pub mod daemon;
 pub mod debug;
+pub mod idle;
 pub mod notes;
 pub mod perf;
 pub mod protocol;
