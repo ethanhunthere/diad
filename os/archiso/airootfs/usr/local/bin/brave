@@ -17,15 +17,39 @@
 #
 # `--app=<url>` arguments pass through unchanged (both Brave and Chromium
 # support chromeless app windows). `--new-window` also passes through.
+#
+# P3-S2.7 — speed flags: when a chromeless app window is requested
+# (`--app=`), strip the first-run wizard / background chatter so the app
+# window is usable immediately (no sync, no component updates, no metrics
+# noise, no first-run tab). Plain browser windows keep full functionality.
 # =============================================================================
+
+# Detect a chromeless app-window request (e.g. `brave --app=https://...`).
+is_app_window=false
+for a in "$@"; do
+    case "$a" in
+        --app=*) is_app_window=true ;;
+    esac
+done
+
+if [ "$is_app_window" = true ]; then
+    # Speed flags: silent, no-first-run, no background network, no updates.
+    APP_FLAGS="--no-first-run --no-default-browser-check --disable-sync \
+--disable-background-networking --disable-component-update \
+--disable-features=Translate,MediaRouter --metrics-recording-only --disable-breakpad"
+else
+    APP_FLAGS=""
+fi
 
 if command -v flatpak >/dev/null 2>&1 \
     && flatpak list --app --columns=application 2>/dev/null | grep -qx 'com.brave.Browser'; then
-    exec /usr/bin/flatpak run com.brave.Browser "$@"
+    # shellcheck disable=SC2086  # word-splitting is intended for APP_FLAGS
+    exec /usr/bin/flatpak run com.brave.Browser $APP_FLAGS "$@"
 fi
 
 if command -v chromium >/dev/null 2>&1; then
-    exec /usr/bin/chromium "$@"
+    # shellcheck disable=SC2086  # word-splitting is intended for APP_FLAGS
+    exec /usr/bin/chromium $APP_FLAGS "$@"
 fi
 
 notify-send "DIAD" "No browser available (Flatpak Brave not installed and chromium missing)" 2>/dev/null || true
