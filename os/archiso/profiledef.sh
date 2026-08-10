@@ -43,6 +43,7 @@ file_permissions=(
     ["/etc/locale.conf"]="0:0:644"
     ["/etc/localtime"]="0:0:644"
     ["/etc/motd"]="0:0:644"
+    ["/etc/issue"]="0:0:644"
     ["/etc/diad/diad.conf"]="0:0:644"
 
     # --- sudo: strict 0440 root-owned or sudo ignores it ---
@@ -62,9 +63,10 @@ file_permissions=(
     ["/etc/diad/sway-overrides.conf"]="0:0:644"
 
     # --- systemd units / drop-ins ---
+    # (autologin override deleted in MASTER FIX S2 — the login screen is
+    # mandatory; diad/diad default credentials, changed by the wizard)
     ["/etc/systemd/system/diad-firewall.service"]="0:0:644"
     ["/etc/systemd/system/diad-perf-tier.service"]="0:0:644"
-    ["/etc/systemd/system/getty@tty1.service.d/autologin.conf"]="0:0:644"
 
     # --- udev rules ---
     ["/etc/udev/rules.d/98-diad-runtime-pm.rules"]="0:0:644"
@@ -96,6 +98,7 @@ file_permissions=(
     ["/usr/local/bin/diad-splash.sh"]="0:0:755"
     ["/usr/local/bin/diad-storage-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-supervisor.sh"]="0:0:755"
+    ["/usr/local/bin/diad-set-password"]="0:0:755"
     ["/usr/local/bin/diad-sysfs-write"]="0:0:755"
     ["/usr/local/bin/diad-clone-disk"]="0:0:755"
     ["/usr/local/bin/diad-conf-write"]="0:0:755"

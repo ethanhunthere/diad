@@ -67,9 +67,11 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
         case "providers":
           store.setProviders(m.entries);
           // First-run wizard: show when no provider has a stored key.
+          // MASTER FIX S2: the wizard now opens on the mandatory password
+          // step (login screen is enabled; default diad/diad must be replaced).
           if (store.onboarding === null && !localStorage.getItem("diad.onboarded")) {
             if (!m.entries.some((e) => e.has_key)) {
-              store.setOnboarding({ kind: "welcome" });
+              store.setOnboarding({ kind: "password" });
             } else {
               localStorage.setItem("diad.onboarded", "1");
             }

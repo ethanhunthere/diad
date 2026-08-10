@@ -12,8 +12,14 @@ import { useStore, sendMsg } from "../stores/useStore";
 import { nextId } from "../lib/format";
 
 /**
- * Onboarding wizard — welcome → connect provider → Wi-Fi → done.
+ * Onboarding wizard — password → welcome → connect provider → Wi-Fi → done.
  * Shown on first run (no provider keys stored yet).
+ *
+ * MASTER FIX S2: the login screen is mandatory now, so the FIRST step forces
+ * the user to replace the default diad/diad password. The new password is
+ * sent to the daemon as `set_user_password` (never displayed, never logged),
+ * and the daemon applies it through the argv-pinned sudo wrapper
+ * `/usr/local/bin/diad-set-password`.
  */
 export function OnboardingWizard() {
   const onboarding = useStore((s) => s.onboarding);
@@ -22,10 +28,24 @@ export function OnboardingWizard() {
   const setPendingConnectProvider = useStore((s) => s.setPendingConnectProvider);
   const [ssid, setSsid] = useState("");
   const [wifiSent, setWifiSent] = useState(false);
+  const [pw1, setPw1] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [pwSending, setPwSending] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
 
   if (!onboarding) return null;
 
   const anyProvider = providers.some((p) => p.has_key);
+
+  const stepOrder: Record<string, number> = {
+    password: 1,
+    welcome: 2,
+    provider: 3,
+    wifi: 4,
+    done: 5,
+  };
+  const step = stepOrder[onboarding.kind] ?? 1;
+  const progress = step * 20;
 
   const connectWifi = () => {
     const name = ssid.trim();
@@ -39,6 +59,25 @@ export function OnboardingWizard() {
     setWifiSent(true);
   };
 
+  const setPassword = () => {
+    setPwError(null);
+    if (pw1.length < 8) {
+      setPwError("Use at least 8 characters.");
+      return;
+    }
+    if (pw1 !== pw2) {
+      setPwError("The two entries don't match.");
+      return;
+    }
+    setPwSending(true);
+    // Daemon pipes this into the sudo wrapper — nothing is logged or echoed.
+    sendMsg({ type: "set_user_password", id: nextId("pw"), value: pw1 });
+    setPw1("");
+    setPw2("");
+    setPwSending(false);
+    setOnboarding({ kind: "welcome" });
+  };
+
   return (
     <div
       role="dialog"
@@ -48,7 +87,7 @@ export function OnboardingWizard() {
     >
       <div className="glass w-[480px] rounded-panel p-6 shadow-2xl">
         <div className="mb-1 flex items-center gap-2 text-[11px] uppercase tracking-wider text-faint">
-          <span>Step {onboarding.kind === "welcome" ? 1 : onboarding.kind === "provider" ? 2 : onboarding.kind === "wifi" ? 3 : 4} of 4</span>
+          <span>Step {step} of 5</span>
           <span className="flex-1" />
           <span className="flex items-center gap-1.5">
             <ShieldCheck size={12} className="text-success" /> loopback only
@@ -57,18 +96,54 @@ export function OnboardingWizard() {
         <div className="mb-4 h-1 rounded-full bg-surface-2">
           <div
             className="h-1 rounded-full bg-copper transition-all duration-300 ease-out"
-            style={{
-              width:
-                onboarding.kind === "welcome"
-                  ? "25%"
-                  : onboarding.kind === "provider"
-                    ? "50%"
-                    : onboarding.kind === "wifi"
-                      ? "75%"
-                      : "100%",
-            }}
+            style={{ width: `${progress}%` }}
           />
         </div>
+
+        {/* PASSWORD (MASTER FIX S2 — mandatory first step) */}
+        {onboarding.kind === "password" && (
+          <div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-panel border border-copper/40 bg-copper/15 text-copper-hover">
+              <KeyRound size={20} />
+            </div>
+            <h1 className="mt-3 text-lg font-semibold text-ink">Set your login password</h1>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-dim">
+              The login screen is enabled on DIAD. The default credentials are{" "}
+              <span className="font-mono text-ink/80">diad / diad</span> — replace the
+              password now. It is sent straight to the daemon and applied through a
+              root-only wrapper; it never appears in logs or chat.
+            </p>
+            <div className="mt-3 space-y-2">
+              <input
+                className="control w-full"
+                type="password"
+                autoFocus
+                placeholder="New password (min 8 characters)"
+                value={pw1}
+                onChange={(e) => setPw1(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && setPassword()}
+              />
+              <input
+                className="control w-full"
+                type="password"
+                placeholder="Repeat password"
+                value={pw2}
+                onChange={(e) => setPw2(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && setPassword()}
+              />
+            </div>
+            {pwError && <p className="mt-2 text-[11px] text-warn">{pwError}</p>}
+            <div className="mt-5 flex justify-end">
+              <button
+                className="btn-primary"
+                disabled={pwSending || pw1.length < 8 || pw1 !== pw2}
+                onClick={setPassword}
+              >
+                {pwSending ? "Applying…" : "Set password"} <ArrowRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* WELCOME */}
         {onboarding.kind === "welcome" && (

@@ -925,6 +925,56 @@ pub(crate) async fn handle_client_msg(state: &DaemonState, conn: &Conn, msg: Cli
         ClientMsg::SpawnTui => {
             crate::core::spawn_tui();
         }
+        // MASTER FIX S2 — first-run wizard STEP 0: set the login password.
+        // Runs the root wrapper `diad-set-password` (sudoers argv-pinned)
+        // with the value piped on stdin — never in argv, never logged, never
+        // sent to any LLM. The wrapper pins the user to `diad` and enforces
+        // length >= 8.
+        ClientMsg::SetUserPassword { id, value } => {
+            let tx = conn.tx.clone();
+            // The DIAD login user is always `diad`; the wrapper refuses any
+            // other user as a backstop.
+            const DIAD_USER: &str = "diad";
+            std::process::Command::new("sudo")
+                .arg("/usr/local/bin/diad-set-password")
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn()
+                .and_then(|mut child| {
+                    use std::io::Write;
+                    if let Some(mut stdin) = child.stdin.take() {
+                        let _ = writeln!(stdin, "{DIAD_USER}:{value}");
+                    }
+                    let output = child.wait_with_output()?;
+                    Ok(output)
+                })
+                .map(|output| {
+                    if output.status.success() {
+                        let _ = tx.try_send(ServerMsg::System {
+                            message: format!(
+                                "Password changed (id {id}) — use it at the login screen."
+                            ),
+                        });
+                    } else {
+                        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                        let _ = tx.try_send(ServerMsg::Error {
+                            id: Some(id.clone()),
+                            message: if err.is_empty() {
+                                "Password change failed".to_string()
+                            } else {
+                                format!("Password change failed: {err}")
+                            },
+                        });
+                    }
+                })
+                .unwrap_or_else(|e| {
+                    let _ = tx.try_send(ServerMsg::Error {
+                        id: Some(id),
+                        message: format!("Could not run diad-set-password: {e}"),
+                    });
+                });
+        }
         ClientMsg::TermInput { data } => {
             let tx = conn.tx.clone();
             if let Err(e) = state.pty.input(&data, tx) {

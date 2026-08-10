@@ -49,6 +49,16 @@ pub enum ClientMsg {
     /// Ask the daemon to open the TUI client in a foot terminal
     /// (GUI Ctrl+Shift+X).
     SpawnTui,
+    /// Set the login password (MASTER FIX S2 — first-run wizard STEP 0).
+    /// The daemon runs `sudo /usr/local/bin/diad-set-password` with the
+    /// value on stdin (never argv, never logged). The value is only ever
+    /// delivered to that wrapper.
+    SetUserPassword {
+        /// The request id (echoed in the acknowledgement).
+        id: String,
+        /// The new password (min 8 chars, validated by the wrapper).
+        value: String,
+    },
     /// Submit a masked secret (response to `secret.request`).
     SecretSubmit {
         /// The secret request id.
@@ -462,6 +472,13 @@ mod tests {
             (ClientMsg::EditReject { id: "r1".into() }, "edit_reject"),
             (ClientMsg::SpawnTui, "spawn_tui"),
             (
+                ClientMsg::SetUserPassword {
+                    id: "r1".into(),
+                    value: "newpass123".into(),
+                },
+                "set_user_password",
+            ),
+            (
                 ClientMsg::SecretSubmit {
                     id: "r1".into(),
                     value: "s".into(),
@@ -585,7 +602,7 @@ mod tests {
             ),
         ];
 
-        assert_eq!(msgs.len(), 29, "every ClientMsg variant must be covered");
+        assert_eq!(msgs.len(), 30, "every ClientMsg variant must be covered");
 
         for (msg, expected_tag) in msgs {
             let json = serde_json::to_string(&msg).unwrap();

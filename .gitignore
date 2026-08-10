@@ -8,6 +8,9 @@ target/
 # === Node / frontend ===
 node_modules/
 dist/
+# Stale build dirs left behind by a root-owned install (can't be deleted as
+# the unprivileged user; they are build artifacts only).
+dist-root-stale/
 *.tsbuildinfo
 
 # === Environment ===

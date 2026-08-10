@@ -46,3 +46,9 @@ diad ALL=(ALL) NOPASSWD: /usr/bin/lpadmin -p * -E -v * -m everywhere, /usr/bin/l
 #   diad-install-conf      install   (source under ~/.diad, dest allowlist)
 #   diad-selfupdate        wget+sha256sum+install (DIAD_CONFIRM=selfupdate, checksum-verified)
 diad ALL=(ALL) NOPASSWD: /usr/local/bin/diad-clone-disk, /usr/local/bin/diad-mount, /usr/local/bin/diad-umount, /usr/local/bin/diad-format, /usr/local/bin/diad-fsck, /usr/local/bin/diad-resize-partition, /usr/local/bin/diad-conf-write, /usr/local/bin/diad-install-conf, /usr/local/bin/diad-selfupdate, /usr/local/bin/diad-sysfs-write
+
+# ---- MASTER FIX S2: change the login password ------------------------------
+#   diad-set-password  chpasswd  (reads USER:PASSWORD on stdin, user pinned
+#   to `diad`, length >= 8 enforced; the ONLY sudo path that touches the
+#   login password). Runs as root via `sudo diad-set-password`.
+diad ALL=(root) NOPASSWD: /usr/local/bin/diad-set-password

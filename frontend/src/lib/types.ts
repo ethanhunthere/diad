@@ -45,7 +45,9 @@ export type ClientMsg =
   // A7 parity: clipboard history (cliphist).
   | { type: "clipboard_list"; id: string }
   | { type: "clipboard_pick"; id: string; index: number }
-  | { type: "clipboard_clear"; id: string };
+  | { type: "clipboard_clear"; id: string }
+  // MASTER FIX S2: set the login password (first-run wizard STEP 0).
+  | { type: "set_user_password"; id: string; value: string };
 
 /** Flat client envelope: `{ v: 1 }` + the message fields at the top level. */
 export type ClientEnvelope = { v: number } & ClientMsg;
@@ -278,6 +280,9 @@ export interface SettingsState {
 }
 
 export type OnboardingStep =
+  // MASTER FIX S2: the login screen is mandatory now, so the wizard opens
+  // with a "change the default password" step before anything else.
+  | { kind: "password" }
   | { kind: "welcome" }
   | { kind: "provider" }
   | { kind: "wifi" }
