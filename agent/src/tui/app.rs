@@ -132,6 +132,9 @@ pub struct App {
     pub picker_requested: bool,
     /// Provider targeted by the Connect view (`/connect <name>` or F5).
     pub connect_target: String,
+    /// Set by `/set <key> <value>` (THE LAW F-15 TUI parity); the event loop
+    /// forwards it to the daemon via `config_set`.
+    pub pending_config_set: Option<(String, serde_json::Value)>,
 }
 
 impl App {
@@ -175,6 +178,7 @@ impl App {
             pending_connect_provider: None,
             picker_requested: false,
             connect_target,
+            pending_config_set: None,
         }
     }
 
@@ -458,6 +462,75 @@ impl App {
         // Handle /model — open the provider & model picker.
         if input == "/model" {
             self.open_provider_picker();
+            self.input_buffer.clear();
+            self.cursor_position = 0;
+            return;
+        }
+
+        // Handle /settings — THE LAW F-15 readout: echo current config values.
+        if input == "/settings" {
+            let cfg = &self.config;
+            self.messages.push(format!(
+                "[system] settings — provider: {} · model: {}",
+                self.provider, self.model
+            ));
+            self.messages.push(format!(
+                "[system]   theme: {} · confirm_destructive: {} · stream_tokens: {}",
+                cfg.theme, cfg.confirm_destructive, cfg.stream_tokens
+            ));
+            self.messages.push(format!(
+                "[system]   max_history: {} · auto_save_interval: {}",
+                cfg.max_history, cfg.auto_save_interval
+            ));
+            self.messages.push(
+                "[system] use `/set <key> <value>` to change them".into(),
+            );
+            self.input_buffer.clear();
+            self.cursor_position = 0;
+            return;
+        }
+
+        // Handle /set <key> <value> — THE LAW F-15 TUI parity. Values are
+        // parsed strictly (bool / u64 / string) and forwarded to the daemon.
+        if let Some(rest) = input.strip_prefix("/set ") {
+            let mut parts = rest.splitn(2, ' ');
+            let key = parts.next().unwrap_or("").trim();
+            let raw = parts.next().unwrap_or("").trim();
+            if key.is_empty() || raw.is_empty() {
+                self.messages
+                    .push("[system] usage: /set <key> <value>".into());
+                self.messages.push(
+                    "[system] keys: confirm_destructive, stream_tokens, \
+                     max_history, auto_save_interval, perf_tier, waybar_mode, \
+                     keybinding {from to}".into(),
+                );
+            } else {
+                let value: serde_json::Value = if raw == "true" {
+                    serde_json::json!(true)
+                } else if raw == "false" {
+                    serde_json::json!(false)
+                } else if let Ok(n) = raw.parse::<u64>() {
+                    serde_json::json!(n)
+                } else if key == "keybinding" {
+                    // Format: keybinding <from> <to>
+                    let mut k = rest.splitn(3, ' ');
+                    let _from = k.next();
+                    let from = k.next().unwrap_or("").trim();
+                    let to = k.next().unwrap_or("").trim();
+                    if from.is_empty() || to.is_empty() {
+                        self.messages
+                            .push("[system] keybinding usage: /set keybinding <from> <to>".into());
+                        self.input_buffer.clear();
+                        self.cursor_position = 0;
+                        return;
+                    }
+                    serde_json::json!({ "from": from, "to": to })
+                } else {
+                    serde_json::json!(raw)
+                };
+                self.pending_config_set = Some((key.to_string(), value));
+                self.messages.push(format!("[system] setting {key}…"));
+            }
             self.input_buffer.clear();
             self.cursor_position = 0;
             return;

@@ -49,7 +49,10 @@ file_permissions=(
     ["/etc/sway/config"]="0:0:644"
     ["/etc/sway/conf.d/media-keys.conf"]="0:0:644"
     ["/etc/waybar/config"]="0:0:644"
+    ["/etc/waybar/config.compact"]="0:0:644"
+    ["/etc/waybar/config.full"]="0:0:644"
     ["/etc/waybar/style.css"]="0:0:644"
+    ["/etc/diad/sway-overrides.conf"]="0:0:644"
 
     # --- systemd units / drop-ins ---
     ["/etc/systemd/system/diad-firewall.service"]="0:0:644"

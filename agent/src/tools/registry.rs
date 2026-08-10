@@ -21,6 +21,7 @@ use super::network::external;
 use super::system::help;
 use super::system::os;
 use super::system::power;
+use super::system::prefs;
 use super::system::process;
 use super::system::security;
 use super::system::update;
@@ -981,6 +982,73 @@ pub fn create_default_registry() -> ToolRegistry {
         Arc::new(|params| {
             let minutes = params["minutes"].as_u64().unwrap_or(0) as u32;
             power::set_sleep_timeout(minutes)
+        }),
+    );
+
+    // ---- Compositor preferences (THE LAW F-15 intent surface) ----
+    registry.register_tool(
+        "set_keybinding",
+        "Remap a sway keybinding: from keysym (e.g. Mod4+Return) to target keysym or workspace (e.g. 3)",
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "from": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9+_:-]+$",
+                    "description": "The keysym to remap (e.g. Mod4+Return)"
+                },
+                "to": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9+_:-]+$",
+                    "description": "The target keysym or workspace (e.g. 3)"
+                }
+            },
+            "required": ["from", "to"]
+        }),
+        Arc::new(|params| {
+            let from = params["from"].as_str().unwrap_or("");
+            let to = params["to"].as_str().unwrap_or("");
+            prefs::set_keybinding(from, to)
+        }),
+    );
+
+    registry.register_tool(
+        "set_perf_tier",
+        "Override the performance tier: ULTRA_LOW, LOW, MID, HIGH, or ULTRA",
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "tier": {
+                    "type": "string",
+                    "enum": ["ULTRA_LOW", "LOW", "MID", "HIGH", "ULTRA"],
+                    "description": "The performance tier to activate"
+                }
+            },
+            "required": ["tier"]
+        }),
+        Arc::new(|params| {
+            let tier = params["tier"].as_str().unwrap_or("");
+            prefs::set_perf_tier(tier)
+        }),
+    );
+
+    registry.register_tool(
+        "set_waybar_mode",
+        "Switch the waybar layout variant: compact or full",
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "mode": {
+                    "type": "string",
+                    "enum": ["compact", "full"],
+                    "description": "The waybar layout variant"
+                }
+            },
+            "required": ["mode"]
+        }),
+        Arc::new(|params| {
+            let mode = params["mode"].as_str().unwrap_or("");
+            prefs::set_waybar_mode(mode)
         }),
     );
 

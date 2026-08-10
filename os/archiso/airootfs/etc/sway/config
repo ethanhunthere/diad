@@ -139,6 +139,11 @@ bindsym Super+L exec swaylock -f -c 000000
 # laptops (desktops keep this file commented out).
 include /etc/sway/conf.d/media-keys.conf
 
+# THE LAW F-15: user keybinding remaps written by `diad-conf-write
+# keybinding` (via the agent's set_keybinding intent / Settings panel).
+# Seeded empty at build time so the include never errors.
+include /etc/diad/sway-overrides.conf
+
 # ---- Status Bar (optional — disabled by default) ----
 # Uncomment to enable waybar:
 # bar {

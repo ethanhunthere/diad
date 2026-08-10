@@ -1,0 +1,24 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 24,
+  "spacing": 4,
+  "modules-left": ["clock"],
+  "modules-center": ["sway/workspaces"],
+  "modules-right": [],
+  "clock": {
+    "format": "{:%H:%M}",
+    "interval": 10,
+    "tooltip": false
+  },
+  "sway/workspaces": {
+    "disable-scroll": true,
+    "all-outputs": false,
+    "format": "{name}",
+    "tooltip": false,
+    "persistent-workspaces": {
+      "1": [],
+      "2": []
+    }
+  }
+}

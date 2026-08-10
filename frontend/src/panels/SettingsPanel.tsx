@@ -23,6 +23,11 @@ export function SettingsPanel() {
   const toast = useStore((s) => s.toast);
 
   const [saved, setSaved] = useState<string | null>(null);
+  // THE LAW F-15 compositor intents (local draft state; committed on Apply).
+  const [waybarMode, setWaybarMode] = useState<"compact" | "full" | "">("");
+  const [kbFrom, setKbFrom] = useState("");
+  const [kbTo, setKbTo] = useState("");
+  const stats = useStore((s) => s.stats);
 
   const persist = (key: string, value: unknown, label: string) => {
     sendMsg({ type: "config_set", key, value });
@@ -232,6 +237,197 @@ export function SettingsPanel() {
               }`}
             />
           </button>
+        </div>
+      </section>
+
+      {/* THE LAW F-15: daemon-held behavior preferences. Values are reflected
+          from the daemon's Status.config on connect, and each control persists
+          immediately via config.set. */}
+      <section className="mt-4">
+        <div className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wider text-faint">
+          ⚙ Agent behavior
+        </div>
+        <div className="panel p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[12px] text-ink">Stream tokens</div>
+              <div className="text-[10.5px] text-faint">
+                Show LLM output token-by-token instead of a full response.
+              </div>
+            </div>
+            <button
+              className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-150 ease-out ${
+                settings.streamTokens
+                  ? "border-copper/60 bg-copper/25"
+                  : "border-border-strong bg-surface-2"
+              }`}
+              onClick={() => {
+                const v = !settings.streamTokens;
+                setSettings({ streamTokens: v });
+                persist("stream_tokens", v, "stream tokens");
+              }}
+              title={settings.streamTokens ? "Streaming on" : "Streaming off"}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full transition-all duration-150 ease-out ${
+                  settings.streamTokens ? "left-[22px] bg-copper-hover" : "left-0.5 bg-faint"
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-border-subtle/60 pt-3">
+            <div>
+              <div className="text-[12px] text-ink">Confirm destructive actions</div>
+              <div className="text-[10.5px] text-faint">
+                Ask before the agent deletes files, formats drives, or runs sudo.
+              </div>
+            </div>
+            <button
+              className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-150 ease-out ${
+                settings.confirmDestructive
+                  ? "border-copper/60 bg-copper/25"
+                  : "border-border-strong bg-surface-2"
+              }`}
+              onClick={() => {
+                const v = !settings.confirmDestructive;
+                setSettings({ confirmDestructive: v });
+                persist("confirm_destructive", v, "confirm destructive");
+              }}
+              title={settings.confirmDestructive ? "Confirmations on" : "Confirmations off"}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full transition-all duration-150 ease-out ${
+                  settings.confirmDestructive ? "left-[22px] bg-copper-hover" : "left-0.5 bg-faint"
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-3 border-t border-border-subtle/60 pt-3">
+            <div>
+              <div className="text-[11.5px] text-dim">Max history (messages)</div>
+              <input
+                type="number"
+                min={1}
+                max={10000}
+                className="control mt-1 w-full"
+                value={settings.maxHistory}
+                onChange={(e) => {
+                  const v = Math.max(1, Math.min(10000, parseInt(e.target.value || "0", 10) || 0));
+                  setSettings({ maxHistory: v });
+                }}
+                onBlur={() => persist("max_history", settings.maxHistory, "max history")}
+              />
+              <div className="mt-1 text-[10px] text-faint">Applies on the next turn.</div>
+            </div>
+            <div>
+              <div className="text-[11.5px] text-dim">Auto-save interval (s)</div>
+              <input
+                type="number"
+                min={0}
+                max={3600}
+                className="control mt-1 w-full"
+                value={settings.autoSaveInterval}
+                onChange={(e) => {
+                  const v = Math.max(0, Math.min(3600, parseInt(e.target.value || "0", 10) || 0));
+                  setSettings({ autoSaveInterval: v });
+                }}
+                onBlur={() => persist("auto_save_interval", settings.autoSaveInterval, "auto-save interval")}
+              />
+              <div className="mt-1 text-[10px] text-faint">0 disables auto-save.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* THE LAW F-15: compositor intent surfaces (chat intents exist too —
+          "remap my keys", "set perf tier to high", "compact waybar"). */}
+      <section className="mt-4">
+        <div className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wider text-faint">
+          ⌨ Compositor
+        </div>
+        <div className="panel p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[12px] text-ink">Performance tier</div>
+              <div className="text-[10.5px] text-faint">
+                /etc/diad/perf-tier override (ULTRA_LOW → ULTRA).
+              </div>
+            </div>
+            <select
+              className="control w-36"
+              value={stats.perf_tier.toUpperCase()}
+              onChange={(e) => {
+                const v = e.target.value;
+                persist("perf_tier", v, "perf tier");
+              }}
+            >
+              {["", "ULTRA_LOW", "LOW", "MID", "HIGH", "ULTRA"].map((t) => (
+                <option key={t} value={t}>
+                  {t === "" ? "— default —" : t}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-border-subtle/60 pt-3">
+            <div>
+              <div className="text-[12px] text-ink">Waybar layout</div>
+              <div className="text-[10.5px] text-faint">
+                compact (minimal) or full (all modules).
+              </div>
+            </div>
+            <div className="flex gap-1.5">
+              {(["compact", "full"] as const).map((m) => (
+                <button
+                  key={m}
+                  className={`rounded-control border px-3 py-1.5 text-[12px] ${
+                    waybarMode === m
+                      ? "border-copper/60 bg-copper/10 text-ink"
+                      : "border-border-subtle bg-surface-2/50 text-dim hover:border-border-strong"
+                  }`}
+                  onClick={() => {
+                    setWaybarMode(m);
+                    persist("waybar_mode", m, `waybar ${m}`);
+                  }}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-3 border-t border-border-subtle/60 pt-3">
+            <div className="text-[12px] text-ink">Keybinding remap</div>
+            <div className="mt-1.5 flex items-center gap-2">
+              <input
+                className="control w-36 font-mono text-[12px]"
+                placeholder="Mod4+Return"
+                value={kbFrom}
+                onChange={(e) => setKbFrom(e.target.value)}
+              />
+              <span className="text-faint">→</span>
+              <input
+                className="control w-36 font-mono text-[12px]"
+                placeholder="3 (workspace)"
+                value={kbTo}
+                onChange={(e) => setKbTo(e.target.value)}
+              />
+              <button
+                className="btn"
+                disabled={!kbFrom.trim() || !kbTo.trim()}
+                onClick={() => {
+                  persist("keybinding", { from: kbFrom.trim(), to: kbTo.trim() }, "keybinding");
+                }}
+              >
+                <Save size={13} /> Apply
+              </button>
+            </div>
+            <div className="mt-1 text-[10px] text-faint">
+              Writes /etc/diad/sway-overrides.conf (keysyms only: A-Z a-z 0-9 + _ : -).
+            </div>
+          </div>
         </div>
       </section>
 

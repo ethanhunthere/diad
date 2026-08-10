@@ -110,6 +110,11 @@ const initialSettings: SettingsState = {
     const d = localStorage.getItem("diad.density");
     return d === "compact" || d === "comfortable" ? d : "auto";
   })(),
+  // THE LAW F-15: daemon-held prefs, overwritten by Status.config on connect.
+  confirmDestructive: true,
+  streamTokens: true,
+  maxHistory: 100,
+  autoSaveInterval: 0,
   loaded: false,
 };
 
@@ -163,6 +168,15 @@ interface StoreActions {
   dismissToast: (id: string) => void;
   setOnboarding: (s: OnboardingStep | null) => void;
   setSettings: (s: Partial<SettingsState>) => void;
+  /** THE LAW F-15: merge a daemon config snapshot (Status.config) into settings. */
+  mergeConfig: (c: {
+    theme?: string;
+    default_provider?: string;
+    confirm_destructive?: boolean;
+    stream_tokens?: boolean;
+    max_history?: number;
+    auto_save_interval?: number;
+  }) => void;
   setAgents: (a: string[]) => void;
 }
 
@@ -423,6 +437,21 @@ export const useStore = create<Store>((set, get) => ({
 
   setOnboarding: (s) => set({ onboarding: s }),
   setSettings: (s) => set((state) => ({ settings: { ...state.settings, ...s } })),
+  // THE LAW F-15: Status.config arrives as snake_case daemon keys; map onto
+  // the camelCase settings fields the panel binds to.
+  mergeConfig: (c) =>
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        ...(c.theme !== undefined ? { theme: c.theme } : {}),
+        ...(c.default_provider !== undefined ? { defaultProvider: c.default_provider } : {}),
+        ...(c.confirm_destructive !== undefined ? { confirmDestructive: c.confirm_destructive } : {}),
+        ...(c.stream_tokens !== undefined ? { streamTokens: c.stream_tokens } : {}),
+        ...(c.max_history !== undefined ? { maxHistory: c.max_history } : {}),
+        ...(c.auto_save_interval !== undefined ? { autoSaveInterval: c.auto_save_interval } : {}),
+        loaded: true,
+      },
+    })),
   setAgents: (a) => set({ agents: a }),
 }));
 

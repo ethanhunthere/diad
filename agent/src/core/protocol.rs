@@ -165,6 +165,11 @@ pub enum ServerMsg {
         connected: bool,
         streaming: bool,
         daemon_version: String,
+        /// THE LAW F-15: live config snapshot so surfaces can reflect the
+        /// current values on open (theme, confirm_destructive, stream_tokens,
+        /// max_history, auto_save_interval).
+        #[serde(default)]
+        config: serde_json::Value,
     },
     /// Provider list response.
     Providers {
@@ -215,6 +220,9 @@ pub enum ServerMsg {
         connected: bool,
         streaming: bool,
         daemon_version: String,
+        /// THE LAW F-15: live config snapshot (same shape as Status.config).
+        #[serde(default)]
+        config: serde_json::Value,
     },
     /// File read response (file.read).
     FileContent {
@@ -352,6 +360,7 @@ mod tests {
             connected: true,
             streaming: false,
             daemon_version: env!("CARGO_PKG_VERSION").into(),
+            config: serde_json::json!({ "stream_tokens": true }),
         };
         let json = serde_json::to_string(&msg).unwrap();
         let back: ServerMsg = serde_json::from_str(&json).unwrap();
@@ -573,6 +582,7 @@ mod tests {
                     connected: true,
                     streaming: false,
                     daemon_version: "0.1.0".into(),
+                    config: serde_json::json!({}),
                 },
                 "status",
             ),
@@ -655,6 +665,7 @@ mod tests {
                     connected: true,
                     streaming: false,
                     daemon_version: "0.1.0".into(),
+                    config: serde_json::json!({}),
                 },
                 "connected",
             ),

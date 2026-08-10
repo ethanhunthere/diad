@@ -82,6 +82,15 @@ export type ServerMsg =
       connected: boolean;
       streaming: boolean;
       daemon_version: string;
+      /** THE LAW F-15: live config snapshot (theme, confirm_destructive, ...). */
+      config?: {
+        theme?: string;
+        default_provider?: string;
+        confirm_destructive?: boolean;
+        stream_tokens?: boolean;
+        max_history?: number;
+        auto_save_interval?: number;
+      };
     }
   | { type: "providers"; id: string; entries: ProviderEntryDto[] }
   | {
@@ -118,6 +127,15 @@ export type ServerMsg =
       connected: boolean;
       streaming: boolean;
       daemon_version: string;
+      /** THE LAW F-15: live config snapshot (same shape as status.config). */
+      config?: {
+        theme?: string;
+        default_provider?: string;
+        confirm_destructive?: boolean;
+        stream_tokens?: boolean;
+        max_history?: number;
+        auto_save_interval?: number;
+      };
     }
   | { type: "file_content"; id: string; path: string; content: string }
   | { type: "files"; id: string; path: string; entries: FileEntryDto[] }
@@ -205,6 +223,11 @@ export interface SettingsState {
   fontScale: number;
   /** Touch/layout density override (spec 2.7). */
   density: "auto" | "compact" | "comfortable";
+  /** THE LAW F-15: daemon-held preferences (reflected on open from Status). */
+  confirmDestructive: boolean;
+  streamTokens: boolean;
+  maxHistory: number;
+  autoSaveInterval: number;
   loaded: boolean;
 }
 

@@ -36,6 +36,8 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
             streaming: m.streaming,
             version: m.daemon_version,
           });
+          // THE LAW F-15: reflect the daemon's current config on open.
+          if (m.config) store.mergeConfig(m.config);
           // Prime the UI with live data.
           store.send?.({ v: 1, type: "providers_list", id: nextId("pl") });
           store.send?.({ v: 1, type: "stats_get", id: nextId("st") });
@@ -56,6 +58,8 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
             streaming: m.streaming,
             version: m.daemon_version,
           });
+          // THE LAW F-15: keep the settings readout in sync with the daemon.
+          if (m.config) store.mergeConfig(m.config);
           break;
         case "providers":
           store.setProviders(m.entries);

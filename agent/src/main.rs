@@ -467,6 +467,11 @@ async fn run_tui_event_loop(
                     client.chat_send(ssid);
                 }
 
+                // ---- /set command (THE LAW F-15 TUI parity) ----
+                if let Some((key, value)) = app.pending_config_set.take() {
+                    client.config_set(key, value);
+                }
+
                 // ---- User submitted a message while streaming just started ----
                 if !prev_streaming && app.streaming {
                     let input = app.messages.last().cloned().unwrap_or_default();

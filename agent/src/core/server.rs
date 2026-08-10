@@ -73,6 +73,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<DaemonState>) {
         connected: state.connected.load(Ordering::SeqCst),
         streaming: state.streaming.load(Ordering::SeqCst),
         daemon_version: env!("CARGO_PKG_VERSION").into(),
+        config: crate::core::daemon::config_snapshot(&state.config.read().unwrap()),
     };
     let _ = conn_tx.try_send(greeting);
     state.broadcast_status();
