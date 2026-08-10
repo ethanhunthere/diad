@@ -14,7 +14,7 @@ scanner:x:96:
 power:x:98:diad
 nobody:x:65534:
 adm:x:999:daemon,diad
-wheel:x:998:diad
+wheel:x:998:
 utmp:x:996:
 audio:x:995:diad
 clock:x:994:
