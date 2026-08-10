@@ -185,8 +185,13 @@ impl Vault {
 mod tests {
     use super::*;
 
+    // Both tests touch the real secret service over D-Bus; serialize them
+    // so parallel test threads cannot race the keyring (observed flake).
+    static KEYRING_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn test_vault_roundtrip() {
+        let _guard = KEYRING_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // Works on both backends: with a keyring present it stores/retrieves
         // via libsecret; in CI without one it uses the memory fallback.
         let vault = Vault::new().expect("vault must construct even without a keyring");
@@ -201,6 +206,7 @@ mod tests {
 
     #[test]
     fn test_vault_new_never_fails() {
+        let _guard = KEYRING_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // The live-ISO fallback must never make construction fail.
         let _ = Vault::new().expect("Vault::new must return Ok even with no secret service");
     }

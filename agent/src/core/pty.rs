@@ -45,15 +45,30 @@ impl PtySession {
         let mut reader = master.try_clone_reader()?;
         let writer = master.take_writer()?;
 
-        // Reader task: stream output to the frontend.
+        // Reader task: stream output to the frontend. A multibyte UTF-8
+        // character can straddle two reads; the trailing incomplete bytes
+        // are carried over instead of being mangled into U+FFFD (spec 3.1).
         let reader_tx = tx.clone();
         let reader = tokio::task::spawn_blocking(move || {
             let mut buf = [0u8; 4096];
+            let mut pending: Vec<u8> = Vec::new();
             loop {
                 match reader.read(&mut buf) {
                     Ok(0) => break,
                     Ok(n) => {
-                        let data = String::from_utf8_lossy(&buf[..n]).into_owned();
+                        pending.extend_from_slice(&buf[..n]);
+                        // Split at the last point that decodes cleanly.
+                        let mut valid_up_to = pending.len();
+                        while valid_up_to > 0
+                            && std::str::from_utf8(&pending[..valid_up_to]).is_err()
+                        {
+                            valid_up_to -= 1;
+                        }
+                        if valid_up_to == 0 {
+                            continue; // whole buffer is a partial character
+                        }
+                        let data = String::from_utf8_lossy(&pending[..valid_up_to]).into_owned();
+                        pending.drain(..valid_up_to);
                         if reader_tx.send(ServerMsg::TermOutput { data }).is_err() {
                             break;
                         }

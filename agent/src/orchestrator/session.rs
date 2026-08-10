@@ -89,19 +89,42 @@ impl SessionManager {
         Self { sessions_dir }
     }
 
+    /// Session ids travel through REST/WS query params and become file
+    /// names: only a boring charset may pass, or `../` walks out of the
+    /// sessions directory (path traversal).
+    fn session_path(&self, session_id: &str) -> anyhow::Result<PathBuf> {
+        let valid = !session_id.is_empty()
+            && session_id.len() <= 128
+            && session_id
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_'));
+        if !valid {
+            anyhow::bail!("invalid session id: {session_id:?}");
+        }
+        Ok(self.sessions_dir.join(format!("{session_id}.json")))
+    }
+
     /// Load a session by its ID.
     pub fn load_session(&self, session_id: &str) -> anyhow::Result<Session> {
-        let path = self.sessions_dir.join(format!("{session_id}.json"));
+        let path = self.session_path(session_id)?;
         let content = fs::read_to_string(&path)?;
         let session: Session = serde_json::from_str(&content)?;
         Ok(session)
     }
 
-    /// Save a session to disk.
+    /// Save a session atomically: write a temp file in the same directory,
+    /// fsync it, then rename over the target. A crash or SIGTERM mid-write
+    /// can never leave a half-written session behind (spec 2.9/3.14).
     pub fn save_session(&self, session: &Session) -> anyhow::Result<()> {
-        let path = self.sessions_dir.join(format!("{}.json", session.id));
+        let path = self.session_path(&session.id)?;
         let content = serde_json::to_string_pretty(session)?;
-        fs::write(&path, content)?;
+
+        let tmp = self.sessions_dir.join(format!(".{}.tmp", session.id));
+        fs::write(&tmp, content)?;
+        if let Ok(file) = fs::File::open(&tmp) {
+            let _ = file.sync_all();
+        }
+        fs::rename(&tmp, &path)?;
         tracing::info!("Session {} saved to {}", session.id, path.display());
         Ok(())
     }
@@ -137,7 +160,7 @@ impl SessionManager {
 
     /// Delete a session by its ID.
     pub fn delete_session(&self, session_id: &str) -> anyhow::Result<()> {
-        let path = self.sessions_dir.join(format!("{session_id}.json"));
+        let path = self.session_path(session_id)?;
         if path.exists() {
             fs::remove_file(&path)?;
             tracing::info!("Session {session_id} deleted.");
@@ -157,6 +180,43 @@ mod tests {
         assert_eq!(session.active_provider, "anthropic");
         assert!(session.messages.is_empty());
         assert!(!session.id.is_empty());
+    }
+
+    #[test]
+    fn test_session_id_traversal_rejected() {
+        let dir = std::env::temp_dir().join("diad-audit-sessions");
+        let mgr = SessionManager::new_with_dir(dir);
+        assert!(mgr.load_session("../evil").is_err());
+        assert!(mgr.load_session("../../etc/passwd").is_err());
+        assert!(mgr.delete_session("../evil").is_err());
+        assert!(mgr.load_session("has space").is_err());
+        assert!(mgr.load_session("").is_err());
+    }
+
+    #[test]
+    fn test_save_session_atomic_roundtrip_and_no_tmp_leftover() {
+        let dir = std::env::temp_dir().join(format!("diad-audit-save-{}", std::process::id()));
+        let mgr = SessionManager::new_with_dir(dir.clone());
+        let mut session = Session::new("atomic", "anthropic");
+        session.add_message("user", "hello");
+
+        mgr.save_session(&session).expect("save must succeed");
+        let loaded = mgr
+            .load_session(&session.id)
+            .expect("saved session must load back");
+        assert_eq!(loaded.messages.len(), 1);
+
+        let leftovers: Vec<_> = fs::read_dir(&dir)
+            .map(|entries| {
+                entries
+                    .flatten()
+                    .map(|e| e.file_name().to_string_lossy().to_string())
+                    .filter(|n| n.ends_with(".tmp"))
+                    .collect()
+            })
+            .unwrap_or_default();
+        assert!(leftovers.is_empty(), "no temp files may survive a save");
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

@@ -109,6 +109,20 @@ pub fn read_file(path: &str, allowed: &[String]) -> anyhow::Result<ToolResult> {
         return Ok(ToolResult::err(format!("Not a file: {path}")));
     }
 
+    // Refuse huge files BEFORE loading them (spec 3.15): the output was
+    // already truncated to 100 lines, but the read itself used to pull the
+    // whole file into memory first — a 1 GB log would OOM the daemon.
+    const MAX_READ_BYTES: u64 = 10 * 1024 * 1024;
+    if let Ok(meta) = fs::metadata(&file_path) {
+        if meta.len() > MAX_READ_BYTES {
+            return Ok(ToolResult::err(format!(
+                "File too large to read: {} bytes (limit {}). Use grep/search instead.",
+                meta.len(),
+                MAX_READ_BYTES
+            )));
+        }
+    }
+
     match fs::read_to_string(&file_path) {
         Ok(contents) => {
             let preview = if contents.lines().count() > 100 {
