@@ -10,7 +10,7 @@
 use std::process::Command;
 
 use super::ToolResult;
-use crate::tools::exec;
+use crate::tools::system::exec;
 
 // ===========================================================================
 // System updates (pacman)

@@ -8,7 +8,7 @@
 //!   (`org.gnome.settings-daemon.plugins.power`).
 
 use super::ToolResult;
-use crate::tools::exec;
+use crate::tools::system::exec;
 
 /// The UPower device path for the primary battery.
 pub const BATTERY_UPOWER_PATH: &str = "/org/freedesktop/UPower/devices/battery_BAT0";

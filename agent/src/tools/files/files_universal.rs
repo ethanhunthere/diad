@@ -1716,7 +1716,7 @@ pub fn merge_archive_parts(parts_dir: &str, output: &str) -> anyhow::Result<Tool
 /// Called once from `tools::create_default_registry`. The rich option-based
 /// `search_files` deliberately supersedes the simple glob version registered
 /// by the classic `filesystem` module (registry keeps the last registration).
-pub fn register_universal_file_tools(registry: &mut super::ToolRegistry) {
+pub fn register_universal_file_tools(registry: &mut crate::tools::ToolRegistry) {
     use std::sync::Arc;
 
     macro_rules! reg {
@@ -1803,7 +1803,7 @@ pub fn register_universal_file_tools(registry: &mut super::ToolRegistry) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tools::testutil::HOME_LOCK;
+    use crate::tools::testutil::TestHome;
 
     // ---- 2.1 File type registry ----
     #[test]
@@ -1959,13 +1959,11 @@ mod tests {
     // ---- 2.3 Download integration ----
     #[test]
     fn test_downloads_roundtrip() {
-        let _guard = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let tmp = tempfile::tempdir().unwrap();
-        let dl = tmp.path().join("Downloads");
+        let home = TestHome::new();
+        let dl = home.path().join("Downloads");
         std::fs::create_dir_all(&dl).unwrap();
         std::fs::write(dl.join("report.pdf"), b"%PDF-1.4").unwrap();
         std::fs::write(dl.join("photo.png"), b"png").unwrap();
-        std::env::set_var("HOME", tmp.path());
 
         let listed = list_downloads().unwrap();
         assert!(listed.success && listed.output.contains("report.pdf"), "{}", listed.output);
@@ -1977,8 +1975,6 @@ mod tests {
         let deleted = delete_download("photo.png").unwrap();
         assert!(deleted.success);
         assert!(!dl.join("photo.png").exists());
-
-        std::env::remove_var("HOME");
     }
 
     #[test]
@@ -2004,40 +2000,31 @@ mod tests {
     fn test_clean_old_downloads_bounds() {
         assert!(!clean_old_downloads(0).unwrap().success);
         assert!(!clean_old_downloads(4000).unwrap().success);
-        let _guard = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let tmp = tempfile::tempdir().unwrap();
-        std::fs::create_dir_all(tmp.path().join("Downloads")).unwrap();
-        std::env::set_var("HOME", tmp.path());
+        let home = TestHome::new();
+        std::fs::create_dir_all(home.path().join("Downloads")).unwrap();
         let r = clean_old_downloads(30).unwrap();
         assert!(r.success, "{}", r.error.clone().unwrap_or_default());
-        std::env::remove_var("HOME");
     }
 
     #[test]
     fn test_organize_downloads_moves_files() {
-        let _guard = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let tmp = tempfile::tempdir().unwrap();
-        let dl = tmp.path().join("Downloads");
+        let home = TestHome::new();
+        let dl = home.path().join("Downloads");
         std::fs::create_dir_all(&dl).unwrap();
         std::fs::write(dl.join("a.txt"), b"x").unwrap();
         std::fs::write(dl.join("b.png"), b"x").unwrap();
-        std::env::set_var("HOME", tmp.path());
         let r = organize_downloads().unwrap();
         assert!(r.success, "{}", r.error.clone().unwrap_or_default());
         assert!(dl.join("text").join("a.txt").exists());
         assert!(dl.join("image").join("b.png").exists());
-        std::env::remove_var("HOME");
     }
 
     #[test]
     fn test_find_duplicate_downloads_graceful() {
-        let _guard = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let tmp = tempfile::tempdir().unwrap();
-        std::fs::create_dir_all(tmp.path().join("Downloads")).unwrap();
-        std::env::set_var("HOME", tmp.path());
+        let home = TestHome::new();
+        std::fs::create_dir_all(home.path().join("Downloads")).unwrap();
         let r = find_duplicate_downloads().unwrap();
         assert!(r.success, "{}", r.error.clone().unwrap_or_default());
-        std::env::remove_var("HOME");
     }
 
     #[test]
@@ -2122,10 +2109,8 @@ mod tests {
 
     #[test]
     fn test_tag_lifecycle() {
-        let _guard = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let tmp = tempfile::tempdir().unwrap();
-        std::env::set_var("HOME", tmp.path());
-        let f = tmp.path().join("doc.txt");
+        let home = TestHome::new();
+        let f = home.path().join("doc.txt");
         std::fs::write(&f, b"x").unwrap();
         let p = f.to_str().unwrap().to_string();
         let tagged = tag_file(&p, &["important".to_string(), "work".to_string()]).unwrap();
@@ -2136,7 +2121,6 @@ mod tests {
         assert!(found.success && found.output.contains("doc.txt"), "{}", found.output);
         let none = search_by_tag("nope").unwrap();
         assert!(none.output.contains("no files"), "{}", none.output);
-        std::env::remove_var("HOME");
     }
 
     #[test]

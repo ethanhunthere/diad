@@ -563,7 +563,7 @@ pub fn set_audio_volume(percent: u8) -> anyhow::Result<ToolResult> {
 
 /// Toggle mute on the default sink (alias of the legacy tool).
 pub fn toggle_mute() -> anyhow::Result<ToolResult> {
-    super::hardware::toggle_mute()
+    super::device::toggle_mute()
 }
 
 /// Enable/disable a noise gate on the microphone via PipeWire filter.
@@ -840,7 +840,7 @@ pub fn set_color_profile(output: &str, profile: &str) -> anyhow::Result<ToolResu
 
 /// Set display brightness (delegates to the hardware module).
 pub fn set_display_brightness(percent: u8) -> anyhow::Result<ToolResult> {
-    super::hardware::set_brightness(percent.min(100))
+    super::device::set_brightness(percent.min(100))
 }
 
 /// Toggle HDR on an output (if supported).
@@ -1164,7 +1164,7 @@ pub fn get_battery_health() -> anyhow::Result<ToolResult> {
 
 /// Set power mode: performance, balanced, power-saver.
 pub fn set_power_mode(mode: &str) -> anyhow::Result<ToolResult> {
-    super::power::set_power_profile(mode)
+    crate::tools::system::power::set_power_profile(mode)
 }
 
 /// Thermal status from /sys/class/thermal.
@@ -1228,7 +1228,7 @@ pub fn get_power_consumption() -> anyhow::Result<ToolResult> {
 
 /// Estimate battery life remaining.
 pub fn estimate_battery_life() -> anyhow::Result<ToolResult> {
-    super::power::get_battery_status()
+    crate::tools::system::power::get_battery_status()
 }
 
 /// Set the CPU governor (performance, powersave, schedutil, ondemand).
@@ -1483,7 +1483,7 @@ pub fn preview_scan() -> anyhow::Result<ToolResult> {
 
 /// List interfaces (delegates to the hardware module).
 pub fn get_network_interfaces() -> anyhow::Result<ToolResult> {
-    super::hardware::get_network_interfaces()
+    super::device::get_network_interfaces()
 }
 
 /// Configure a static IP on an interface (NetworkManager).
@@ -1729,7 +1729,7 @@ pub fn kill_gpu_process(pid: u64) -> anyhow::Result<ToolResult> {
 /// under the same name in a classic module (`toggle_mute`, `get_network_interfaces`)
 /// are deliberately NOT re-registered — the classic registration wins and these
 /// universal wrappers remain available for in-module delegation only.
-pub fn register_universal_tools(registry: &mut super::ToolRegistry) {
+pub fn register_universal_tools(registry: &mut crate::tools::ToolRegistry) {
     use std::sync::Arc;
 
     macro_rules! reg {
@@ -1894,7 +1894,7 @@ pub fn register_universal_tools(registry: &mut super::ToolRegistry) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tools::testutil::HOME_LOCK;
+    use crate::tools::testutil::TestHome;
 
     // ---- 1. Touchscreen & pen ----
     #[test]
@@ -2048,18 +2048,14 @@ mod tests {
 
     #[test]
     fn test_display_profile_save_load_roundtrip() {
-        // Load from a temp HOME to avoid touching the real one. The global
-        // HOME is shared with other tests, so serialize on a mutex. We write
-        // the profile file directly (no wlr-randr dependency in CI).
-        let _guard = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let tmp = tempfile::tempdir().unwrap();
-        std::env::set_var("HOME", tmp.path());
-        std::fs::create_dir_all(tmp.path().join(".diad").join("display-profiles")).unwrap();
-        std::fs::write(tmp.path().join(".diad/display-profiles/test-profiles.conf"), "eDP-1 1920x1080@60\n").unwrap();
+        // Load from a temp HOME to avoid touching the real one. TestHome
+        // serializes on HOME_LOCK and restores HOME on drop.
+        let home = TestHome::new();
+        std::fs::create_dir_all(home.path().join(".diad").join("display-profiles")).unwrap();
+        std::fs::write(home.path().join(".diad/display-profiles/test-profiles.conf"), "eDP-1 1920x1080@60\n").unwrap();
         let loaded = load_display_profile("test-profiles").unwrap();
         assert!(loaded.success, "load failed: {:?}", loaded.error);
         assert!(loaded.output.contains("eDP-1"));
-        std::env::remove_var("HOME");
     }
 
     #[test]
@@ -2090,9 +2086,7 @@ mod tests {
 
     #[test]
     fn test_macro_lifecycle() {
-        let _guard = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let tmp = tempfile::tempdir().unwrap();
-        std::env::set_var("HOME", tmp.path());
+        let _home = TestHome::new();
         let created = create_macro("build", "ctrl+s").unwrap();
         assert!(created.success, "create failed: {:?}", created.error);
         let listed = list_macros().unwrap();
@@ -2101,7 +2095,6 @@ mod tests {
         assert!(deleted.success);
         let listed2 = list_macros().unwrap();
         assert!(!listed2.output.contains("build"), "delete failed: {}", listed2.output);
-        std::env::remove_var("HOME");
     }
 
     #[test]

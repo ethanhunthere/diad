@@ -205,17 +205,12 @@ mod tests {
     #[test]
     fn test_spawn_process_audit_log_written() {
         // Point HOME at a temp dir so the audit log lands somewhere writable.
-        // HOME is process-global and shared with other tool tests, so
-        // serialize the mutation (see tools::testutil).
-        let _guard = crate::tools::testutil::HOME_LOCK
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        let dir = tempfile::tempdir().unwrap();
-        std::env::set_var("HOME", dir.path());
+        // TestHome serializes on HOME_LOCK and restores HOME on drop.
+        let home = crate::tools::testutil::TestHome::new();
         let result = spawn_process("true", &["--flag".to_string(), "value".to_string()]).unwrap();
         assert!(result.success);
 
-        let log = std::fs::read_to_string(dir.path().join(".diad/logs/audit.log"))
+        let log = std::fs::read_to_string(home.path().join(".diad/logs/audit.log"))
             .expect("audit log should exist");
         assert!(log.contains("command=true"), "log: {log}");
         assert!(log.contains("--flag value"), "log: {log}");

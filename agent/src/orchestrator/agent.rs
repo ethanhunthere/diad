@@ -16,7 +16,7 @@
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
 use crate::providers::traits::{LlmProvider, Message, StreamEvent, ToolDefinition};
-use crate::tools::hardware::NEED_SECRET_PREFIX;
+use crate::tools::hardware::device::NEED_SECRET_PREFIX;
 use crate::tools::{ToolRegistry, ToolResult};
 use crate::tui::event::Event;
 

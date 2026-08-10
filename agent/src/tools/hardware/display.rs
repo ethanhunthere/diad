@@ -4,7 +4,7 @@
 //! they run as the current user and need no privileges.
 
 use super::{valid_identifier, ToolResult};
-use crate::tools::exec;
+use crate::tools::system::exec;
 
 /// Validate an output name for argv safety.
 ///

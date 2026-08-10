@@ -9,20 +9,20 @@
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
-use super::display;
-use super::external;
-use super::files_universal;
-use super::filesystem;
-use super::hardware;
-use super::hardware_universal;
-use super::help;
-use super::input;
-use super::network;
-use super::power;
-use super::process;
-use super::security;
-use super::system;
-use super::update;
+use super::files::files_universal;
+use super::files::filesystem;
+use super::hardware::device;
+use super::hardware::display;
+use super::hardware::hardware_universal;
+use super::hardware::input;
+use super::network::connectivity;
+use super::network::external;
+use super::system::help;
+use super::system::os;
+use super::system::power;
+use super::system::process;
+use super::system::security;
+use super::system::update;
 use super::{ToolDefinition, ToolHandler, ToolResult};
 
 /// Snapshot of all registered tool definitions, captured after the default
@@ -40,15 +40,6 @@ static SANDBOX_ALLOWED_PATHS: OnceLock<Vec<String>> = OnceLock::new();
 fn sandbox_allowed_paths() -> &'static [String] {
     SANDBOX_ALLOWED_PATHS.get().map(|v| v.as_slice()).unwrap_or(&[])
 }
-
-/// Strict identifier validation for values that get interpolated into argv.
-///
-/// Accepts only `[A-Za-z0-9@._+:-]` and never a leading `-` (prevents option
-/// injection / flag smuggling). Rejects empty strings and anything with shell
-/// metacharacters, whitespace, or control characters.
-///
-/// Used for package names, systemd units, hostnames, interfaces, and output
-/// names.
 
 /// Returns the registered-tools snapshot (empty until the default registry
 /// has been created at least once).
@@ -353,7 +344,7 @@ pub fn create_default_registry() -> ToolRegistry {
         }),
         Arc::new(|params| {
             let url = params["url"].as_str().unwrap_or("");
-            network::http_get(url)
+            connectivity::http_get(url)
         }),
     );
 
@@ -377,7 +368,7 @@ pub fn create_default_registry() -> ToolRegistry {
         Arc::new(|params| {
             let url = params["url"].as_str().unwrap_or("");
             let body = params["body"].as_str().unwrap_or("");
-            network::http_post(url, body)
+            connectivity::http_post(url, body)
         }),
     );
 
@@ -396,7 +387,7 @@ pub fn create_default_registry() -> ToolRegistry {
         }),
         Arc::new(|params| {
             let host = params["host"].as_str().unwrap_or("");
-            network::ping_host(host)
+            connectivity::ping_host(host)
         }),
     );
 
@@ -408,7 +399,7 @@ pub fn create_default_registry() -> ToolRegistry {
             "type": "object",
             "properties": {}
         }),
-        Arc::new(|_params| system::get_system_info()),
+        Arc::new(|_params| os::get_system_info()),
     );
 
     registry.register_tool(
@@ -426,7 +417,7 @@ pub fn create_default_registry() -> ToolRegistry {
         }),
         Arc::new(|params| {
             let package = params["package"].as_str().unwrap_or("");
-            system::install_package(package)
+            os::install_package(package)
         }),
     );
 
@@ -445,7 +436,7 @@ pub fn create_default_registry() -> ToolRegistry {
         }),
         Arc::new(|params| {
             let package = params["package"].as_str().unwrap_or("");
-            system::remove_package(package)
+            os::remove_package(package)
         }),
     );
 
@@ -470,7 +461,7 @@ pub fn create_default_registry() -> ToolRegistry {
         Arc::new(|params| {
             let service = params["service"].as_str().unwrap_or("");
             let action = params["action"].as_str().unwrap_or("status");
-            system::manage_service(service, action)
+            os::manage_service(service, action)
         }),
     );
 
@@ -482,7 +473,7 @@ pub fn create_default_registry() -> ToolRegistry {
             "type": "object",
             "properties": {}
         }),
-        Arc::new(|_params| hardware::wifi_list()),
+        Arc::new(|_params| device::wifi_list()),
     );
 
     registry.register_tool(
@@ -505,7 +496,7 @@ pub fn create_default_registry() -> ToolRegistry {
         Arc::new(|params| {
             let ssid = params["ssid"].as_str().unwrap_or("");
             let password = params["password"].as_str();
-            hardware::wifi_connect(ssid, password)
+            device::wifi_connect(ssid, password)
         }),
     );
 
@@ -516,7 +507,7 @@ pub fn create_default_registry() -> ToolRegistry {
             "type": "object",
             "properties": {}
         }),
-        Arc::new(|_params| hardware::wifi_status()),
+        Arc::new(|_params| device::wifi_status()),
     );
 
     registry.register_tool(
@@ -526,7 +517,7 @@ pub fn create_default_registry() -> ToolRegistry {
             "type": "object",
             "properties": {}
         }),
-        Arc::new(|_params| hardware::wifi_disconnect()),
+        Arc::new(|_params| device::wifi_disconnect()),
     );
 
     registry.register_tool(
@@ -536,7 +527,7 @@ pub fn create_default_registry() -> ToolRegistry {
             "type": "object",
             "properties": {}
         }),
-        Arc::new(|_params| hardware::get_volume()),
+        Arc::new(|_params| device::get_volume()),
     );
 
     registry.register_tool(
@@ -556,7 +547,7 @@ pub fn create_default_registry() -> ToolRegistry {
         }),
         Arc::new(|params| {
             let percent = params["percent"].as_u64().unwrap_or(0).min(100) as u8;
-            hardware::set_volume(percent)
+            device::set_volume(percent)
         }),
     );
 
@@ -567,7 +558,7 @@ pub fn create_default_registry() -> ToolRegistry {
             "type": "object",
             "properties": {}
         }),
-        Arc::new(|_params| hardware::toggle_mute()),
+        Arc::new(|_params| device::toggle_mute()),
     );
 
     registry.register_tool(
@@ -577,7 +568,7 @@ pub fn create_default_registry() -> ToolRegistry {
             "type": "object",
             "properties": {}
         }),
-        Arc::new(|_params| hardware::get_brightness()),
+        Arc::new(|_params| device::get_brightness()),
     );
 
     registry.register_tool(
@@ -597,7 +588,7 @@ pub fn create_default_registry() -> ToolRegistry {
         }),
         Arc::new(|params| {
             let percent = params["percent"].as_u64().unwrap_or(0).min(100) as u8;
-            hardware::set_brightness(percent)
+            device::set_brightness(percent)
         }),
     );
 
@@ -617,7 +608,7 @@ pub fn create_default_registry() -> ToolRegistry {
         }),
         Arc::new(|params| {
             let action = params["action"].as_str().unwrap_or("");
-            hardware::power(action)
+            device::power(action)
         }),
     );
 
@@ -642,7 +633,7 @@ pub fn create_default_registry() -> ToolRegistry {
         Arc::new(|params| {
             let action = params["action"].as_str().unwrap_or("");
             let device = params["device"].as_str();
-            hardware::bluetooth(action, device)
+            device::bluetooth(action, device)
         }),
     );
 
@@ -650,7 +641,7 @@ pub fn create_default_registry() -> ToolRegistry {
         "get_network_interfaces",
         "List all network interfaces with their addresses (JSON)",
         serde_json::json!({ "type": "object", "properties": {} }),
-        Arc::new(|_params| hardware::get_network_interfaces()),
+        Arc::new(|_params| device::get_network_interfaces()),
     );
 
     registry.register_tool(
@@ -668,7 +659,7 @@ pub fn create_default_registry() -> ToolRegistry {
         }),
         Arc::new(|params| {
             let interface = params["interface"].as_str().unwrap_or("");
-            hardware::connect_ethernet(interface)
+            device::connect_ethernet(interface)
         }),
     );
 
@@ -687,7 +678,7 @@ pub fn create_default_registry() -> ToolRegistry {
         }),
         Arc::new(|params| {
             let name = params["name"].as_str().unwrap_or("");
-            hardware::set_hostname(name)
+            device::set_hostname(name)
         }),
     );
 
@@ -1054,6 +1045,7 @@ pub fn create_default_registry() -> ToolRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tools::testutil::HOME_LOCK;
     use crate::tools::valid_identifier;
 
     #[test]
@@ -1103,7 +1095,7 @@ mod tests {
             .unwrap();
         assert!(!result.success);
         let err = result.error.unwrap();
-        assert!(err.starts_with(hardware::NEED_SECRET_PREFIX));
+        assert!(err.starts_with(device::NEED_SECRET_PREFIX));
     }
 
     #[test]
@@ -1203,6 +1195,10 @@ mod tests {
 
     #[test]
     fn test_is_path_allowed_allows_configured_roots() {
+        // HOME is process-global and shared with tool tests that point it at
+        // temp dirs; serialize access (see tools::testutil) so `~` expansion
+        // sees a stable value for the whole assertion.
+        let _guard = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let registry = create_default_registry();
         // Default allowlist is unrestricted (empty = everything); when roots
         // are set, paths under them are allowed.
@@ -1214,6 +1210,7 @@ mod tests {
     #[test]
     fn test_is_path_allowed_rejects_traversal_escape() {
         // Canonicalization must prevent ../ escapes from a root.
+        let _guard = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let home = std::env::var("HOME").unwrap_or_else(|_| "/home/diad".into());
         // With the default unrestricted registry, traversal is allowed by
         // design; this test asserts that when an allowlist root is set the

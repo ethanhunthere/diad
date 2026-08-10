@@ -9,7 +9,7 @@
 //! `sudo` — whitelisted in `/etc/sudoers.d/diad`.
 
 use super::ToolResult;
-use crate::tools::exec;
+use crate::tools::system::exec;
 
 // ===========================================================================
 // Keyboard backlight (brightnessctl)

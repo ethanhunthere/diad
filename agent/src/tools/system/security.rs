@@ -4,7 +4,7 @@
 //! applies `/etc/nftables.conf` (default-drop inbound policy).
 
 use super::ToolResult;
-use crate::tools::exec;
+use crate::tools::system::exec;
 
 /// Lock the screen (solid black) via swaylock.
 pub fn lock_screen() -> anyhow::Result<ToolResult> {
