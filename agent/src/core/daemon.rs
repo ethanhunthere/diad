@@ -7,7 +7,7 @@
 //! in `rest`. Both frontends talk to this brain.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 
 use tokio::sync::mpsc::{unbounded_channel, Sender, UnboundedSender};
@@ -53,7 +53,10 @@ pub struct DaemonState {
     pub provider: Arc<RwLock<String>>,
     pub model: Arc<RwLock<String>>,
     pub connected: Arc<AtomicBool>,
-    pub streaming: Arc<AtomicBool>,
+    /// In-flight turn counter (F-19): two concurrent chat_send from GUI+TUI
+    /// each increment this and decrement on completion, so `streaming` only
+    /// reads false after the LAST turn finishes — no more premature clear.
+    pub streaming: Arc<AtomicUsize>,
     /// User preference: stream tokens live (true) vs deliver the full reply
     /// in one chunk at the end (false). Mirrors `config.stream_tokens` but is
     /// cheap to read on the hot path inside `forward_event`.
@@ -123,7 +126,7 @@ impl DaemonState {
             provider: Arc::new(RwLock::new(provider)),
             model: Arc::new(RwLock::new(model)),
             connected: Arc::new(AtomicBool::new(connected)),
-            streaming: Arc::new(AtomicBool::new(false)),
+            streaming: Arc::new(AtomicUsize::new(0)),
             stream_tokens: Arc::new(AtomicBool::new(config.stream_tokens)),
             history: Arc::new(Mutex::new(Vec::new())),
             session,
@@ -150,7 +153,7 @@ impl DaemonState {
             provider: self.provider.read().unwrap().clone(),
             model: self.model.read().unwrap().clone(),
             connected: self.connected.load(Ordering::SeqCst),
-            streaming: self.streaming.load(Ordering::SeqCst),
+            streaming: self.streaming.load(Ordering::SeqCst) > 0,
             daemon_version: env!("CARGO_PKG_VERSION").into(),
             config: config_snapshot(&self.config.read().unwrap()),
         }
@@ -429,6 +432,15 @@ impl Drop for InflightGuard {
     }
 }
 
+/// Mark one in-flight turn as finished. Saturating: a stray decrement with
+/// nothing in flight must never wrap to usize::MAX (that would pin the
+/// `streaming` status on forever — F-19).
+pub(crate) fn end_turn(state: &DaemonState) {
+    let _ = state.streaming.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| {
+        Some(n.saturating_sub(1))
+    });
+}
+
 pub(crate) async fn handle_chat_send(state: &DaemonState, conn: &Conn, id: String, text: String) {
     let provider_name = state.provider.read().unwrap().clone();
     let model = state.model.read().unwrap().clone();
@@ -446,6 +458,9 @@ pub(crate) async fn handle_chat_send(state: &DaemonState, conn: &Conn, id: Strin
         let tx = conn.tx.clone();
         let prompts = conn.prompts.clone();
         let req_id = id.clone();
+        // Count this turn in-flight so concurrent turns (GUI + TUI) don't
+        // clear each other's streaming state (F-19).
+        state.streaming.fetch_add(1, Ordering::SeqCst);
         tokio::spawn(async move {
             let (reply_tx, mut reply_rx) = unbounded_channel::<String>();
             let sid = next_id("secret");
@@ -481,7 +496,7 @@ pub(crate) async fn handle_chat_send(state: &DaemonState, conn: &Conn, id: Strin
                     });
                 }
             }
-            state.streaming.store(false, Ordering::SeqCst);
+            end_turn(&state);
             state.broadcast_status();
             let _ = tx.try_send(ServerMsg::StreamDone { id: req_id });
         });
@@ -546,7 +561,7 @@ pub(crate) async fn handle_chat_send(state: &DaemonState, conn: &Conn, id: Strin
         return;
     }
 
-    state.streaming.store(true, Ordering::SeqCst);
+    state.streaming.fetch_add(1, Ordering::SeqCst);
     state.broadcast_status();
 
     let mut messages = state.history.lock().unwrap().clone();
@@ -755,7 +770,7 @@ pub(crate) async fn handle_chat_send(state: &DaemonState, conn: &Conn, id: Strin
                 }
             }
 
-            state.streaming.store(false, Ordering::SeqCst);
+            end_turn(&state);
             state.broadcast_status();
             let _ = tx.try_send(ServerMsg::StreamDone { id: req_id });
         });
@@ -876,7 +891,7 @@ pub(crate) async fn handle_chat_send(state: &DaemonState, conn: &Conn, id: Strin
                     });
                 }
             }
-            state.streaming.store(false, Ordering::SeqCst);
+            end_turn(&state);
             state.broadcast_status();
             let _ = tx.try_send(ServerMsg::StreamDone { id });
         });
@@ -1385,6 +1400,51 @@ mod tests {
             }
             _ => panic!("expected Status"),
         }
+    }
+
+    #[test]
+    fn test_streaming_counter_survives_concurrent_turns() {
+        // F-19 regression: streaming must reflect the LAST in-flight turn,
+        // not the first to finish. With a bool, two concurrent chat_send
+        // raced and the earlier finisher cleared the flag while the second
+        // was still running.
+        let state = test_state();
+
+        // Two turns start while none are running.
+        state.streaming.fetch_add(1, Ordering::SeqCst);
+        state.streaming.fetch_add(1, Ordering::SeqCst);
+        assert!(state.streaming.load(Ordering::SeqCst) > 0);
+
+        // First turn finishes — streaming must STILL be on (second is live).
+        state.streaming.fetch_sub(1, Ordering::SeqCst);
+        assert!(
+            state.streaming.load(Ordering::SeqCst) > 0,
+            "streaming cleared while a concurrent turn was still in flight"
+        );
+
+        // Second turn finishes — now (and only now) streaming is off.
+        state.streaming.fetch_sub(1, Ordering::SeqCst);
+        assert_eq!(state.streaming.load(Ordering::SeqCst), 0);
+
+        // Status snapshot reflects the counter as a bool.
+        assert!(!matches!(
+            state.status_snapshot(),
+            ServerMsg::Status { streaming: true, .. }
+        ));
+    }
+
+    #[test]
+    fn test_streaming_counter_never_underflows() {
+        // A stray end_turn when nothing is in flight must not wrap to a
+        // huge positive count (which would pin streaming=true forever).
+        let state = test_state();
+        end_turn(&state);
+        end_turn(&state);
+        assert_eq!(state.streaming.load(Ordering::SeqCst), 0);
+        assert!(!matches!(
+            state.status_snapshot(),
+            ServerMsg::Status { streaming: true, .. }
+        ));
     }
 
     #[test]

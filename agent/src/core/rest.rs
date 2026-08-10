@@ -395,7 +395,7 @@ async fn api_chat(State(state): State<Arc<DaemonState>>, Json(req): Json<ChatReq
     if req.text.trim().is_empty() {
         return error_response(StatusCode::BAD_REQUEST, "chat: text must not be empty");
     }
-    if state.streaming.load(std::sync::atomic::Ordering::SeqCst) {
+    if state.streaming.load(std::sync::atomic::Ordering::SeqCst) > 0 {
         return error_response(
             StatusCode::CONFLICT,
             "chat: another request is already streaming",
@@ -818,19 +818,24 @@ async fn api_git_diff(
         if let Some(f) = &file {
             cmd.arg("--").arg(f);
         }
-        cmd.output()
+        let out = cmd.output()?;
+        // `--stat` is a second subprocess; run it here too so no git spawn
+        // ever touches the async runtime (F-18).
+        let mut stat_cmd = std::process::Command::new("git");
+        stat_cmd.arg("-C").arg(&root_for_cmd).arg("diff").arg("--stat");
+        if staged {
+            stat_cmd.arg("--cached");
+        }
+        if let Some(f) = &file {
+            stat_cmd.arg("--").arg(f);
+        }
+        let stat_out = stat_cmd.output();
+        Ok::<_, std::io::Error>((out, stat_out))
     })
     .await
     {
-        Ok(Ok(out)) if out.status.success() => {
+        Ok(Ok((out, stat_out))) if out.status.success() => {
             let diff = String::from_utf8_lossy(&out.stdout).to_string();
-            let stat_out = std::process::Command::new("git")
-                .arg("-C")
-                .arg(&root)
-                .arg("diff")
-                .arg("--stat")
-                .arg(if staged { "--cached" } else { "" })
-                .output();
             let stat = stat_out
                 .ok()
                 .filter(|o| o.status.success())
@@ -1978,6 +1983,14 @@ mod tests {
         let diff = v["diff"].as_str().unwrap();
         assert!(diff.contains("+hello world"), "diff missing change: {diff}");
         assert!(diff.contains("alpha.txt"), "diff missing file: {diff}");
+        // F-18: the --stat subprocess must run inside the same blocking()
+        // closure as the diff — never on the async runtime. Asserting the
+        // field is populated exercises that exact spawn path end-to-end.
+        let stat = v["stat"].as_str().unwrap_or("");
+        assert!(
+            stat.contains("alpha.txt") && stat.contains("1 file changed"),
+            "diff --stat missing expected summary: {stat:?}"
+        );
 
         // log
         let resp = app
@@ -2017,6 +2030,45 @@ mod tests {
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert!(!v["current"].as_str().unwrap_or("").is_empty());
         assert!(!v["branches"].as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_git_diff_staged_works() {
+        // F-18 regression: the staged-diff branch (`git diff --cached`) runs
+        // both subprocesses off the async runtime; stage a change and verify
+        // both `diff` and `stat` come back populated.
+        let dir = make_git_repo();
+        let path = dir.path().display().to_string();
+        let app = api_router().with_state(test_state());
+        let _ = std::process::Command::new("git")
+            .arg("-C")
+            .arg(dir.path())
+            .args(["add", "alpha.txt"])
+            .output()
+            .expect("git add runs");
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri(format!("/git/diff?path={path}&staged=true"))
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        let v: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(v["staged"], true);
+        assert!(
+            v["diff"].as_str().unwrap_or("").contains("+hello world"),
+            "staged diff missing change"
+        );
+        assert!(
+            v["stat"].as_str().unwrap_or("").contains("alpha.txt"),
+            "staged diff --stat missing file"
+        );
     }
 
     #[tokio::test]

@@ -71,7 +71,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<DaemonState>) {
         provider: state.provider.read().unwrap().clone(),
         model: state.model.read().unwrap().clone(),
         connected: state.connected.load(Ordering::SeqCst),
-        streaming: state.streaming.load(Ordering::SeqCst),
+        streaming: state.streaming.load(Ordering::SeqCst) > 0,
         daemon_version: env!("CARGO_PKG_VERSION").into(),
         config: crate::core::daemon::config_snapshot(&state.config.read().unwrap()),
     };
