@@ -35,12 +35,15 @@ import { nextId } from "../lib/format";
 // DIAD AGENT — global UI store (zustand)
 // ---------------------------------------------------------------------------
 
-interface Stats {
+export interface Stats {
   tokens: number;
   latency_ms: number;
   battery: string;
   wifi: string;
   cwd: string;
+  idle_stage: string;
+  rss_mb: number;
+  perf_tier: string;
 }
 
 interface StoreState {
@@ -198,7 +201,7 @@ export const useStore = create<Store>((set, get) => ({
   termCols: 80,
   termRows: 24,
 
-  stats: { tokens: 0, latency_ms: 0, battery: "", wifi: "", cwd: "" },
+  stats: { tokens: 0, latency_ms: 0, battery: "", wifi: "", cwd: "", idle_stage: "", rss_mb: 0, perf_tier: "" },
   workspace: "",
 
   toasts: [],

@@ -99,6 +99,9 @@ export type ServerMsg =
       battery: string;
       wifi: string;
       cwd: string;
+      idle_stage: string;
+      rss_mb: number;
+      perf_tier: string;
     }
   | { type: "term_output"; data: string }
   | { type: "secret_request"; id: string; label: string }

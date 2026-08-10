@@ -186,6 +186,12 @@ pub enum ServerMsg {
         battery: String,
         wifi: String,
         cwd: String,
+        /// Idle engine label: ACTIVE / IDLE1 / IDLE2 (spec 5.4).
+        idle_stage: String,
+        /// Daemon resident set size in MB (spec 5.4).
+        rss_mb: u64,
+        /// Perf tier word from /etc/diad/perf-tier (spec 5.4).
+        perf_tier: String,
     },
     /// PTY output.
     TermOutput { data: String },
@@ -594,6 +600,9 @@ mod tests {
                     battery: "100%".into(),
                     wifi: "diad".into(),
                     cwd: "/home".into(),
+                    idle_stage: "ACTIVE".into(),
+                    rss_mb: 42,
+                    perf_tier: "MID".into(),
                 },
                 "stats",
             ),

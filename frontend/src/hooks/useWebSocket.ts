@@ -82,6 +82,9 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
             latency_ms: m.latency_ms,
             battery: m.battery,
             wifi: m.wifi,
+            idle_stage: m.idle_stage,
+            rss_mb: m.rss_mb,
+            perf_tier: m.perf_tier,
           });
           if (m.cwd && m.cwd !== store.workspace) store.setWorkspace(m.cwd);
           break;

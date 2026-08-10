@@ -77,6 +77,7 @@ file_permissions=(
     ["/usr/local/bin/diad-launch.sh"]="0:0:755"
     ["/usr/local/bin/diad-perf-tier.sh"]="0:0:755"
     ["/usr/local/bin/diad-snap.sh"]="0:0:755"
+    ["/usr/local/bin/diad-bench.sh"]="0:0:755"
     ["/usr/local/bin/diad-display-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-first-run.sh"]="0:0:755"
     ["/usr/local/bin/diad-hardware-setup.sh"]="0:0:755"

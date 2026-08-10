@@ -66,6 +66,17 @@ export function StatusBar() {
           <Wifi size={11} />
           {stats.wifi || "offline"}
         </span>
+        <span className="text-faint">|</span>
+
+        {/* Idle engine + perf tier (spec 5.4) */}
+        <span
+          title="Daemon mode · RSS · perf tier"
+          className={stats.idle_stage === "ACTIVE" || !stats.idle_stage ? "text-success" : "text-copper-hover"}
+        >
+          {stats.idle_stage || "ACTIVE"}
+          {stats.rss_mb > 0 ? ` · ${stats.rss_mb}MB` : ""}
+          {stats.perf_tier ? ` · ${stats.perf_tier}` : ""}
+        </span>
 
         <div className="flex-1" />
 

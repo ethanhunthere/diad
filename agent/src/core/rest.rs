@@ -381,6 +381,9 @@ async fn api_stats(State(state): State<Arc<DaemonState>>) -> Json<Value> {
         "tokens": state.tokens.load(std::sync::atomic::Ordering::SeqCst),
         "latency_ms": state.latency_ms.load(std::sync::atomic::Ordering::SeqCst),
         "uptime_seconds": state.uptime_seconds(),
+        "idle_stage": state.idle.get().label(),
+        "rss_mb": crate::core::perf::read_self_rss_kb() / 1024,
+        "perf_tier": state.perf_tier,
     }))
 }
 
