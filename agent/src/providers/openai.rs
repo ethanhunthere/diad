@@ -30,7 +30,7 @@ impl OpenAiProvider {
         Self {
             api_key,
             model: "gpt-5".into(),
-            client: reqwest::Client::new(),
+            client: super::openai_common::default_http_client(),
         }
     }
 

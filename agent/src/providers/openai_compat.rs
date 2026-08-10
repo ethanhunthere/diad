@@ -47,7 +47,7 @@ impl OpenAiCompatProvider {
             model: model.into(),
             api_key: None,
             auth_header: None,
-            client: reqwest::Client::new(),
+            client: super::openai_common::default_http_client(),
         }
     }
 

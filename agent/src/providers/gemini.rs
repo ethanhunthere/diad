@@ -26,7 +26,7 @@ impl GeminiProvider {
         Self {
             api_key,
             model: "gemini-2.5-flash".into(),
-            client: reqwest::Client::new(),
+            client: super::openai_common::default_http_client(),
         }
     }
 
@@ -225,86 +225,92 @@ impl GeminiProvider {
     ) -> impl Stream<Item = anyhow::Result<StreamEvent>> + Send {
         use futures::StreamExt;
 
-        stream.flat_map(|chunk_result| {
-            let events: Vec<anyhow::Result<StreamEvent>> = match chunk_result {
-                Ok(chunk) => {
-                    let text = String::from_utf8_lossy(&chunk).to_string();
-                    let mut results = Vec::new();
-
-                    for line in text.lines() {
-                        if let Some(data) = line.strip_prefix("data: ") {
-                            if data == "[DONE]" {
-                                results.push(Ok(StreamEvent::StreamEnd {
-                                    stop_reason: Some("STOP".into()),
-                                }));
-                                continue;
-                            }
-                            match serde_json::from_str::<GeminiResponse>(data) {
-                                Ok(response) => {
-                                    if let Some(candidates) = &response.candidates {
-                                        for candidate in candidates {
-                                            if let Some(content) = &candidate.content {
-                                                if let Some(parts) = &content.parts {
-                                                    for part in parts {
-                                                        if let Some(ref text) = part.text {
-                                                            if !text.is_empty() {
+        let stream = Box::pin(stream);
+        let inner = futures::stream::unfold(
+            (stream, super::openai_common::SseDecoder::default()),
+            |(mut stream, mut decoder)| async move {
+                loop {
+                    match stream.next().await {
+                        Some(Ok(chunk)) => {
+                            let mut results: Vec<anyhow::Result<StreamEvent>> = Vec::new();
+                            for line in decoder.take_lines(&chunk) {
+                                let Some(data) = line.strip_prefix("data: ") else {
+                                    continue;
+                                };
+                                if data == "[DONE]" {
+                                    results.push(Ok(StreamEvent::StreamEnd {
+                                        stop_reason: Some("STOP".into()),
+                                    }));
+                                    continue;
+                                }
+                                match serde_json::from_str::<GeminiResponse>(data) {
+                                    Ok(response) => {
+                                        if let Some(candidates) = &response.candidates {
+                                            for candidate in candidates {
+                                                if let Some(content) = &candidate.content {
+                                                    if let Some(parts) = &content.parts {
+                                                        for part in parts {
+                                                            if let Some(ref text) = part.text {
+                                                                if !text.is_empty() {
+                                                                    results.push(Ok(
+                                                                        StreamEvent::TextDelta(
+                                                                            text.clone(),
+                                                                        ),
+                                                                    ));
+                                                                }
+                                                            }
+                                                            if let Some(ref fc) = part.function_call
+                                                            {
                                                                 results.push(Ok(
-                                                                    StreamEvent::TextDelta(
-                                                                        text.clone(),
-                                                                    ),
+                                                                    StreamEvent::ToolUseStart {
+                                                                        id: fc.name.clone(),
+                                                                        name: fc.name.clone(),
+                                                                    },
+                                                                ));
+                                                                if let Some(ref args) = fc.args {
+                                                                    results.push(Ok(
+                                                                        StreamEvent::ToolInputDelta(
+                                                                            args.to_string(),
+                                                                        ),
+                                                                    ));
+                                                                }
+                                                                results.push(Ok(
+                                                                    StreamEvent::ToolUseEnd {
+                                                                        id: fc.name.clone(),
+                                                                    },
                                                                 ));
                                                             }
-                                                        }
-                                                        if let Some(ref fc) = part.function_call {
-                                                            results.push(Ok(
-                                                                StreamEvent::ToolUseStart {
-                                                                    id: fc.name.clone(),
-                                                                    name: fc.name.clone(),
-                                                                },
-                                                            ));
-                                                            if let Some(ref args) = fc.args {
-                                                                results.push(Ok(
-                                                                    StreamEvent::ToolInputDelta(
-                                                                        args.to_string(),
-                                                                    ),
-                                                                ));
-                                                            }
-                                                            results.push(Ok(
-                                                                StreamEvent::ToolUseEnd {
-                                                                    id: fc.name.clone(),
-                                                                },
-                                                            ));
                                                         }
                                                     }
                                                 }
                                             }
                                         }
                                     }
-                                }
-                                Err(e) => {
-                                    // Some Gemini SSE lines may be non-JSON (e.g., keepalive)
-                                    if !data.is_empty() && !data.starts_with('[') {
-                                        // Silently skip non-JSON lines
-                                    } else {
+                                    Err(e) => {
+                                        // Keepalives and non-JSON SSE lines are skipped.
                                         tracing::debug!(
-                                            "Failed to parse Gemini SSE: {} — data: {}",
-                                            e,
-                                            data
+                                            "Failed to parse Gemini SSE: {e} — data: {data}"
                                         );
                                     }
                                 }
                             }
+                            if !results.is_empty() {
+                                return Some((futures::stream::iter(results), (stream, decoder)));
+                            }
                         }
+                        Some(Err(e)) => {
+                            return Some((
+                                futures::stream::iter(vec![Err(anyhow::anyhow!(
+                                    "Stream error: {e}"
+                                ))]),
+                                (stream, decoder),
+                            ));
+                        }
+                        None => return None,
                     }
-
-                    results
                 }
-                Err(e) => {
-                    vec![Err(anyhow::anyhow!("Stream error: {e}"))]
-                }
-            };
-
-            futures::stream::iter(events)
-        })
+            },
+        );
+        Box::pin(inner).flatten()
     }
 }

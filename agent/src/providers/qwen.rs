@@ -7,7 +7,7 @@ use std::pin::Pin;
 
 use async_trait::async_trait;
 use futures::Stream;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use super::traits::{LlmProvider, Message, StreamEvent, ToolDefinition};
 
@@ -26,7 +26,7 @@ impl QwenProvider {
         Self {
             api_key,
             model: "qwen-max".into(),
-            client: reqwest::Client::new(),
+            client: super::openai_common::default_http_client(),
         }
     }
 
@@ -73,41 +73,6 @@ struct QwenFunctionDef {
     name: String,
     description: String,
     parameters: serde_json::Value,
-}
-
-#[derive(Deserialize)]
-struct QwenChunk {
-    choices: Vec<QwenChoice>,
-}
-
-#[derive(Deserialize)]
-struct QwenChoice {
-    delta: QwenDelta,
-    #[serde(default)]
-    finish_reason: Option<String>,
-}
-
-#[derive(Deserialize, Default)]
-struct QwenDelta {
-    #[serde(default)]
-    content: Option<String>,
-    #[serde(default)]
-    tool_calls: Option<Vec<QwenToolCallDelta>>,
-}
-
-#[derive(Deserialize)]
-struct QwenToolCallDelta {
-    #[serde(default)]
-    id: Option<String>,
-    function: Option<QwenFunctionDelta>,
-}
-
-#[derive(Deserialize)]
-struct QwenFunctionDelta {
-    #[serde(default)]
-    name: Option<String>,
-    #[serde(default)]
-    arguments: Option<String>,
 }
 
 #[async_trait]
@@ -171,7 +136,7 @@ impl LlmProvider for QwenProvider {
         }
 
         let stream = response.bytes_stream();
-        let event_stream = Self::parse_sse_stream(stream);
+        let event_stream = super::openai_common::parse_sse_stream(stream);
 
         Ok(Box::pin(event_stream))
     }
@@ -182,102 +147,5 @@ impl LlmProvider for QwenProvider {
 
     fn requires_auth(&self) -> bool {
         true
-    }
-}
-
-impl QwenProvider {
-    fn parse_sse_stream(
-        stream: impl Stream<Item = reqwest::Result<bytes::Bytes>> + Send + 'static,
-    ) -> impl Stream<Item = anyhow::Result<StreamEvent>> + Send {
-        use futures::StreamExt;
-
-        stream.flat_map(|chunk_result| {
-            let events: Vec<anyhow::Result<StreamEvent>> = match chunk_result {
-                Ok(chunk) => {
-                    let text = String::from_utf8_lossy(&chunk).to_string();
-                    let mut results = Vec::new();
-                    #[allow(unused_assignments)]
-                    let mut current_tool_id = String::new();
-                    #[allow(unused_assignments)]
-                    let mut current_tool_name = String::new();
-
-                    for line in text.lines() {
-                        if let Some(data) = line.strip_prefix("data: ") {
-                            if data == "[DONE]" {
-                                results.push(Ok(StreamEvent::StreamEnd {
-                                    stop_reason: Some("stop".into()),
-                                }));
-                                continue;
-                            }
-
-                            match serde_json::from_str::<QwenChunk>(data) {
-                                Ok(chunk) => {
-                                    for choice in &chunk.choices {
-                                        // Handle text content
-                                        if let Some(ref content) = choice.delta.content {
-                                            if !content.is_empty() {
-                                                results.push(Ok(StreamEvent::TextDelta(
-                                                    content.clone(),
-                                                )));
-                                            }
-                                        }
-
-                                        // Handle tool calls
-                                        if let Some(ref tool_calls) = choice.delta.tool_calls {
-                                            for tc in tool_calls {
-                                                if let Some(ref id) = tc.id {
-                                                    current_tool_id = id.clone();
-                                                }
-                                                if let Some(ref function) = tc.function {
-                                                    if let Some(ref name) = function.name {
-                                                        current_tool_name = name.clone();
-                                                        results.push(Ok(
-                                                            StreamEvent::ToolUseStart {
-                                                                id: current_tool_id.clone(),
-                                                                name: current_tool_name.clone(),
-                                                            },
-                                                        ));
-                                                    }
-                                                    if let Some(ref args) = function.arguments {
-                                                        results.push(Ok(
-                                                            StreamEvent::ToolInputDelta(
-                                                                args.clone(),
-                                                            ),
-                                                        ));
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        if let Some(ref reason) = choice.finish_reason {
-                                            if reason == "tool_calls" && !current_tool_id.is_empty()
-                                            {
-                                                results.push(Ok(StreamEvent::ToolUseEnd {
-                                                    id: current_tool_id.clone(),
-                                                }));
-                                            }
-                                        }
-                                    }
-                                }
-                                Err(e) => {
-                                    tracing::debug!(
-                                        "Failed to parse Qwen SSE: {} — data: {}",
-                                        e,
-                                        data
-                                    );
-                                }
-                            }
-                        }
-                    }
-
-                    results
-                }
-                Err(e) => {
-                    vec![Err(anyhow::anyhow!("Stream error: {e}"))]
-                }
-            };
-
-            futures::stream::iter(events)
-        })
     }
 }

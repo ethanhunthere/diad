@@ -28,7 +28,7 @@ impl AnthropicProvider {
         Self {
             api_key,
             model: "claude-sonnet-4-20250514".into(),
-            client: reqwest::Client::new(),
+            client: super::openai_common::default_http_client(),
         }
     }
 
@@ -212,7 +212,7 @@ impl LlmProvider for AnthropicProvider {
         let event_stream = futures::stream::unfold(
             (
                 stream,
-                String::new(),
+                Vec::<u8>::new(),
                 String::new(),
                 String::new(),
                 None::<String>,
@@ -229,12 +229,16 @@ impl LlmProvider for AnthropicProvider {
                 loop {
                     match stream.next().await {
                         Some(Ok(chunk)) => {
-                            buffer.push_str(&String::from_utf8_lossy(&chunk));
+                            buffer.extend_from_slice(&chunk);
 
-                            // Process complete SSE events from the buffer
-                            while let Some(pos) = buffer.find("\n\n") {
-                                let event_str = buffer[..pos].to_string();
-                                buffer = buffer[pos + 2..].to_string();
+                            // Process complete SSE events from the byte buffer.
+                            // Cutting at b"\n\n" never splits a UTF-8 codepoint
+                            // (no 0x0A inside multibyte sequences), so the
+                            // per-event decode below is exact.
+                            while let Some(pos) = buffer.windows(2).position(|w| w == b"\n\n") {
+                                let event_str =
+                                    String::from_utf8_lossy(&buffer[..pos]).into_owned();
+                                buffer.drain(..pos + 2);
 
                                 for line in event_str.lines() {
                                     if let Some(data) = line.strip_prefix("data: ") {
