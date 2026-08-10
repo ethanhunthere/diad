@@ -2,6 +2,28 @@
 
 Status legend: `[x]` done · `[~]` partially done · `[ ]` not started.
 
+## Scope & versions (honest)
+
+**v1.0 = an agent console, not a desktop OS.** It is a bootable Sway ISO
+whose job is to run the DIAD agent (GUI + TUI) well: chat, tool calling,
+sessions, multi-provider access. It is *not* a general-purpose desktop:
+no calendar/mail/office apps, no file-manager parity, near-empty a11y and
+i18n coverage. The audit's Parity 38/100 is the accurate number; do not
+advertise more.
+
+- **v1.0** (current) — agent console: everything in Phases 1–2 below.
+- **v1.1** — desktop parity: mako notifications, cliphist history,
+  gammastep night light, freedesktop trash, keyboard a11y traps, and
+  per-feature regression tests. (Phase A7 of the audit closes the four
+  cheapest parity wins.)
+- **v1.2** — hardening & i18n: crash/health dashboard, parallel provider
+  routing, AUR packaging (`diad-agent-bin`, `diad-os`), locale/RTL/CJK
+  test suite, i18n string layer.
+- **Post v1.2** — the "Future" section below.
+
+Each version ships only when its gates are green; un-gated features stay
+in the next version rather than delaying a release.
+
 ## Phase 1: Foundation — DONE
 
 **Goal**: Bootable OS with agent surfaces (GUI + TUI) and multi-provider LLM access.
@@ -46,12 +68,12 @@ Status legend: `[x]` done · `[~]` partially done · `[ ]` not started.
 - [x] Codebase sanitization: dead files, dead code, unused deps removed
 - [x] Module restructure: `core/`, `tools/{files,hardware,network,system}`,
       `frontend/{components,panels,services,hooks,lib}`
-- [x] Tests split by domain + sandbox negative test suite (282 unit + 29 int)
-- [ ] Docs completion (architecture, security, testing, audits)
-- [ ] Gate: fmt/clippy/build/test all clean
-- [ ] Release tag `v0.9-pre-gui` checkpoint
+- [x] Tests split by domain + sandbox negative test suite (328 unit + 39 int)
+- [x] Docs: architecture, security, testing, audits (`docs/`)
+- [~] Gate: fmt/clippy/build/test all clean (release build 0 warnings)
+- [x] Release tag `v0.9-pre-gui` checkpoint
 
-## Future (Post v1.0)
+## Future (Post v1.2)
 
 - On-device AI via Ollama/llama.cpp with hybrid cloud/local routing
 - Voice interface (Whisper STT + TTS)

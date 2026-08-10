@@ -9,6 +9,12 @@ DIAD is a minimal, intent-driven operating system built on Arch Linux. It presen
 
 The DIAD AGENT daemon replaces the terminal, file manager, system administration tools, and code editor. It connects to cloud LLM providers via authenticated APIs and translates user intent into system-level actions executed locally through sandboxed Rust functions.
 
+> **Scope, honestly**: DIAD v1.0 is an **agent console**, not a general-purpose
+> desktop OS. It provides a curated, sandboxed set of file/hardware/network/
+> system actions plus a notification/clipboard/night-light/trash surface; it is
+> not a full file manager or administration suite. See `docs/ROADMAP.md` for
+> the v1.0/v1.1/v1.2 scope split.
+
 Every major model family is selectable from a single interface (press `F6` or type
 `/model` in the chat): Anthropic Claude, Google Gemini, OpenAI (incl. Codex
 models), Alibaba Qwen, Moonshot Kimi, DeepSeek, Groq, Mistral, OpenRouter, and
