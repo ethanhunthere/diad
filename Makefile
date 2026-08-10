@@ -44,10 +44,20 @@ gui:
 ISO_NAME := diados
 ISO_DIR := os/archiso
 
+# F-23 (spec 6.8) — reproducible builds: mkarchiso embeds SOURCE_DATE_EPOCH
+# into every timestamped file in the ISO, so `make iso` is byte-reproducible
+# for a given source tree. Default to a fixed epoch; override with
+# `make iso BUILD_DATE=YYYY-MM-DD` or by exporting SOURCE_DATE_EPOCH yourself.
+BUILD_DATE ?= 2026-01-01
+# -u: resolve BUILD_DATE in UTC so the epoch is identical on every machine.
+SOURCE_DATE_EPOCH ?= $(shell date -u -d "$(BUILD_DATE)" +%s 2>/dev/null || echo 1767225600)
+export SOURCE_DATE_EPOCH
+
 # The ISO depends on the GUI build: the daemon embeds frontend/dist with
 # rust-embed, so the GUI must be built BEFORE the release binary.
 iso: gui
 	@echo "Building DIAD ISO..."
+	@echo "  [0/4] Pinned reproducible timestamp SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH)..."
 	@echo "  [1/4] Building diad-agent (release, GUI embedded)..."
 	cd $(AGENT_DIR) && cargo build --release
 	@echo "  [2/4] Staging diad-agent into the ISO profile..."

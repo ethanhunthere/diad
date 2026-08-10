@@ -156,6 +156,28 @@ impl Default for PtyManager {
 mod tests {
     use super::*;
 
+    /// Event-driven wait (F-20): poll the output channel until a TermOutput
+    /// containing `needle` arrives or `deadline` passes. A single slow recv
+    /// window (shell startup under load) must NOT abort the wait — only
+    /// channel close (session gone) ends it early. This replaces the old
+    /// pattern where one 500 ms timeout aborted the whole test even though
+    /// the echo arrived within the deadline.
+    async fn wait_for_term_output(
+        rx: &mut tokio::sync::mpsc::Receiver<ServerMsg>,
+        needle: &str,
+        deadline: tokio::time::Instant,
+    ) -> bool {
+        while tokio::time::Instant::now() < deadline {
+            match tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv()).await {
+                Ok(Some(ServerMsg::TermOutput { data })) if data.contains(needle) => return true,
+                Ok(Some(_)) => continue,
+                Ok(None) => return false, // channel closed — session torn down
+                Err(_) => continue,       // slow window; keep waiting (F-20)
+            }
+        }
+        false
+    }
+
     #[test]
     fn test_pty_manager_new_is_empty() {
         let mgr = PtyManager::new();
@@ -180,18 +202,9 @@ mod tests {
         // Write a trivial command and expect echoed output.
         session.write("echo diad-pty-ok\r\n").ok();
 
-        let mut got = false;
-        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
-        while tokio::time::Instant::now() < deadline {
-            match tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv()).await {
-                Ok(Some(ServerMsg::TermOutput { data })) if data.contains("diad-pty-ok") => {
-                    got = true;
-                    break;
-                }
-                Ok(Some(_)) => continue,
-                Ok(None) | Err(_) => break,
-            }
-        }
+        let deadline =
+            tokio::time::Instant::now() + std::time::Duration::from_secs(15);
+        let got = wait_for_term_output(&mut rx, "diad-pty-ok", deadline).await;
         assert!(got, "expected PTY output echoing 'diad-pty-ok'");
     }
 
@@ -212,18 +225,9 @@ mod tests {
             return;
         }
 
-        let mut spawned = false;
-        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
-        while tokio::time::Instant::now() < deadline {
-            match tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv()).await {
-                Ok(Some(ServerMsg::TermOutput { data })) if data.contains("diad-lazy") => {
-                    spawned = true;
-                    break;
-                }
-                Ok(Some(_)) => continue,
-                Ok(None) | Err(_) => break,
-            }
-        }
+        let deadline =
+            tokio::time::Instant::now() + std::time::Duration::from_secs(15);
+        let spawned = wait_for_term_output(&mut rx, "diad-lazy", deadline).await;
         assert!(spawned, "lazy spawn should echo 'diad-lazy'");
         {
             let guard = mgr.session.lock().unwrap();

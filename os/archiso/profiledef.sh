@@ -9,7 +9,14 @@ iso_name="diados"
 iso_label="DIADOS"
 iso_publisher="DIADOS Project"
 iso_application="DIADOS — Intent-Driven Operating System"
-iso_version="$(date +%Y.%m.%d)"
+# F-23 (spec 6.8) — reproducible builds: when the Makefile exports
+# SOURCE_DATE_EPOCH, derive the version from it so two builds of the same
+# tree are byte-identical; otherwise fall back to today's date.
+if [[ -n "${SOURCE_DATE_EPOCH:-}" ]]; then
+    iso_version="$(date -u -d "@${SOURCE_DATE_EPOCH}" +%Y.%m.%d)"
+else
+    iso_version="$(date +%Y.%m.%d)"
+fi
 install_dir="diados"
 
 # === Boot Modes ===
