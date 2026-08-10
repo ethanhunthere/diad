@@ -48,11 +48,18 @@ pub fn run(args: &[&str]) -> anyhow::Result<ToolResult> {
 ///
 /// Requires the `diad` sudoers drop-in for passwordless execution of the
 /// whitelisted binaries.
+pub fn run_privileged(args: &[&str]) -> anyhow::Result<ToolResult> {
+    run_privileged_env(args, &[])
+}
+
+/// Run a command with `sudo`, passing extra environment variables (used to
+/// set the `DIAD_CONFIRM` marker the validated `/usr/local/bin/diad-*`
+/// wrappers require before they will exec a destructive operation).
 ///
 /// When `DIAD_TEST_NO_PRIVILEGED` is set (test environment), the command is
 /// reported instead of executed so tests never block on an interactive sudo
 /// password prompt.
-pub fn run_privileged(args: &[&str]) -> anyhow::Result<ToolResult> {
+pub fn run_privileged_env(args: &[&str], envs: &[(&str, &str)]) -> anyhow::Result<ToolResult> {
     if args.is_empty() {
         return Ok(ToolResult::err("run_privileged: no command given."));
     }
@@ -61,6 +68,7 @@ pub fn run_privileged(args: &[&str]) -> anyhow::Result<ToolResult> {
     // mutation). Integration tests can opt in via DIAD_TEST_NO_PRIVILEGED.
     #[cfg(test)]
     {
+        let _ = envs; // test mode never passes DIAD_CONFIRM
         let program = args.first().copied().unwrap_or("?");
         Ok(ToolResult::ok(format!(
             "[test mode] would run: sudo {program}"
@@ -79,6 +87,7 @@ pub fn run_privileged(args: &[&str]) -> anyhow::Result<ToolResult> {
         let program = args.first().copied().unwrap_or("?");
         let output = Command::new("sudo")
             .args(args)
+            .envs(envs.iter().copied())
             .output()
             .map_err(|e| anyhow::anyhow!("Failed to run `sudo {program}`: {e}"))?;
 

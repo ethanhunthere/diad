@@ -101,104 +101,22 @@ pub fn check_agent_updates() -> anyhow::Result<ToolResult> {
 /// overridden at build time via `DIAD_AGENT_DOWNLOAD_URL`; the default points
 /// at the future `diados/diados` releases asset.
 ///
-/// # Supply-chain hardening (audit finding 1.4)
+/// # Supply-chain hardening (audit F-12 / phase A1)
 ///
-/// The binary is only ever installed after its SHA-256 digest is verified
-/// against a `.sha256` sidecar published alongside the release (fetched from
-/// the same HTTPS origin). If the digest does not match, the download is
-/// discarded and the existing binary is left untouched.
+/// The whole operation (download + checksum fetch + digest verify + install +
+/// cleanup) runs inside the root-owned `/usr/local/bin/diad-selfupdate`
+/// wrapper, which is the ONLY sudoers entry for self-update — the old open
+/// `wget`/`sha256sum`/`install`/`rm` entries are gone. The wrapper refuses to
+/// install unless the `DIAD_CONFIRM=selfupdate` marker is present AND the
+/// downloaded binary's SHA-256 matches the `.sha256` sidecar from the same
+/// HTTPS origin.
 pub fn apply_agent_updates() -> anyhow::Result<ToolResult> {
-    const BIN: &str = "/tmp/diad-agent-latest";
-    const CHECKSUM: &str = "/tmp/diad-agent-latest.sha256";
-
     let url = option_env!("DIAD_AGENT_DOWNLOAD_URL").unwrap_or(
         "https://api.github.com/repos/diados/diados/releases/latest/download/diad-agent",
     );
-
-    let download = exec::run_privileged(&["wget", "-q", "-O", BIN, url])?;
-    if !download.success {
-        return Ok(ToolResult::err(format!(
-            "apply_agent_updates: download failed (release endpoint not live yet — placeholder). {}",
-            download.error.unwrap_or_default()
-        )));
-    }
-
-    // Fetch the expected digest. The sidecar lives next to the asset and is
-    // served over the same TLS channel; HTTPS is the trust anchor for both.
     let checksum_url = format!("{url}.sha256");
-    let fetch_checksum = exec::run_privileged(&["wget", "-q", "-O", CHECKSUM, &checksum_url])?;
-    if !fetch_checksum.success {
-        let _ = exec::run_privileged(&["rm", "-f", BIN]);
-        return Ok(ToolResult::err(format!(
-            "apply_agent_updates: could not fetch checksum {} (release endpoint not live yet — placeholder). {}",
-            checksum_url,
-            fetch_checksum.error.unwrap_or_default()
-        )));
-    }
-
-    // Parse "HEX  filename" (or "HEX *filename") from the sidecar.
-    let expected = std::fs::read_to_string(CHECKSUM)
-        .map_err(|e| anyhow::anyhow!("apply_agent_updates: cannot read checksum file: {e}"))?;
-    let expected_hex = expected
-        .split_whitespace()
-        .next()
-        .map(|tok| tok.trim())
-        .filter(|tok| {
-            !tok.is_empty() && tok.len() == 64 && tok.bytes().all(|b| b.is_ascii_hexdigit())
-        })
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "apply_agent_updates: checksum file has no valid SHA-256 digest: {expected}"
-            )
-        })?;
-
-    // Compute the digest of what we actually downloaded (not via shell).
-    let sum = exec::run_privileged(&["sha256sum", BIN])?;
-    if !sum.success {
-        let _ = exec::run_privileged(&["rm", "-f", BIN, CHECKSUM]);
-        return Ok(ToolResult::err(format!(
-            "apply_agent_updates: sha256sum failed: {}",
-            sum.error.unwrap_or_default()
-        )));
-    }
-    let actual_hex = sum
-        .output
-        .split_whitespace()
-        .next()
-        .map(str::trim)
-        .filter(|tok| tok.len() == 64 && tok.bytes().all(|b| b.is_ascii_hexdigit()))
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "apply_agent_updates: cannot parse sha256sum output: {}",
-                sum.output
-            )
-        })?;
-
-    // Constant-time-ish comparison: never install on mismatch.
-    if !actual_hex.eq_ignore_ascii_case(expected_hex) {
-        let _ = exec::run_privileged(&["rm", "-f", BIN, CHECKSUM]);
-        return Ok(ToolResult::err(format!(
-            "apply_agent_updates: SHA-256 mismatch — refusing to install. expected {expected_hex}, got {actual_hex}. Download discarded."
-        )));
-    }
-
-    // Install over the current binary, keeping a timestamped backup.
-    let install = exec::run_privileged(&[
-        "install",
-        "-m",
-        "755",
-        "-b",
-        "-S",
-        ".bak",
-        BIN,
-        "/usr/local/bin/diad-agent",
-    ])?;
-    let _ = exec::run_privileged(&["rm", "-f", BIN, CHECKSUM]);
-    if !install.success {
-        return Ok(install);
-    }
-
-    Ok(ToolResult::ok(
-        "DIAD Agent updated to the latest release (SHA-256 verified). Restart the agent to apply.",
-    ))
+    exec::run_privileged_env(
+        &["/usr/local/bin/diad-selfupdate", url, &checksum_url],
+        &[("DIAD_CONFIRM", "selfupdate")],
+    )
 }

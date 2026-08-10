@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# =============================================================================
+# DIAD least-privilege wrapper: agent self-update (audit F-12 / phase A1)
+# -----------------------------------------------------------------------------
+# Collapses wget + sha256sum + install + rm into ONE validated operation.
+# Previously these were four separate wildcard sudoers entries — including
+# `rm` and `wget` with open arguments.
+#
+# Usage: sudo DIAD_CONFIRM=selfupdate diad-selfupdate URL CHECKSUM_URL
+# The downloaded binary MUST match the sidecar sha256 or nothing is installed.
+#
+set -u
+
+BIN="/tmp/diad-agent-latest"
+CKSUM="/tmp/diad-agent-latest.sha256"
+TARGET="/usr/local/bin/diad-agent"
+URL_RE='^https://[a-zA-Z0-9.-]+(:[0-9]+)?(/[a-zA-Z0-9._~/%-]*)?$'
+
+fail() {
+    echo "diad-selfupdate: $*" >&2
+    rm -f "${BIN}" "${CKSUM}"
+    exit 2
+}
+
+[[ $# -eq 2 ]] || fail "usage: diad-selfupdate URL CHECKSUM_URL"
+[[ "${DIAD_CONFIRM:-}" == "selfupdate" ]] || fail "missing DIAD_CONFIRM=selfupdate marker"
+[[ "$1" =~ $URL_RE ]] || fail "invalid URL: $1"
+[[ "$2" =~ $URL_RE ]] || fail "invalid checksum URL: $2"
+
+wget -q -O "${BIN}" "$1" || fail "download failed"
+wget -q -O "${CKSUM}" "$2" || fail "checksum download failed"
+
+# Sidecar format: "<hex>  <anything>". Verify against the exact file name.
+expected="$(awk '{print $1; exit}' "${CKSUM}")"
+[[ "${expected}" =~ ^[a-f0-9]{64}$ ]] || fail "malformed checksum file"
+actual="$(sha256sum "${BIN}" | awk '{print $1}')"
+[[ "${expected}" == "${actual}" ]] || fail "sha256 mismatch (expected ${expected}, got ${actual})"
+
+install -m 755 -b -S .bak "${BIN}" "${TARGET}" || fail "install failed"
+rm -f "${BIN}" "${CKSUM}"
+echo "diad-agent updated: ${TARGET}"

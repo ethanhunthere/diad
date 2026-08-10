@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# =============================================================================
+# DIAD least-privilege wrapper: install a user-generated config file into a
+# FIXED allowlisted root-owned destination (audit F-12 / phase A1).
+# -----------------------------------------------------------------------------
+# Replaces every `sudo sed -i` / `sudo tee` on system files: scripts now
+# generate the file in user space (no privilege needed) and hand it over.
+#
+# Usage: sudo diad-install-conf SRC DST
+#
+set -u
+
+SRC_RE='^/home/diad/\.diad/[A-Za-z0-9._-]+$'
+
+fail() {
+    echo "diad-install-conf: $*" >&2
+    exit 2
+}
+
+[[ $# -eq 2 ]] || fail "usage: diad-install-conf SRC DST"
+[[ "$1" =~ $SRC_RE ]] || fail "source must live in /home/diad/.diad: $1"
+[[ -f "$1" ]] || fail "source does not exist: $1"
+
+case "$2" in
+    /etc/systemd/logind.conf.d/diad.conf) : ;;
+    /etc/sway/conf.d/media-keys.conf) : ;;
+    /etc/sway/conf.d/diad-overrides.conf) : ;;
+    /etc/waybar/config) : ;;
+    /etc/diad/sway-overrides.conf) : ;;
+    /etc/diad/perf-tier) : ;;
+    *) fail "destination not allowlisted: $2" ;;
+esac
+
+mkdir -p "$(dirname "$2")"
+exec install -m 644 -o root -g root "$1" "$2"

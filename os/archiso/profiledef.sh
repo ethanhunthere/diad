@@ -87,6 +87,15 @@ file_permissions=(
     ["/usr/local/bin/diad-storage-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-supervisor.sh"]="0:0:755"
     ["/usr/local/bin/diad-sysfs-write"]="0:0:755"
+    ["/usr/local/bin/diad-clone-disk"]="0:0:755"
+    ["/usr/local/bin/diad-conf-write"]="0:0:755"
+    ["/usr/local/bin/diad-format"]="0:0:755"
+    ["/usr/local/bin/diad-fsck"]="0:0:755"
+    ["/usr/local/bin/diad-install-conf"]="0:0:755"
+    ["/usr/local/bin/diad-mount"]="0:0:755"
+    ["/usr/local/bin/diad-resize-partition"]="0:0:755"
+    ["/usr/local/bin/diad-selfupdate"]="0:0:755"
+    ["/usr/local/bin/diad-umount"]="0:0:755"
     ["/usr/local/bin/brave"]="0:0:755"
 )
 

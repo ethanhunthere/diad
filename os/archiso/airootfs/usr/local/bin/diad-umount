@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# =============================================================================
+# DIAD least-privilege wrapper: unmount (audit F-12 / phase A1)
+# -----------------------------------------------------------------------------
+# Usage: sudo diad-umount TARGET
+# TARGET: /dev/..., LABEL=... or a /mnt/... mountpoint.
+#
+set -u
+
+DEV_RE='^/dev/[a-z0-9/_-]+$'
+LABEL_RE='^LABEL=[A-Za-z0-9_-]+$'
+MNT_RE='^/mnt/[a-z0-9/_-]+$'
+
+fail() {
+    echo "diad-umount: $*" >&2
+    exit 2
+}
+
+[[ $# -eq 1 ]] || fail "usage: diad-umount TARGET"
+if [[ ! "$1" =~ $DEV_RE && ! "$1" =~ $LABEL_RE && ! "$1" =~ $MNT_RE ]]; then
+    fail "invalid target: $1"
+fi
+
+exec umount "$1"

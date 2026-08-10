@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# =============================================================================
+# DIAD least-privilege wrapper: disk clone (audit F-12 / phase A1)
+# -----------------------------------------------------------------------------
+# The ONLY path to `dd` for the diad user. Validates every argument before
+# exec; exits 2 on any validation failure. Requires the DIAD_CONFIRM marker,
+# which the agent only sets after the user passes the CONFIRM gate.
+#
+# Usage: sudo DIAD_CONFIRM=clone-disk diad-clone-disk SRC DST
+#
+set -u
+
+DEV_RE='^/dev/[a-z0-9/_-]+$'
+
+fail() {
+    echo "diad-clone-disk: $*" >&2
+    exit 2
+}
+
+[[ $# -eq 2 ]] || fail "usage: diad-clone-disk SRC DST"
+[[ "${DIAD_CONFIRM:-}" == "clone-disk" ]] || fail "missing DIAD_CONFIRM=clone-disk marker"
+[[ "$1" =~ $DEV_RE ]] || fail "invalid source device: $1"
+[[ "$2" =~ $DEV_RE ]] || fail "invalid destination device: $2"
+[[ "$1" != "$2" ]] || fail "source and destination are the same device"
+
+# Never clone onto the disk the running system lives on.
+root_dev="$(findmnt -no SOURCE / 2>/dev/null || true)"
+case "${root_dev}" in
+    "$2"*) fail "destination is the root disk" ;;
+esac
+
+exec dd if="$1" of="$2" bs=4M status=progress

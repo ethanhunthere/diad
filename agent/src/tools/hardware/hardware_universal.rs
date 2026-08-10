@@ -70,10 +70,18 @@ fn run(args: &[&str]) -> anyhow::Result<ToolResult> {
 /// reported instead of executed so tests never block on an interactive sudo
 /// password prompt.
 fn run_privileged(args: &[&str]) -> anyhow::Result<ToolResult> {
+    run_privileged_env(args, &[])
+}
+
+/// Like [`run_privileged`], but passes extra environment variables — used to
+/// set the `DIAD_CONFIRM` marker that the validated `/usr/local/bin/diad-*`
+/// wrappers (clone/format/resize) require before exec'ing a destructive op.
+fn run_privileged_env(args: &[&str], envs: &[(&str, &str)]) -> anyhow::Result<ToolResult> {
     // Unit tests never run sudo (no TTY password prompt, no real system
     // mutation). Integration tests can opt in via DIAD_TEST_NO_PRIVILEGED.
     #[cfg(test)]
     {
+        let _ = envs; // test mode never passes DIAD_CONFIRM
         let program = args.first().copied().unwrap_or("?");
         Ok(ToolResult::ok(format!(
             "[test mode] would run: sudo {program}"
@@ -88,7 +96,7 @@ fn run_privileged(args: &[&str]) -> anyhow::Result<ToolResult> {
             )));
         }
         let program = args.first().copied().unwrap_or("?");
-        let output = match Command::new("sudo").args(args).output() {
+        let output = match Command::new("sudo").args(args).envs(envs.iter().copied()).output() {
             Ok(o) => o,
             Err(e) => {
                 return Ok(ToolResult::err(format!(
@@ -1445,19 +1453,26 @@ pub fn get_disk_health(device: &str) -> anyhow::Result<ToolResult> {
 }
 
 /// Mount a device (or fstab entry) at a directory.
+///
+/// Goes through the validated `diad-mount` wrapper (sudoers grants ONLY the
+/// wrapper — the raw `mount` entry was removed in phase A1): sources are
+/// restricted to `/dev/...` or `LABEL=...`, targets must live under `/mnt`.
 pub fn mount_device(device: &str, at: &str) -> anyhow::Result<ToolResult> {
     if !valid_value(device) || !valid_path(at) {
         return Ok(ToolResult::err("invalid device or mount point"));
     }
-    run_privileged(&["mount", device, at])
+    run_privileged(&["/usr/local/bin/diad-mount", device, at])
 }
 
 /// Unmount a device.
+///
+/// Goes through the validated `diad-umount` wrapper (raw `umount` entry
+/// removed in phase A1).
 pub fn unmount_device(device: &str) -> anyhow::Result<ToolResult> {
     if !valid_value(device) {
         return Ok(ToolResult::err("invalid device"));
     }
-    run_privileged(&["umount", device])
+    run_privileged(&["/usr/local/bin/diad-umount", device])
 }
 
 /// Eject removable media.
@@ -1480,23 +1495,54 @@ pub fn format_device(device: &str, fstype: &str) -> anyhow::Result<ToolResult> {
     if !device.starts_with("/dev/") {
         return Ok(ToolResult::err("refusing to format a non-/dev path"));
     }
-    run_privileged(&["mkfs", "-t", fstype, device])
+    // Validated wrapper: fstype allowlist + root-disk guard + DIAD_CONFIRM
+    // marker (the orchestrator's CONFIRM gate sets the marker before this runs).
+    run_privileged_env(
+        &["/usr/local/bin/diad-format", device, fstype],
+        &[("DIAD_CONFIRM", "format-device")],
+    )
 }
 
 /// Check a filesystem (fsck).
+///
+/// Goes through the validated `diad-fsck` wrapper (always `fsck -n`, no
+/// repair writes — raw `fsck` entry removed in phase A1).
 pub fn check_filesystem(device: &str) -> anyhow::Result<ToolResult> {
     if !valid_value(device) {
         return Ok(ToolResult::err("invalid device"));
     }
-    run_privileged(&["fsck", "-n", device])
+    run_privileged(&["/usr/local/bin/diad-fsck", device])
 }
 
 /// Resize a partition (grow to end of device).
+///
+/// Goes through the validated `diad-resize-partition` wrapper. The partition
+/// number is derived from the device name (`/dev/sda1` → part 1); the old
+/// raw `parted` invocation never passed a partition number at all.
 pub fn resize_partition(device: &str) -> anyhow::Result<ToolResult> {
     if !valid_value(device) {
         return Ok(ToolResult::err("invalid device"));
     }
-    run_privileged(&["parted", "-s", device, "resizepart", "100%"])
+    let partnum = device
+        .rsplit('/')
+        .next()
+        .unwrap_or("")
+        .chars()
+        .rev()
+        .take_while(|c| c.is_ascii_digit())
+        .collect::<String>()
+        .chars()
+        .rev()
+        .collect::<String>();
+    if partnum.is_empty() {
+        return Ok(ToolResult::err(format!(
+            "resize_partition: cannot infer partition number from '{device}' (expected /dev/sda1)"
+        )));
+    }
+    run_privileged_env(
+        &["/usr/local/bin/diad-resize-partition", device, &partnum],
+        &[("DIAD_CONFIRM", "resize-partition")],
+    )
 }
 
 /// Clone a block device (dd) — DESTRUCTIVE, requires confirmation.
@@ -1507,9 +1553,13 @@ pub fn clone_disk(src: &str, dst: &str) -> anyhow::Result<ToolResult> {
     if !src.starts_with("/dev/") || !dst.starts_with("/dev/") {
         return Ok(ToolResult::err("refusing to clone to/from a non-/dev path"));
     }
-    let if_arg = format!("if={src}");
-    let of_arg = format!("of={dst}");
-    run_privileged(&["dd", &if_arg, &of_arg, "bs=4M", "status=progress"])
+    // Validated wrapper: /dev allowlist, src != dst, root-disk guard, and the
+    // DIAD_CONFIRM marker (set by the orchestrator's CONFIRM gate). The raw
+    // `dd` sudoers entry was removed in phase A1.
+    run_privileged_env(
+        &["/usr/local/bin/diad-clone-disk", src, dst],
+        &[("DIAD_CONFIRM", "clone-disk")],
+    )
 }
 
 /// Benchmark a device's read throughput (hdparm).

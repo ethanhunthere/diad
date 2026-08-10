@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# =============================================================================
+# DIAD least-privilege wrapper: mount (audit F-12 / phase A1)
+# -----------------------------------------------------------------------------
+# Usage: sudo diad-mount DEVICE MOUNTPOINT
+# DEVICE: /dev/... or LABEL=... ; MOUNTPOINT: under /mnt only.
+#
+set -u
+
+DEV_RE='^/dev/[a-z0-9/_-]+$'
+LABEL_RE='^LABEL=[A-Za-z0-9_-]+$'
+MNT_RE='^/mnt/[a-z0-9/_-]+$'
+
+fail() {
+    echo "diad-mount: $*" >&2
+    exit 2
+}
+
+[[ $# -eq 2 ]] || fail "usage: diad-mount DEVICE MOUNTPOINT"
+if [[ ! "$1" =~ $DEV_RE && ! "$1" =~ $LABEL_RE ]]; then
+    fail "invalid device: $1"
+fi
+[[ "$2" =~ $MNT_RE ]] || fail "mountpoint must live under /mnt: $2"
+
+mkdir -p "$2"
+exec mount "$1" "$2"

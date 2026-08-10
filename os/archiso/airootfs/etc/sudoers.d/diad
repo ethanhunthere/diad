@@ -1,18 +1,48 @@
 # =============================================================================
 # DIAD — passwordless sudo for DIAD Agent system-control tools
 # =============================================================================
-# Grants the 'diad' user NOPASSWD access to exactly the binaries the DIAD
-# Agent's hardware tools invoke. Nothing else is granted — least privilege.
-# Keep this list in sync with every `run_privileged` call site under
-# agent/src/tools/ (hardware.rs, hardware_universal.rs, input.rs, power.rs,
-# security.rs, update.rs, exec.rs). `sh` is deliberately NOT whitelisted —
-# sysfs writes go through the validated /usr/local/bin/diad-sysfs-write
-# helper instead of `sudo sh -c`.
+# Phase A1 (audit F-12): least privilege, argv-pinned.
 #
-# NOTE: sudoers.d files must:
-#   - be owned by root:root
-#   - have mode 0440
-#   - contain no '.' in the filename (diad is fine)
-# =============================================================================
+# Rules enforced here:
+#   - NO shell-capable binaries (sh, bash, su, sudo, ...) — ever.
+#   - NO rm/sed/tee — removed entirely (no tool legitimately needs them as
+#     root; config writes go through the validated install/conf wrappers).
+#   - Every /usr/bin entry is argv-pinned (fixed args) or a restricted
+#     subcommand family (nmcli). An open trailing wildcard on a variable
+#     binary is forbidden — the regression test in
+#     agent/tests/sudoers_tests.rs fails the suite if one is introduced.
+#   - Variable-arg root operations go through the VALIDATED wrappers in
+#     /usr/local/bin (root-owned 755, argument allowlists + DIAD_CONFIRM
+#     markers). sudoers grants ONLY the wrappers for those operations.
+#   - `sh` is deliberately NOT whitelisted — sysfs writes go through
+#     /usr/local/bin/diad-sysfs-write, settings through diad-conf-write.
+#
+# sudoers.d requirements: owned root:root, mode 0440, no '.' in the filename.
 
-diad ALL=(ALL) NOPASSWD: /usr/bin/nmcli, /usr/bin/systemctl, /usr/bin/brightnessctl, /usr/bin/wpctl, /usr/bin/bluetoothctl, /usr/bin/powerprofilesctl, /usr/bin/upower, /usr/bin/nft, /usr/bin/swaylock, /usr/bin/pacman, /usr/bin/checkupdates, /usr/bin/hostnamectl, /usr/bin/timedatectl, /usr/bin/sed, /usr/bin/tee, /usr/bin/mount, /usr/bin/umount, /usr/bin/wget, /usr/bin/install, /usr/bin/modprobe, /usr/bin/smartctl, /usr/bin/eject, /usr/bin/mkfs, /usr/bin/fsck, /usr/bin/parted, /usr/bin/dd, /usr/bin/hdparm, /usr/bin/lpadmin, /usr/bin/lpoptions, /usr/bin/iw, /usr/bin/traceroute, /usr/bin/tcpdump, /usr/bin/nload, /usr/bin/nvidia-smi, /usr/bin/kill, /usr/bin/rm, /usr/bin/sha256sum, /usr/local/bin/diad-sysfs-write
+# ---- Fixed / static-argv commands (pinned exactly, no open wildcards) ------
+diad ALL=(ALL) NOPASSWD: /usr/bin/systemctl poweroff, /usr/bin/systemctl reboot, /usr/bin/systemctl suspend, /usr/bin/systemctl enable --now diad-firewall, /usr/bin/systemctl disable --now diad-firewall, /usr/bin/systemctl start bluetooth, /usr/bin/systemctl stop bluetooth, /usr/bin/systemctl enable --now fstrim.timer, /usr/bin/systemctl disable --now fstrim.timer, /usr/bin/brightnessctl set *, /usr/bin/powerprofilesctl set [a-z-]*, /usr/bin/modprobe uvcvideo, /usr/bin/modprobe -r uvcvideo, /usr/bin/hostnamectl set-hostname *, /usr/bin/pacman -Syu --noconfirm, /usr/bin/pacman -S --noconfirm -- *, /usr/bin/pacman -R --noconfirm -- *
+
+# ---- NetworkManager: subcommand families only -------------------------------
+# (ssid / connection names are validated in the tools before they reach argv)
+diad ALL=(ALL) NOPASSWD: /usr/bin/nmcli dev wifi *, /usr/bin/nmcli dev connect *, /usr/bin/nmcli dev disconnect *, /usr/bin/nmcli radio *, /usr/bin/nmcli con *, /usr/bin/nmcli general *
+
+# ---- Read-only / validated-arg diagnostics ----------------------------------
+# (device / host / percent values are validated inside the tools)
+diad ALL=(ALL) NOPASSWD: /usr/bin/smartctl -H -A *, /usr/bin/hdparm -t *, /usr/bin/eject *, /usr/bin/iw dev wlan0 scan channels, /usr/bin/iw dev wlan0 set channel *, /usr/bin/traceroute *, /usr/bin/tcpdump -i * -c * -nn, /usr/bin/nload -t 300, /usr/bin/nvidia-smi -pm 1, /usr/bin/nvidia-smi -pm 0, /usr/bin/nvidia-smi -pl *
+
+# ---- GPU process kill (pid validated + CONFIRM-gated in the tool) -----------
+diad ALL=(ALL) NOPASSWD: /usr/bin/kill -9 *
+
+# ---- Printers (printer names validated with valid_identifier in the tool) ---
+diad ALL=(ALL) NOPASSWD: /usr/bin/lpadmin -p * -E -v * -m everywhere, /usr/bin/lpadmin -x *, /usr/bin/lpoptions -d *
+
+# ---- VALIDATED WRAPPERS — the ONLY path to variable-arg root ops ------------
+#   diad-clone-disk        dd        (DIAD_CONFIRM=clone-disk, /dev allowlist, root-disk guard)
+#   diad-mount / diad-umount mount     (/dev|LABEL= source, /mnt target only)
+#   diad-format            mkfs      (DIAD_CONFIRM=format-device, fstype allowlist, root-disk guard)
+#   diad-fsck              fsck -n   (read-only, /dev allowlist)
+#   diad-resize-partition  parted    (DIAD_CONFIRM=resize-partition, partnum allowlist)
+#   diad-conf-write        settings  (per-key value allowlists; writes /etc/diad/*)
+#   diad-install-conf      install   (source under ~/.diad, dest allowlist)
+#   diad-selfupdate        wget+sha256sum+install (DIAD_CONFIRM=selfupdate, checksum-verified)
+diad ALL=(ALL) NOPASSWD: /usr/local/bin/diad-clone-disk, /usr/local/bin/diad-mount, /usr/local/bin/diad-umount, /usr/local/bin/diad-format, /usr/local/bin/diad-fsck, /usr/local/bin/diad-resize-partition, /usr/local/bin/diad-conf-write, /usr/local/bin/diad-install-conf, /usr/local/bin/diad-selfupdate, /usr/local/bin/diad-sysfs-write

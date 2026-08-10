@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# =============================================================================
+# DIAD least-privilege wrapper: read-only filesystem check (audit F-12)
+# -----------------------------------------------------------------------------
+# Usage: sudo diad-fsck DEVICE
+# Always runs `fsck -n` (no repair, no writes).
+#
+set -u
+
+DEV_RE='^/dev/[a-z0-9/_-]+$'
+
+fail() {
+    echo "diad-fsck: $*" >&2
+    exit 2
+}
+
+[[ $# -eq 1 ]] || fail "usage: diad-fsck DEVICE"
+[[ "$1" =~ $DEV_RE ]] || fail "invalid device: $1"
+
+exec fsck -n "$1"

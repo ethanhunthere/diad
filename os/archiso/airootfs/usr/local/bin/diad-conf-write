@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# =============================================================================
+# DIAD least-privilege wrapper: write a validated DIAD setting (audit F-12 +
+# phase A2 THE LAW). One wrapper, one key at a time, strict per-key value
+# validation — this is what lets the agent reconfigure compositor internals
+# without a raw terminal.
+# -----------------------------------------------------------------------------
+# Usage: sudo diad-conf-write KEY VALUE...
+#   keybinding    FROM TO        → append "bindsym FROM cmd TO" override
+#   perf-tier     TIER           → overwrite /etc/diad/perf-tier
+#   waybar-mode   compact|full   → switch the waybar config variant
+#   dnd           on|off         → persist do-not-disturb for notify tool
+#
+set -u
+
+fail() {
+    echo "diad-conf-write: $*" >&2
+    exit 2
+}
+
+[[ $# -ge 2 ]] || fail "usage: diad-conf-write KEY VALUE"
+
+KEY="$1"; shift
+KEYSYM_RE='^[A-Za-z0-9+_:-]+$'
+
+case "${KEY}" in
+    keybinding)
+        [[ $# -eq 2 ]] || fail "keybinding needs FROM and TO"
+        [[ "$1" =~ $KEYSYM_RE ]] || fail "invalid key combo: $1"
+        [[ "$2" =~ $KEYSYM_RE ]] || fail "invalid target keysym: $2"
+        mkdir -p /etc/diad
+        printf 'bindsym %s exec swaymsg workspace %s\n' "$1" "$2" >> /etc/diad/sway-overrides.conf
+        ;;
+    perf-tier)
+        case "$1" in
+            ULTRA_LOW|LOW|MID|HIGH|ULTRA) : ;;
+            *) fail "invalid tier: $1" ;;
+        esac
+        mkdir -p /etc/diad
+        printf '%s\n' "$1" > /etc/diad/perf-tier
+        ;;
+    waybar-mode)
+        case "$1" in
+            compact|full) : ;;
+            *) fail "invalid waybar mode: $1" ;;
+        esac
+        src="/etc/waybar/config.${1}"
+        [[ -f "${src}" ]] || fail "template missing: ${src}"
+        install -m 644 -o root -g root "${src}" /etc/waybar/config
+        # The supervisor's waybar watchdog restarts it within 10s; killing
+        # here makes the switch visible immediately (exactly one restart).
+        pkill -x waybar 2>/dev/null || true
+        ;;
+    dnd)
+        case "$1" in
+            on|off) : ;;
+            *) fail "invalid dnd value: $1" ;;
+        esac
+        mkdir -p /etc/diad
+        printf '%s\n' "$1" > /etc/diad/dnd
+        ;;
+    *)
+        fail "unknown key: ${KEY}"
+        ;;
+esac
