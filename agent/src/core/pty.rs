@@ -202,8 +202,7 @@ mod tests {
         // Write a trivial command and expect echoed output.
         session.write("echo diad-pty-ok\r\n").ok();
 
-        let deadline =
-            tokio::time::Instant::now() + std::time::Duration::from_secs(15);
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(15);
         let got = wait_for_term_output(&mut rx, "diad-pty-ok", deadline).await;
         assert!(got, "expected PTY output echoing 'diad-pty-ok'");
     }
@@ -225,8 +224,7 @@ mod tests {
             return;
         }
 
-        let deadline =
-            tokio::time::Instant::now() + std::time::Duration::from_secs(15);
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(15);
         let spawned = wait_for_term_output(&mut rx, "diad-lazy", deadline).await;
         assert!(spawned, "lazy spawn should echo 'diad-lazy'");
         {

@@ -503,9 +503,8 @@ impl App {
                 "[system]   max_history: {} · auto_save_interval: {}",
                 cfg.max_history, cfg.auto_save_interval
             ));
-            self.messages.push(
-                "[system] use `/set <key> <value>` to change them".into(),
-            );
+            self.messages
+                .push("[system] use `/set <key> <value>` to change them".into());
             self.input_buffer.clear();
             self.cursor_position = 0;
             return;
@@ -523,7 +522,8 @@ impl App {
                 self.messages.push(
                     "[system] keys: confirm_destructive, stream_tokens, \
                      max_history, auto_save_interval, perf_tier, waybar_mode, \
-                     keybinding {from to}".into(),
+                     keybinding {from to}"
+                        .into(),
                 );
             } else {
                 let value: serde_json::Value = if raw == "true" {
@@ -593,9 +593,8 @@ impl App {
                     .ok()
                     .map(DesktopAction::ClipboardPick),
                 _ => {
-                    self.messages.push(
-                        "[system] usage: /clipboard [list|pick <index>|clear]".into(),
-                    );
+                    self.messages
+                        .push("[system] usage: /clipboard [list|pick <index>|clear]".into());
                     None
                 }
             };
@@ -615,9 +614,8 @@ impl App {
                 match rest.parse::<u32>() {
                     Ok(t) if (1000..=6500).contains(&t) => Some(DesktopAction::NightLight(t)),
                     _ => {
-                        self.messages.push(
-                            "[system] usage: /nightlight [temp 1000-6500|off]".into(),
-                        );
+                        self.messages
+                            .push("[system] usage: /nightlight [temp 1000-6500|off]".into());
                         None
                     }
                 }

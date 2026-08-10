@@ -991,7 +991,11 @@ pub fn clipboard_pick(index: usize) -> anyhow::Result<ToolResult> {
     // cliphist list format: "<id>\t<text preview>".
     let value = match line.split_once('\t') {
         Some((_, v)) => v,
-        None => return Ok(ToolResult::err(format!("clipboard entry {index} not found"))),
+        None => {
+            return Ok(ToolResult::err(format!(
+                "clipboard entry {index} not found"
+            )))
+        }
     };
     // Restore the full value (not the truncated preview) via cliphist decode,
     // then write it to the clipboard with the same wl-copy path as

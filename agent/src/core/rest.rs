@@ -822,7 +822,11 @@ async fn api_git_diff(
         // `--stat` is a second subprocess; run it here too so no git spawn
         // ever touches the async runtime (F-18).
         let mut stat_cmd = std::process::Command::new("git");
-        stat_cmd.arg("-C").arg(&root_for_cmd).arg("diff").arg("--stat");
+        stat_cmd
+            .arg("-C")
+            .arg(&root_for_cmd)
+            .arg("diff")
+            .arg("--stat");
         if staged {
             stat_cmd.arg("--cached");
         }

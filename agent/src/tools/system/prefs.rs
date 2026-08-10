@@ -30,12 +30,7 @@ pub fn set_keybinding(from: &str, to: &str) -> anyhow::Result<ToolResult> {
             "set_keybinding: invalid keysym (allowed: A-Z a-z 0-9 + _ : -)",
         ));
     }
-    exec::run_privileged(&[
-        "/usr/local/bin/diad-conf-write",
-        "keybinding",
-        from,
-        to,
-    ])
+    exec::run_privileged(&["/usr/local/bin/diad-conf-write", "keybinding", from, to])
 }
 
 /// Override the performance tier (`/etc/diad/perf-tier`).
@@ -50,11 +45,7 @@ pub fn set_perf_tier(tier: &str) -> anyhow::Result<ToolResult> {
             ))
         }
     }
-    exec::run_privileged(&[
-        "/usr/local/bin/diad-conf-write",
-        "perf-tier",
-        tier,
-    ])
+    exec::run_privileged(&["/usr/local/bin/diad-conf-write", "perf-tier", tier])
 }
 
 /// Switch the waybar layout variant (`compact` or `full`).
@@ -64,13 +55,13 @@ pub fn set_perf_tier(tier: &str) -> anyhow::Result<ToolResult> {
 pub fn set_waybar_mode(mode: &str) -> anyhow::Result<ToolResult> {
     match mode {
         "compact" | "full" => {}
-        _ => return Ok(ToolResult::err("set_waybar_mode: invalid mode (compact|full)")),
+        _ => {
+            return Ok(ToolResult::err(
+                "set_waybar_mode: invalid mode (compact|full)",
+            ))
+        }
     }
-    exec::run_privileged(&[
-        "/usr/local/bin/diad-conf-write",
-        "waybar-mode",
-        mode,
-    ])
+    exec::run_privileged(&["/usr/local/bin/diad-conf-write", "waybar-mode", mode])
 }
 
 #[cfg(test)]
@@ -102,7 +93,14 @@ mod tests {
 
     #[test]
     fn keybinding_accepts_legit_keysyms() {
-        for ok in ["Mod4+Return", "Ctrl+Shift+c", "XF86AudioRaiseVolume", "Super_L", "1", "P"] {
+        for ok in [
+            "Mod4+Return",
+            "Ctrl+Shift+c",
+            "XF86AudioRaiseVolume",
+            "Super_L",
+            "1",
+            "P",
+        ] {
             assert!(valid_keysym(ok), "rejected valid keysym: {ok}");
         }
     }

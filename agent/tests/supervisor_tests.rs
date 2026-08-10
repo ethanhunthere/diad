@@ -18,7 +18,9 @@ use std::process::Command;
 
 /// Paths relative to the crate root (`agent/`).
 fn repo_path(rel: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join(rel)
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join(rel)
 }
 
 const SUPERVISOR_REL: &str = "os/archiso/airootfs/usr/local/bin/diad-supervisor.sh";
@@ -26,7 +28,10 @@ const SUPERVISOR_REL: &str = "os/archiso/airootfs/usr/local/bin/diad-supervisor.
 fn supervisor_script() -> String {
     let path = repo_path(SUPERVISOR_REL);
     std::fs::read_to_string(&path).unwrap_or_else(|e| {
-        panic!("cannot read {SUPERVISOR_REL} (resolved to {}): {e}", path.display())
+        panic!(
+            "cannot read {SUPERVISOR_REL} (resolved to {}): {e}",
+            path.display()
+        )
     })
 }
 
@@ -119,10 +124,7 @@ fn supervisor_runs_a_waybar_watchdog_loop() {
         script.contains("pgrep -x waybar"),
         "watchdog must check waybar by exact process name"
     );
-    assert!(
-        script.contains("sleep 10"),
-        "watchdog cadence must be 10 s"
-    );
+    assert!(script.contains("sleep 10"), "watchdog cadence must be 10 s");
 
     // Relaunch must use the same flags Sway uses (spec 6.6 / sway config),
     // so the relaunched bar looks identical and honors conf-write changes.

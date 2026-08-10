@@ -7,7 +7,7 @@
 //! - `notify`       — `notify-send` (requires `mako` running on Sway).
 //! - `dnd`          — `makoctl mode -a dnd` / `-r dnd`.
 //! - `night_light`  — `gammastep -O <temp>` (detached, keeps the session's
-//!                    temperature) / `gammastep -x` to reset.
+//!   temperature) / `gammastep -x` to reset.
 //!
 //! SECURITY CONTRACT: temperatures are parsed as integers and clamped to a
 //! sane display range; titles/bodies go through `Command::new(...).args(...)`
@@ -66,9 +66,7 @@ pub fn night_light(enabled: bool, temperature: u32) -> anyhow::Result<ToolResult
         .stderr(std::process::Stdio::null())
         .spawn()
     {
-        Ok(_) => Ok(ToolResult::ok(format!(
-            "night light set to {temp} K"
-        ))),
+        Ok(_) => Ok(ToolResult::ok(format!("night light set to {temp} K"))),
         Err(e) => Ok(ToolResult::err(format!(
             "gammastep failed to launch: {e} (is gammastep installed?)"
         ))),

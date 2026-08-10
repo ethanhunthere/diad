@@ -96,7 +96,11 @@ fn run_privileged_env(args: &[&str], envs: &[(&str, &str)]) -> anyhow::Result<To
             )));
         }
         let program = args.first().copied().unwrap_or("?");
-        let output = match Command::new("sudo").args(args).envs(envs.iter().copied()).output() {
+        let output = match Command::new("sudo")
+            .args(args)
+            .envs(envs.iter().copied())
+            .output()
+        {
             Ok(o) => o,
             Err(e) => {
                 return Ok(ToolResult::err(format!(

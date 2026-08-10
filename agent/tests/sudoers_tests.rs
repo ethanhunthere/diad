@@ -20,15 +20,16 @@ use std::path::PathBuf;
 
 /// Paths relative to the crate root (`agent/`).
 fn repo_path(rel: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join(rel)
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join(rel)
 }
 
 /// Read a repo file, panicking with the path on failure (test setup).
 fn read_repo_file(rel: &str) -> String {
     let path = repo_path(rel);
-    std::fs::read_to_string(&path).unwrap_or_else(|e| {
-        panic!("cannot read {rel} (resolved to {}): {e}", path.display())
-    })
+    std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("cannot read {rel} (resolved to {}): {e}", path.display()))
 }
 
 const SUDOERS_REL: &str = "os/archiso/airootfs/etc/sudoers.d/diad";
@@ -46,7 +47,15 @@ const FORBIDDEN: &[&str] = &["rm", "sed", "tee"];
 /// Variable-arg destructive binaries that must be reachable ONLY via a
 /// validated `/usr/local/bin/diad-*` wrapper.
 const WRAPPED_ONLY: &[&str] = &[
-    "mount", "umount", "mkfs", "fsck", "parted", "dd", "wget", "install", "sha256sum",
+    "mount",
+    "umount",
+    "mkfs",
+    "fsck",
+    "parted",
+    "dd",
+    "wget",
+    "install",
+    "sha256sum",
 ];
 
 /// Wrapper scripts the agent tools invoke (or that replace a raw entry).
@@ -100,7 +109,11 @@ fn basename_of(entry: &str) -> &str {
 #[test]
 fn sudoers_has_no_shell_capable_or_forbidden_binaries() {
     let content = read_repo_file(SUDOERS_REL);
-    let banned: Vec<&str> = SHELL_CAPABLE.iter().chain(FORBIDDEN.iter()).copied().collect();
+    let banned: Vec<&str> = SHELL_CAPABLE
+        .iter()
+        .chain(FORBIDDEN.iter())
+        .copied()
+        .collect();
 
     for entry in entries(&content) {
         let bin = basename_of(&entry);
@@ -114,8 +127,9 @@ fn sudoers_has_no_shell_capable_or_forbidden_binaries() {
     // Belt-and-braces: the names must not appear even inside comment lines.
     for b in FORBIDDEN {
         assert!(
-            !content.lines().any(|l| l.trim_start().starts_with('#') == false
-                && l.contains(&format!("/{b} "))),
+            !content
+                .lines()
+                .any(|l| !l.trim_start().starts_with('#') && l.contains(&format!("/{b} "))),
             "forbidden binary '{b}' still present in sudoers"
         );
     }

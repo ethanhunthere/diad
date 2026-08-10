@@ -224,11 +224,7 @@ fn parse_trashinfo(body: &str) -> (Option<String>, Option<String>) {
 
 /// Restore a trashed entry to its original location.
 pub fn trash_restore(name: &str) -> anyhow::Result<ToolResult> {
-    if name.is_empty()
-        || name.starts_with('/')
-        || name.contains('/')
-        || name.contains("..")
-    {
+    if name.is_empty() || name.starts_with('/') || name.contains('/') || name.contains("..") {
         return Ok(ToolResult::err("trash: invalid entry name"));
     }
     let info = info_dir().join(format!("{name}.trashinfo"));
@@ -259,13 +255,18 @@ pub fn trash_restore(name: &str) -> anyhow::Result<ToolResult> {
     }
     if let Some(parent) = dest.parent() {
         if let Err(e) = std::fs::create_dir_all(parent) {
-            return Ok(ToolResult::err(format!("trash: cannot recreate parent: {e}")));
+            return Ok(ToolResult::err(format!(
+                "trash: cannot recreate parent: {e}"
+            )));
         }
     }
     match std::fs::rename(&src, &dest) {
         Ok(()) => {
             let _ = std::fs::remove_file(&info);
-            Ok(ToolResult::ok(format!("restored {name} → {}", dest.display())))
+            Ok(ToolResult::ok(format!(
+                "restored {name} → {}",
+                dest.display()
+            )))
         }
         Err(e) => Ok(ToolResult::err(format!("trash: restore failed: {e}"))),
     }
@@ -303,8 +304,8 @@ pub fn trash_empty() -> anyhow::Result<ToolResult> {
 /// `create_default_registry`; `trash_empty` is confirm-gated upstream in
 /// the orchestrator's `CONFIRM_TOOLS`).
 pub fn register_trash_tools(registry: &mut crate::tools::ToolRegistry) {
-    use std::sync::Arc;
     use serde_json::json;
+    use std::sync::Arc;
 
     macro_rules! reg {
         ($reg:expr, $name:expr, $desc:expr, $schema:expr, $f:expr) => {
@@ -374,11 +375,11 @@ mod tests {
         // Sidecar format per the freedesktop spec.
         let info = std::fs::read_to_string(info_dir().join("notes.txt.trashinfo")).unwrap();
         assert!(info.starts_with("[Trash Info]\n"), "header: {info}");
-        assert!(info.contains(&format!("Path={}", file.display())), "path: {info}");
         assert!(
-            info.contains("DeletionDate="),
-            "RFC3339 timestamp: {info}"
+            info.contains(&format!("Path={}", file.display())),
+            "path: {info}"
         );
+        assert!(info.contains("DeletionDate="), "RFC3339 timestamp: {info}");
 
         // trash_list reports the entry.
         let list = trash_list().unwrap();
@@ -406,8 +407,18 @@ mod tests {
         }
         let r = trash_empty().unwrap();
         assert!(r.success, "{}", r.error.unwrap_or_default());
-        assert_eq!(std::fs::read_dir(files_dir()).map(|d| d.count()).unwrap_or(0), 0);
-        assert_eq!(std::fs::read_dir(info_dir()).map(|d| d.count()).unwrap_or(0), 0);
+        assert_eq!(
+            std::fs::read_dir(files_dir())
+                .map(|d| d.count())
+                .unwrap_or(0),
+            0
+        );
+        assert_eq!(
+            std::fs::read_dir(info_dir())
+                .map(|d| d.count())
+                .unwrap_or(0),
+            0
+        );
         let _ = home;
     }
 
@@ -415,7 +426,12 @@ mod tests {
     fn trash_move_rejects_unsafe_paths() {
         let home = tmp_home("unsafe");
         let _ = home;
-        for bad in ["/etc/passwd;rm -rf /", "~/notes.txt", "relative.txt", "/tmp/../etc/x"] {
+        for bad in [
+            "/etc/passwd;rm -rf /",
+            "~/notes.txt",
+            "relative.txt",
+            "/tmp/../etc/x",
+        ] {
             let r = trash_move(bad).unwrap();
             assert!(!r.success, "must reject '{bad}'");
         }

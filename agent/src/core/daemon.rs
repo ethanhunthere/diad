@@ -436,9 +436,11 @@ impl Drop for InflightGuard {
 /// nothing in flight must never wrap to usize::MAX (that would pin the
 /// `streaming` status on forever — F-19).
 pub(crate) fn end_turn(state: &DaemonState) {
-    let _ = state.streaming.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| {
-        Some(n.saturating_sub(1))
-    });
+    let _ = state
+        .streaming
+        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| {
+            Some(n.saturating_sub(1))
+        });
 }
 
 pub(crate) async fn handle_chat_send(state: &DaemonState, conn: &Conn, id: String, text: String) {
@@ -1305,7 +1307,12 @@ fn parse_trash_entries(output: &str) -> Vec<crate::core::protocol::TrashEntryDto
         let mut parts = line.splitn(4, " | ");
         let name = parts.next().unwrap_or("").trim();
         let deleted_at = parts.next().unwrap_or("").trim();
-        let size = parts.next().unwrap_or("0").trim().parse::<u64>().unwrap_or(0);
+        let size = parts
+            .next()
+            .unwrap_or("0")
+            .trim()
+            .parse::<u64>()
+            .unwrap_or(0);
         let original_path = parts.next().unwrap_or("").trim();
         if !name.is_empty() {
             entries.push(crate::core::protocol::TrashEntryDto {
@@ -1652,7 +1659,10 @@ mod tests {
         // Status snapshot reflects the counter as a bool.
         assert!(!matches!(
             state.status_snapshot(),
-            ServerMsg::Status { streaming: true, .. }
+            ServerMsg::Status {
+                streaming: true,
+                ..
+            }
         ));
     }
 
@@ -1666,7 +1676,10 @@ mod tests {
         assert_eq!(state.streaming.load(Ordering::SeqCst), 0);
         assert!(!matches!(
             state.status_snapshot(),
-            ServerMsg::Status { streaming: true, .. }
+            ServerMsg::Status {
+                streaming: true,
+                ..
+            }
         ));
     }
 
@@ -1763,7 +1776,10 @@ mod tests {
 
         // None of the above should have crashed or mutated the config.
         let cfg = state.config.read().unwrap();
-        assert_eq!(cfg.auto_save_interval, DiadConfig::default().auto_save_interval);
+        assert_eq!(
+            cfg.auto_save_interval,
+            DiadConfig::default().auto_save_interval
+        );
         assert_eq!(cfg.max_history, DiadConfig::default().max_history);
     }
 }
