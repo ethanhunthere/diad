@@ -36,6 +36,7 @@ pkg-config
 playerctl
 polkit
 power-profiles-daemon
+pv
 rustup
 slurp
 sudo
@@ -53,5 +54,6 @@ wget
 wireplumber
 wl-clipboard
 wofi
+zstd
 xdg-desktop-portal-wlr
 zram-generator
