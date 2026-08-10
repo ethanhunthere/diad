@@ -100,13 +100,18 @@ export function ExplorerPanel() {
 
         {loading && entries.length === 0 && (
           <div className="space-y-1.5 px-2 py-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-6 animate-pulse rounded bg-surface-2"
-                style={{ width: `${60 + ((i * 37) % 35)}%` }}
-              />
-            ))}
+            {Array.from({ length: 8 }, (_, i) => {
+              // F-17: key by the deterministic width value, never the index —
+              // index-as-key mis-associates DOM across re-renders.
+              const w = 60 + ((i * 37) % 35);
+              return (
+                <div
+                  key={w}
+                  className="h-6 animate-pulse rounded bg-surface-2"
+                  style={{ width: `${w}%` }}
+                />
+              );
+            })}
           </div>
         )}
 

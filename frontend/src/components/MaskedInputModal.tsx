@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, KeyRound } from "lucide-react";
 import { useStore, sendMsg } from "../stores/useStore";
+import { useFocusTrap } from "./useFocusTrap";
 
 /**
  * Masked input modal — shown when the daemon asks for a secret
@@ -13,6 +14,23 @@ export function MaskedInputModal() {
   const [value, setValue] = useState("");
   const [show, setShow] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  const cancel = () => {
+    if (!pending) return;
+    sendMsg({ type: "secret_cancel", id: pending.id });
+    setPendingSecret(null);
+  };
+
+  const submit = () => {
+    if (!pending || !value) return;
+    sendMsg({ type: "secret_submit", id: pending.id, value });
+    setPendingSecret(null);
+  };
+
+  // F-16: focus trap + Escape parity + focus restore (Escape now cancels
+  // at the dialog level, so the input only handles Enter).
+  useFocusTrap(dialogRef, { active: !!pending, onEscape: cancel });
 
   useEffect(() => {
     if (pending) {
@@ -24,20 +42,15 @@ export function MaskedInputModal() {
 
   if (!pending) return null;
 
-  const cancel = () => {
-    sendMsg({ type: "secret_cancel", id: pending.id });
-    setPendingSecret(null);
-  };
-
-  const submit = () => {
-    if (!value) return;
-    sendMsg({ type: "secret_submit", id: pending.id, value });
-    setPendingSecret(null);
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="glass w-[420px] rounded-panel p-5 shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Enter secret"
+        className="glass w-[420px] rounded-panel p-5 shadow-2xl"
+      >
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-panel border border-copper/30 bg-copper/10 text-copper-hover">
             <KeyRound size={17} />
@@ -58,7 +71,6 @@ export function MaskedInputModal() {
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") submit();
-              if (e.key === "Escape") cancel();
             }}
             className="control w-full pr-9 font-mono"
           />

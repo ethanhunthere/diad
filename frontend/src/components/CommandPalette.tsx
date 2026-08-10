@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useStore, sendMsg } from "../stores/useStore";
 import { nextId } from "../lib/format";
+import { useFocusTrap } from "./useFocusTrap";
 
 interface PaletteItem {
   id: string;
@@ -34,10 +35,14 @@ export function CommandPalette() {
   const [query, setQuery] = useState("");
   const [idx, setIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // F-16: focus trap + Escape parity for the palette overlay.
+  useFocusTrap(overlayRef, { active: true, onEscape: () => setPaletteOpen(false) });
 
   const items = useMemo<PaletteItem[]>(() => {
     const base: PaletteItem[] = [
@@ -114,6 +119,10 @@ export function CommandPalette() {
 
   return (
     <div
+      ref={overlayRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Command palette"
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[16vh] backdrop-blur-sm animate-fade-in"
       onMouseDown={close}
     >

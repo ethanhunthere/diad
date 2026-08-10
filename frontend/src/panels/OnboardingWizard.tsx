@@ -40,7 +40,12 @@ export function OnboardingWizard() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Onboarding"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in"
+    >
       <div className="glass w-[480px] rounded-panel p-6 shadow-2xl">
         <div className="mb-1 flex items-center gap-2 text-[11px] uppercase tracking-wider text-faint">
           <span>Step {onboarding.kind === "welcome" ? 1 : onboarding.kind === "provider" ? 2 : onboarding.kind === "wifi" ? 3 : 4} of 4</span>

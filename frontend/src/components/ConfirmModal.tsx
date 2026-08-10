@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { AlertTriangle, Check, X } from "lucide-react";
 import { useStore, sendMsg } from "../stores/useStore";
+import { useFocusTrap } from "./useFocusTrap";
 
 /**
  * Confirmation modal — shown when the daemon needs an explicit
@@ -9,6 +10,16 @@ import { useStore, sendMsg } from "../stores/useStore";
 export function ConfirmModal() {
   const pending = useStore((s) => s.pendingConfirm);
   const setPendingConfirm = useStore((s) => s.setPendingConfirm);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  const answer = (yes: boolean) => {
+    if (!pending) return;
+    sendMsg({ type: yes ? "tool_approve" : "tool_reject", id: pending.id });
+    setPendingConfirm(null);
+  };
+
+  // F-16: focus trap + Escape parity + focus restore.
+  useFocusTrap(dialogRef, { active: !!pending, onEscape: () => answer(false) });
 
   useEffect(() => {
     if (!pending) return;
@@ -22,14 +33,15 @@ export function ConfirmModal() {
 
   if (!pending) return null;
 
-  const answer = (yes: boolean) => {
-    sendMsg({ type: yes ? "tool_approve" : "tool_reject", id: pending.id });
-    setPendingConfirm(null);
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="glass w-[420px] rounded-panel p-5 shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Confirmation required"
+        className="glass w-[420px] rounded-panel p-5 shadow-2xl"
+      >
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-panel border border-warn/30 bg-warn/10 text-warn">
             <AlertTriangle size={17} />
