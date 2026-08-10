@@ -1,22 +1,32 @@
 #!/usr/bin/env sh
 # =============================================================================
-# DIAD — Brave Browser launcher
+# DIAD — Browser launcher shim
 # =============================================================================
-# Brave ships via Flatpak (Flathub) in the DIAD ISO because the `brave-bin`
-# AUR package cannot be built inside mkarchiso. The first-run wizard installs
-# it (`diad-first-run.sh` → "Install Brave"); this shim lets Sway and the
-# supervisor launch it with a plain `brave` command.
+# One command (`brave`) for every DIAD launch site: the DIAD AGENT GUI app
+# window (workspace 1), the plain browser window (workspace 2), and the
+# launchpad (workspace 3). Resolved in this order (MASTER FIX S1 — a browser
+# is GUARANTEED on the ISO):
 #
-# Exits QUIETLY (no stderr spam) while the Flatpak app is not installed —
-# the supervisor polls for it every 5 s and retries.
+#   1. Flatpak Brave (com.brave.Browser) — installed by the first-run wizard
+#      when a network is available. Ships via Flathub because `brave-bin` is
+#      an AUR-only package that cannot be built inside mkarchiso.
+#   2. chromium — ships in the ISO package set, so a browser window can open
+#      even with no network and before the wizard runs.
+#   3. notify-send + exit 1 — never silent: the supervisor logs the failure
+#      and the user sees why nothing opened.
+#
+# `--app=<url>` arguments pass through unchanged (both Brave and Chromium
+# support chromeless app windows). `--new-window` also passes through.
 # =============================================================================
 
-if ! command -v flatpak >/dev/null 2>&1; then
-    exit 1
+if command -v flatpak >/dev/null 2>&1 \
+    && flatpak list --app --columns=application 2>/dev/null | grep -qx 'com.brave.Browser'; then
+    exec /usr/bin/flatpak run com.brave.Browser "$@"
 fi
 
-if ! flatpak list --app --columns=application 2>/dev/null | grep -qx 'com.brave.Browser'; then
-    exit 1
+if command -v chromium >/dev/null 2>&1; then
+    exec /usr/bin/chromium "$@"
 fi
 
-exec /usr/bin/flatpak run com.brave.Browser "$@"
+notify-send "DIAD" "No browser available (Flatpak Brave not installed and chromium missing)" 2>/dev/null || true
+exit 1
