@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, CheckCircle2, XCircle, Loader2, Wrench } from "lucide-react";
-import { useStore, sendMsg } from "../store/useStore";
+import { useStore, sendMsg } from "../stores/useStore";
 import type { ToolCallCard as ToolCard } from "../lib/types";
 
 /**

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useStore, sendMsg } from "../store/useStore";
+import { useStore, sendMsg } from "../stores/useStore";
 
 /**
  * Global keybindings (DIAD AGENT spec):

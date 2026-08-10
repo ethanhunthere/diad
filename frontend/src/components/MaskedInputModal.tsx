@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, KeyRound } from "lucide-react";
-import { useStore, sendMsg } from "../store/useStore";
+import { useStore, sendMsg } from "../stores/useStore";
 
 /**
  * Masked input modal — shown when the daemon asks for a secret

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { Envelope, ServerMsg } from "../lib/types";
 import { nextId } from "../lib/format";
-import { useStore } from "../store/useStore";
+import { useStore } from "../stores/useStore";
 
 /**
  * Owns the WebSocket connection to the DIAD AGENT daemon

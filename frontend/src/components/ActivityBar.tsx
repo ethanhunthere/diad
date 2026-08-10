@@ -12,7 +12,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
-import { useStore } from "../store/useStore";
+import { useStore } from "../stores/useStore";
 import type { ViewId } from "../lib/types";
 import { VIEW_LABELS } from "../lib/format";
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FileDiff, Check, X } from "lucide-react";
-import { useStore, sendMsg } from "../store/useStore";
+import { useStore, sendMsg } from "../stores/useStore";
 import type { EditDiffCard as DiffCard } from "../lib/types";
 import { basename } from "../lib/format";
 

@@ -1,5 +1,5 @@
 import { Bot, ChevronRight, TerminalSquare, Sparkles } from "lucide-react";
-import { useStore, sendMsg } from "../store/useStore";
+import { useStore, sendMsg } from "../stores/useStore";
 import { nextId } from "../lib/format";
 import type { ProviderEntryDto } from "../lib/types";
 

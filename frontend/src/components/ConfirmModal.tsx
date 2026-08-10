@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { AlertTriangle, Check, X } from "lucide-react";
-import { useStore, sendMsg } from "../store/useStore";
+import { useStore, sendMsg } from "../stores/useStore";
 
 /**
  * Confirmation modal — shown when the daemon needs an explicit

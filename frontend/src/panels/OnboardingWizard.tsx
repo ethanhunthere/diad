@@ -8,7 +8,7 @@ import {
   Sparkles,
   ShieldCheck,
 } from "lucide-react";
-import { useStore, sendMsg } from "../store/useStore";
+import { useStore, sendMsg } from "../stores/useStore";
 import { nextId } from "../lib/format";
 
 /**

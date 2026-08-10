@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Send, CornerDownLeft } from "lucide-react";
-import { useStore } from "../store/useStore";
+import { useStore } from "../stores/useStore";
 
 const SLASH_COMMANDS: { cmd: string; desc: string }[] = [
   { cmd: "/help", desc: "Show help" },

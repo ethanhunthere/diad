@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Save, RotateCcw, Palette, Folder, Shield, KeyRound } from "lucide-react";
-import { useStore, sendMsg } from "../store/useStore";
+import { useStore, sendMsg } from "../stores/useStore";
 
 const THEMES = [
   { id: "copper", label: "Copper Obsidian", swatch: "#C87F4A" },

@@ -13,7 +13,7 @@ import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { keymap } from "@codemirror/view";
 import type { EditorView, ViewUpdate } from "@codemirror/view";
 import { X, Save, CheckCircle2, FileText, Sparkles, Wand2 } from "lucide-react";
-import { useStore, sendMsg } from "../store/useStore";
+import { useStore, sendMsg } from "../stores/useStore";
 import { nextId, basename } from "../lib/format";
 
 function langFor(path: string) {

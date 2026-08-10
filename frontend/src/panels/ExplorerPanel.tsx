@@ -7,7 +7,7 @@ import {
   RefreshCw,
   Home,
 } from "lucide-react";
-import { useStore, sendMsg } from "../store/useStore";
+import { useStore, sendMsg } from "../stores/useStore";
 import { nextId, formatBytes } from "../lib/format";
 import type { FileEntryDto } from "../lib/types";
 

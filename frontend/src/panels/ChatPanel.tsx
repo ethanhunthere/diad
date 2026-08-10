@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { useStore, sendMsg } from "../store/useStore";
+import { useStore, sendMsg } from "../stores/useStore";
 import { nextId } from "../lib/format";
 import type { ChatMessage } from "../lib/types";
-import { ToolCallCard } from "./ToolCallCard";
-import { EditDiffCard } from "./EditDiffCard";
-import { ChatInput } from "./ChatInput";
+import { ToolCallCard } from "../components/ToolCallCard";
+import { EditDiffCard } from "../components/EditDiffCard";
+import { ChatInput } from "../components/ChatInput";
 
 function MessageBubble({ m }: { m: ChatMessage }) {
   if (m.role === "system") {

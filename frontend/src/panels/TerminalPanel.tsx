@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
-import { useStore } from "../store/useStore";
+import { useStore } from "../stores/useStore";
 
 /**
  * Terminal panel — xterm.js wired to the daemon's PTY session

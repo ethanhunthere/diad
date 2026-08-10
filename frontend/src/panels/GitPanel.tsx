@@ -9,8 +9,8 @@ import {
   CircleDot,
   Loader2,
 } from "lucide-react";
-import { useStore } from "../store/useStore";
-import { apiGet, apiPost } from "../lib/api";
+import { useStore } from "../stores/useStore";
+import { apiGet, apiPost } from "../services/api";
 
 interface GitStatus {
   path: string;

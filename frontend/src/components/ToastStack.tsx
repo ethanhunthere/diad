@@ -1,5 +1,5 @@
 import { CheckCircle2, Info, AlertTriangle, XCircle, X } from "lucide-react";
-import { useStore } from "../store/useStore";
+import { useStore } from "../stores/useStore";
 
 const ICONS = {
   info: Info,

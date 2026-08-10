@@ -13,8 +13,8 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
-import { useStore } from "../store/useStore";
-import { apiGet, apiPost } from "../lib/api";
+import { useStore } from "../stores/useStore";
+import { apiGet, apiPost } from "../services/api";
 
 interface BreakpointDto {
   number: number;

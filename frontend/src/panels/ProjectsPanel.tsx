@@ -11,9 +11,9 @@ import {
   Loader2,
   Clock,
 } from "lucide-react";
-import { useStore, sendMsg } from "../store/useStore";
+import { useStore, sendMsg } from "../stores/useStore";
 import { nextId } from "../lib/format";
-import { apiGet } from "../lib/api";
+import { apiGet } from "../services/api";
 
 interface Project {
   name: string;

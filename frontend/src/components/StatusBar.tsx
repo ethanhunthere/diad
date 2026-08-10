@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { BatteryMedium, Wifi, HardDrive } from "lucide-react";
-import { useStore, sendMsg } from "../store/useStore";
+import { useStore, sendMsg } from "../stores/useStore";
 import { nextId, shortenPath } from "../lib/format";
 
 /**

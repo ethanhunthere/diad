@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw, Eye, ExternalLink, FileCode2, Globe } from "lucide-react";
-import { useStore } from "../store/useStore";
-import { apiGet } from "../lib/api";
+import { useStore } from "../stores/useStore";
+import { apiGet } from "../services/api";
 
 /**
  * Preview panel — live HTML preview.
