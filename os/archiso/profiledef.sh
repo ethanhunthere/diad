@@ -57,7 +57,15 @@ file_permissions=(
     ["/etc/systemd/system/getty@tty1.service.d/autologin.conf"]="0:0:644"
 
     # --- udev rules ---
+    ["/etc/udev/rules.d/98-diad-runtime-pm.rules"]="0:0:644"
     ["/etc/udev/rules.d/99-diad-perf-tier.rules"]="0:0:644"
+
+    # --- system tuning (sysctl / zram / modules / presets / tmpfiles) ---
+    ["/etc/sysctl.d/99-diad.conf"]="0:0:644"
+    ["/etc/zram-generator.conf"]="0:0:644"
+    ["/etc/modprobe.d/diad-blacklist.conf"]="0:0:644"
+    ["/etc/tmpfiles.d/diad-power.conf"]="0:0:644"
+    ["/usr/share/systemd/diad.preset"]="0:0:644"
 
     # --- initramfs (archiso hooks) ---
     ["/etc/mkinitcpio.conf.d/archiso.conf"]="0:0:644"

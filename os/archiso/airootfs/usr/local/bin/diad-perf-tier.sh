@@ -75,4 +75,36 @@ if command -v blockdev >/dev/null 2>&1; then
     done
 fi
 
+# ---- CPU governor (spec 4.8) -----------------------------------------------
+# schedutil everywhere; powersave on the weakest tiers while on battery.
+GOVERNOR="schedutil"
+ON_BATTERY="no"
+for bat in /sys/class/power_supply/BAT*; do
+    [[ -e "${bat}/status" ]] || continue
+    if [[ "$(cat "${bat}/status" 2>/dev/null)" == "Discharging" ]]; then
+        ON_BATTERY="yes"
+    fi
+done
+if [[ "${ON_BATTERY}" == "yes" ]] && [[ "${TIER}" == "ULTRA_LOW" || "${TIER}" == "LOW" ]]; then
+    GOVERNOR="powersave"
+fi
+for gov in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+    [[ -w "${gov}" ]] || continue
+    echo "${GOVERNOR}" > "${gov}" 2>/dev/null \
+        && log "perf-tier: governor=${GOVERNOR} (${gov})."
+done
+
+# ---- zram sizing (spec 4.2) --------------------------------------------------
+# ULTRA_LOW (<= 2 GB RAM) gets 100% of RAM as zstd-compressed swap; every
+# other tier keeps the default 50%. Only rewritten when the size changes.
+ZRAM_CONF="/etc/zram-generator.conf"
+ZRAM_SIZE_EXPR="ram / 2"
+[[ "${TIER}" == "ULTRA_LOW" ]] && ZRAM_SIZE_EXPR="ram"
+if [[ -f "${ZRAM_CONF}" ]] && ! grep -q "^zram-size = ${ZRAM_SIZE_EXPR}$" "${ZRAM_CONF}"; then
+    sed -i "s/^zram-size = .*/zram-size = ${ZRAM_SIZE_EXPR}/" "${ZRAM_CONF}" 2>/dev/null \
+        && log "perf-tier: zram-size=${ZRAM_SIZE_EXPR}."
+    systemctl restart systemd-zram-setup@zram0.service >/dev/null 2>&1 \
+        && log "perf-tier: zram0 reconfigured."
+fi
+
 exit 0

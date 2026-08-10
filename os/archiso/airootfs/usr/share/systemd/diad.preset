@@ -1,0 +1,37 @@
+# =============================================================================
+# DIAD — systemd presets (spec 4.3 / 4.4)
+# =============================================================================
+# Presets decide what `systemctl preset-all` enables on first boot.
+# DIAD pays only for what it uses (P3):
+#   • everything DIAD needs          → enable
+#   • services with heavy idle cost  → disable (lazy-start on demand)
+#   • things that must never run     → mask
+#
+# Lazy services (bluetooth, cups, avahi, geoclue, ModemManager): the agent
+# starts them on first use and stops them when idle (bluetooth) or they
+# socket-activate. Packages that are not installed simply have no unit —
+# preset lines for them are harmless no-ops.
+
+# --- DIAD's own units: on -----------------------------------------------
+enable diad-firewall.service
+enable diad-perf-tier.service
+enable fstrim.timer
+enable NetworkManager.service
+enable power-profiles-daemon.service
+
+# --- Heavy idle-cost services: off until needed --------------------------
+disable bluetooth.service
+disable cups.service
+disable avahi-daemon.service
+disable geoclue.service
+disable ModemManager.service
+disable tracker-miner-fs-3.service
+disable tracker-miner-fs.service
+
+# --- Never run on DIAD ----------------------------------------------------
+mask systemd-rfkill-poll.service
+mask debug-shell.service
+mask serial-getty@.service
+
+# --- Default: leave everything else at distro defaults --------------------
+enable *

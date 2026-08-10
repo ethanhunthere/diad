@@ -210,6 +210,7 @@ pub async fn serve(state: Arc<DaemonState>, port: u16) -> anyhow::Result<()> {
 
     spawn_idle_monitor(Arc::clone(&state));
     spawn_env_monitor(Arc::clone(&state), env_flag);
+    spawn_bluetooth_watchdog(Arc::clone(&state));
 
     axum::serve(listener, router(state)).await?;
     Ok(())
@@ -258,6 +259,35 @@ fn trim_history(state: &DaemonState, keep: usize) {
         let excess = history.len() - keep;
         history.drain(..excess);
     }
+}
+
+/// Lazy bluetooth (spec 4.3): bluetooth.service starts on first tool use
+/// (inside the tools themselves) and stops here after 10 idle minutes.
+fn spawn_bluetooth_watchdog(state: Arc<DaemonState>) {
+    let flag = state.tasks.register("bluetooth-idle-stop", 60);
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+            if !flag.load(Ordering::SeqCst) {
+                continue; // idle stage: nothing to stop, nobody listening
+            }
+            if crate::tools::hardware::hardware_universal::bluetooth_idle_secs() < 600 {
+                continue;
+            }
+            if let Ok(res) =
+                crate::tools::system::exec::run(&["systemctl", "is-active", "bluetooth"])
+            {
+                if res.success && res.output.trim() == "active" {
+                    let _ = crate::tools::system::exec::run_privileged(&[
+                        "systemctl",
+                        "stop",
+                        "bluetooth",
+                    ]);
+                    tracing::info!("bluetooth: stopped after 10 min idle");
+                }
+            }
+        }
+    });
 }
 
 /// Battery + thermal awareness (spec 3.7 / 10.x). Reads sysfs directly —

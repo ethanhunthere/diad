@@ -1,0 +1,7 @@
+# =============================================================================
+# DIAD — runtime power management for hot-added devices (spec 4.8)
+# =============================================================================
+# PCI and USB devices get runtime PM enabled as they appear, so idle
+# peripherals drop to low power automatically (especially on battery).
+ACTION=="add", SUBSYSTEM=="pci", ATTR{power/control}="auto"
+ACTION=="add", SUBSYSTEM=="usb", DRIVER=="usb", ATTR{power/autosuspend}="2"

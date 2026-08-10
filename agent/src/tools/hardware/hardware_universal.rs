@@ -652,12 +652,42 @@ pub fn set_audio_profile(profile: &str) -> anyhow::Result<ToolResult> {
 // ===========================================================================
 
 /// Scan for nearby Bluetooth devices.
+/// Epoch seconds of the last bluetooth tool use. Spec 4.3: bluetooth.service
+/// is started lazily on first use and stopped after 10 min without one.
+static BLUETOOTH_LAST_USE: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+
+/// Seconds since any bluetooth tool ran (`i64::MAX` when never).
+pub fn bluetooth_idle_secs() -> i64 {
+    let last = BLUETOOTH_LAST_USE.load(std::sync::atomic::Ordering::SeqCst);
+    if last == 0 {
+        return i64::MAX;
+    }
+    chrono::Utc::now().timestamp().saturating_sub(last)
+}
+
+/// Lazy-start bluetooth.service when a bluetooth tool runs (spec 4.3) and
+/// stamp the last-use time so the idle watchdog can stop it later.
+fn ensure_bluetooth_service() {
+    BLUETOOTH_LAST_USE.store(
+        chrono::Utc::now().timestamp(),
+        std::sync::atomic::Ordering::SeqCst,
+    );
+    if let Ok(res) = run(&["systemctl", "is-active", "bluetooth"]) {
+        if res.success && res.output.trim() == "active" {
+            return;
+        }
+    }
+    let _ = run_privileged(&["systemctl", "start", "bluetooth"]);
+}
+
 pub fn bluetooth_scan() -> anyhow::Result<ToolResult> {
+    ensure_bluetooth_service();
     run(&["bluetoothctl", "--timeout", "12", "scan", "on"])
 }
 
 /// Pair with a device by MAC.
 pub fn bluetooth_pair(mac: &str) -> anyhow::Result<ToolResult> {
+    ensure_bluetooth_service();
     if !valid_value(mac) {
         return Ok(ToolResult::err("invalid MAC address"));
     }
@@ -666,6 +696,7 @@ pub fn bluetooth_pair(mac: &str) -> anyhow::Result<ToolResult> {
 
 /// Connect to a paired device.
 pub fn bluetooth_connect(mac: &str) -> anyhow::Result<ToolResult> {
+    ensure_bluetooth_service();
     if !valid_value(mac) {
         return Ok(ToolResult::err("invalid MAC address"));
     }
@@ -674,6 +705,7 @@ pub fn bluetooth_connect(mac: &str) -> anyhow::Result<ToolResult> {
 
 /// Disconnect a device.
 pub fn bluetooth_disconnect(mac: &str) -> anyhow::Result<ToolResult> {
+    ensure_bluetooth_service();
     if !valid_value(mac) {
         return Ok(ToolResult::err("invalid MAC address"));
     }
@@ -682,6 +714,7 @@ pub fn bluetooth_disconnect(mac: &str) -> anyhow::Result<ToolResult> {
 
 /// Forget (remove) a device.
 pub fn bluetooth_forget(mac: &str) -> anyhow::Result<ToolResult> {
+    ensure_bluetooth_service();
     if !valid_value(mac) {
         return Ok(ToolResult::err("invalid MAC address"));
     }
@@ -690,6 +723,7 @@ pub fn bluetooth_forget(mac: &str) -> anyhow::Result<ToolResult> {
 
 /// Connect a paired audio device as A2DP.
 pub fn bluetooth_connect_audio(mac: &str) -> anyhow::Result<ToolResult> {
+    ensure_bluetooth_service();
     if !valid_value(mac) {
         return Ok(ToolResult::err("invalid MAC address"));
     }
@@ -703,6 +737,7 @@ pub fn bluetooth_connect_audio(mac: &str) -> anyhow::Result<ToolResult> {
 
 /// Send a file over Bluetooth (obex).
 pub fn bluetooth_file_transfer(mac: &str, file: &str) -> anyhow::Result<ToolResult> {
+    ensure_bluetooth_service();
     if !valid_value(mac) || !valid_path(file) {
         return Ok(ToolResult::err("invalid MAC or path"));
     }
@@ -711,6 +746,7 @@ pub fn bluetooth_file_transfer(mac: &str, file: &str) -> anyhow::Result<ToolResu
 
 /// Read a Bluetooth device's battery level.
 pub fn bluetooth_get_battery(mac: &str) -> anyhow::Result<ToolResult> {
+    ensure_bluetooth_service();
     if !valid_value(mac) {
         return Ok(ToolResult::err("invalid MAC address"));
     }
@@ -747,6 +783,7 @@ pub fn bluetooth_get_battery(mac: &str) -> anyhow::Result<ToolResult> {
 
 /// Make the adapter discoverable.
 pub fn bluetooth_set_visibility(visible: bool) -> anyhow::Result<ToolResult> {
+    ensure_bluetooth_service();
     if visible {
         run(&["bluetoothctl", "discoverable", "on"])
     } else {
@@ -756,6 +793,7 @@ pub fn bluetooth_set_visibility(visible: bool) -> anyhow::Result<ToolResult> {
 
 /// Auto-connect policy for a device.
 pub fn bluetooth_auto_connect(mac: &str, enabled: bool) -> anyhow::Result<ToolResult> {
+    ensure_bluetooth_service();
     if !valid_value(mac) {
         return Ok(ToolResult::err("invalid MAC address"));
     }
@@ -765,6 +803,7 @@ pub fn bluetooth_auto_connect(mac: &str, enabled: bool) -> anyhow::Result<ToolRe
 
 /// Query the audio codec of a connected device.
 pub fn bluetooth_get_codec(mac: &str) -> anyhow::Result<ToolResult> {
+    ensure_bluetooth_service();
     if !valid_value(mac) {
         return Ok(ToolResult::err("invalid MAC address"));
     }
@@ -783,6 +822,7 @@ pub fn bluetooth_get_codec(mac: &str) -> anyhow::Result<ToolResult> {
 
 /// Set the audio codec (aac / sbc / aptx / ldac) if supported.
 pub fn bluetooth_set_codec(mac: &str, codec: &str) -> anyhow::Result<ToolResult> {
+    ensure_bluetooth_service();
     if !valid_value(mac) || !valid_value(codec) {
         return Ok(ToolResult::err("invalid MAC or codec"));
     }
