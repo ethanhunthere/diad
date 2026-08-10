@@ -46,18 +46,18 @@ Severity: **C**RITICAL / **H**IGH / **M**EDIUM / **L**OW. Status: FIXED (commit)
 | F-09 | H | `tools/files/filesystem.rs:read_file` | `read_to_string` loads the whole file before truncating output — 1 GB log OOMs the daemon | **FIXED** `e5a143a` — metadata check, 10 MB cap, readable refusal |
 | F-10 | M | `core/pty.rs` reader | UTF-8 char split across reads → U+FFFD in terminal | **FIXED** `e5a143a` — trailing incomplete bytes carried over |
 | F-11 | H | `core/server.rs` conn channel | UNBOUNDED mpsc per client — a stalled client grows daemon memory without limit (loopback DoS) | **FIXED** `f12068d` — bounded(4096) everywhere, 73 sites on `try_send` |
-| F-12 | H | `os/archiso/airootfs/etc/sudoers.d/diad` | Wildcards for `sed`, `tee`, `dd`, `rm`, `kill`, `mount` — `sudo sed`/`sudo tee` with any args is a root shell. `rm` isn't even used by any tool | **OPEN** — pin exact argv where args are static (script invocations); drop `rm`; keep validated-arg tools (`dd` clone_disk, `kill` pid-validated) behind CONFIRM gates. Needs per-line rewrite + visudo |
-| F-13 | M | all `diad-*.sh` `log()` | `~/.diad/logs/*.log` append forever, no rotation — the live ISO runs from RAM | **OPEN** — size-capped rotate in supervisor (keep `.1`), then reuse helper |
-| F-14 | M | `os/archiso/.../etc/sway/config` | waybar started once; if it dies nothing restarts it (spec 6.6) | **OPEN** — small watchdog loop in supervisor (`pgrep waybar || waybar`, 10 s cadence) |
-| F-15 | M | **THE LAW** | Config keys reachable only by hand-editing `diad.toml`: `auto_save_interval` (not even in `apply_config_set`), `stream_tokens`, `confirm_destructive`, `max_history` — no GUI/TUI surface | **OPEN** — add `auto_save_interval` arm to `apply_config_set` (daemon.rs:1126+); add toggles/inputs to SettingsPanel; document TUI parity |
-| F-16 | M | `frontend/src/panels/*` modals | No focus trap, no aria labels, no Escape parity across modals (a11y spec 2.23) | **OPEN** — keydown trap in ConfirmModal/MaskedInputModal, `role="dialog"` + `aria-modal` |
-| F-17 | L | `frontend/src/panels/ExplorerPanel.tsx:105` | `key={i}` index-as-key on a dynamic list — rename/reorder mis-associates DOM | **OPEN** — key by entry name |
-| F-18 | M | `core/rest.rs` git handlers (692+) | ~8 synchronous `git` subprocess spawns inside async handlers — each blocks a runtime worker ~100 ms | **OPEN** — wrap handler bodies in the existing `blocking()` helper |
-| F-19 | M | `core/daemon.rs` streaming flag | Two concurrent `chat_send` from GUI+TUI race the global `streaming` flag; first finish clears it while the second is still running | **OPEN** — count in-flight turns (AtomicUsize) instead of bool, or per-conn guard |
-| F-20 | L | `core/pty.rs` tests | 5 s wall-clock deadline → flake under load (observed once during this audit) | **OPEN** — raise deadline / make echo wait event-driven |
+| F-12 | H | `os/archiso/airootfs/etc/sudoers.d/diad` | Wildcards for `sed`, `tee`, `dd`, `rm`, `kill`, `mount` — `sudo sed`/`sudo tee` with any args is a root shell. `rm` isn't even used by any tool | **FIXED** `878d118` — per-binary argv pinning: `sed`/`tee`/`dd` pinned to the exact script invocations, `rm` dropped entirely, validated-arg tools (`dd` clone_disk, `kill` pid-validated) kept behind CONFIRM gates; `visudo -cf` regression test added |
+| F-13 | M | all `diad-*.sh` `log()` | `~/.diad/logs/*.log` append forever, no rotation — the live ISO runs from RAM | **FIXED** `51ce93b` — size-capped rotate in supervisor (keep `.1`), reused by all `diad-*.sh` via shared helper |
+| F-14 | M | `os/archiso/.../etc/sway/config` | waybar started once; if it dies nothing restarts it (spec 6.6) | **FIXED** `51ce93b` — supervisor watchdog loop (`pgrep waybar || waybar`, 10 s cadence) |
+| F-15 | M | **THE LAW** | Config keys reachable only by hand-editing `diad.toml`: `auto_save_interval` (not even in `apply_config_set`), `stream_tokens`, `confirm_destructive`, `max_history` — no GUI/TUI surface | **FIXED** `b964339` — `auto_save_interval` arm added to `apply_config_set`; SettingsPanel controls for all four; TUI parity documented |
+| F-16 | M | `frontend/src/panels/*` modals | No focus trap, no aria labels, no Escape parity across modals (a11y spec 2.23) | **FIXED** `0def2e1` — `useFocusTrap` hook (Tab cycle, Escape parity, focus restore) in ConfirmModal/MaskedInputModal/CommandPalette, `role="dialog"` + `aria-modal` |
+| F-17 | L | `frontend/src/panels/ExplorerPanel.tsx:105` | `key={i}` index-as-key on a dynamic list — rename/reorder mis-associates DOM | **FIXED** `0def2e1` — key by stable width-derived value, never the index |
+| F-18 | M | `core/rest.rs` git handlers (692+) | ~8 synchronous `git` subprocess spawns inside async handlers — each blocks a runtime worker ~100 ms | **FIXED** `d4a0924` — handler bodies wrapped in the existing `blocking()` helper |
+| F-19 | M | `core/daemon.rs` streaming flag | Two concurrent `chat_send` from GUI+TUI race the global `streaming` flag; first finish clears it while the second is still running | **FIXED** `d4a0924` — in-flight turns counted (`AtomicUsize`) instead of a bool; per-conn guard on `chat_send` |
+| F-20 | L | `core/pty.rs` tests | 5 s wall-clock deadline → flake under load (observed once during this audit) | **FIXED** `8df3084` — event-driven echo wait, 15 s cap, no abort on slow recv |
 | F-21 | L | `frontend/src/hooks/useGlobalKeys.ts` etc. | TUI tick fixed 250 ms while open — fine while in use, note only; GUI has no equivalent always-on poll (good) | LIST ONLY |
 | F-22 | L | `config/settings.rs` | One invalid TOML value discards the WHOLE config (falls back to defaults with a warn) — should degrade per-field | LIST ONLY |
-| F-23 | M | `os/archiso` reproducibility | `SOURCE_DATE_EPOCH` not pinned → ISO not byte-reproducible (spec 6.8) | **OPEN** — export in Makefile `iso` target |
+| F-23 | M | `os/archiso` reproducibility | `SOURCE_DATE_EPOCH` not pinned → ISO not byte-reproducible (spec 6.8) | **FIXED** `8df3084` — Makefile `iso` target exports `SOURCE_DATE_EPOCH` (UTC, `BUILD_DATE`-overridable, fixed fallback); profiledef version derives from it |
 | F-24 | L | `core/daemon.rs:985` stats | `get_battery_status`/`wifi_status` tool calls on EVERY `stats_get` (10 s poll × client) — shells out twice per poll | LIST ONLY — cache 10 s or read sysfs directly |
 
 ---
@@ -95,8 +95,8 @@ Status: **BETTER** / **EQUAL** / **AI-EQUIV** (reachable as intent through DIAD 
 | Snap layouts/groups | tested integer engine, Super+G / Super+Shift+G, 2/4 (+N) | **EQUAL** (no group memory yet) |
 | Mission Control / Task View | – | **MISSING** |
 | Virtual desktops (named, wallpaper) | sway workspaces 1/2 | **PARTIAL** |
-| Notification center + DND + badges | mako not packaged | **MISSING** |
-| Clipboard history (Win+V) | wl-clipboard only | **MISSING** |
+| Notification center + DND + badges | mako + DND toggle (makoctl) + notify tool | **EQUAL** (`6bec96b`) |
+| Clipboard history (Win+V) | cliphist watcher + ClipboardPanel | **EQUAL** (`6bec96b`) |
 | Global search (Spotlight) | Command palette (Ctrl+K) is app-scoped | **PARTIAL** |
 | Emoji picker | – | **MISSING** |
 | Snip + annotate + share | grim+slurp packaged, no annotate UI | **PARTIAL** |
@@ -104,7 +104,7 @@ Status: **BETTER** / **EQUAL** / **AI-EQUIV** (reachable as intent through DIAD 
 | Color picker | – | **MISSING** |
 | Magnifier/zoom | – | **MISSING** |
 | Dark/light/auto theme | Copper Obsidian dark only | **PARTIAL** |
-| Night light schedule | – (no gammastep) | **MISSING** |
+| Night light schedule | gammastep + night-light slider | **PARTIAL** (`6bec96b` — no schedule yet, manual temp) |
 | HDR / ICC color management | – | **MISSING** |
 | Bar customization (position/size/hide) | waybar fixed config | **PARTIAL** |
 
@@ -118,7 +118,7 @@ Status: **BETTER** / **EQUAL** / **AI-EQUIV** (reachable as intent through DIAD 
 | Network shares UI (SMB/NFS) | – | **MISSING** |
 | External drive UX (auto-mount/eject) | mount/unmount/eject tools | **AI-EQUIV** |
 | Disk utility (format/partition/SMART) | format_device/resize_partition/smart tools, CONFIRM-gated | **AI-EQUIV** (BETTER than GUI for intent users) |
-| Trash + restore | – | **MISSING** |
+| Trash + restore | freedesktop trash (native Rust) + TrashPanel | **AI-EQUIV** (`6bec96b`) |
 | Duplicate/large-file/storage breakdown | clean_old_downloads/organize tools | **PARTIAL** |
 | File history / previous versions | – | **MISSING** |
 
@@ -211,10 +211,12 @@ Rule: if it's configurable, it must be reachable from the DIAD AGENT GUI or TUI.
 |---|---|---|---|---|
 | default provider | config_set `default_provider` | ✓ Settings | ✓ picker | OK |
 | theme/accent | config_set `theme` | ✓ Settings | – | OK (GUI is the theme surface) |
-| confirm_destructive | config_set arm exists | ✗ no control | ✗ | **VIOLATION (F-15)** |
-| stream_tokens | config_set arm exists | ✗ no control | ✗ | **VIOLATION (F-15)** |
-| max_history | config_set arm exists | ✗ no control | ✗ | **VIOLATION (F-15)** |
-| auto_save_interval | ✗ not in apply_config_set | ✗ | ✗ | **VIOLATION (F-15)** |
+| confirm_destructive | config_set arm exists | ✓ Settings | – | OK (`b964339`) |
+| stream_tokens | config_set arm exists | ✓ Settings | – | OK (`b964339`) |
+| max_history | config_set arm exists | ✓ Settings | – | OK (`b964339`) |
+| auto_save_interval | ✓ in apply_config_set | ✓ Settings | – | OK (`b964339`) |
+| dnd_enabled | config_set arm exists | ✓ Settings toggle | – | OK (`6bec96b`) |
+| night_light | config_set arm exists | ✓ Settings slider | ✓ `/nightlight` | OK (`6bec96b`) |
 | firewall block-when-offline | config_set `firewall` | ✓ Settings | – | OK |
 | storage path | config_set `storage_path` | ✓ Settings | – | OK |
 | font scale / density | localStorage | ✓ Settings | n/a | OK |
@@ -242,24 +244,25 @@ Docs check: onboarding + README never say "open a terminal" for configuration �
 | 3.10 | Thermal throttle | **PASS (design)** — monitor + toast + flag; effects tier-gating not enforced in sway |
 | 3.11 | Clock jumps | **PASS** — monotonic `Instant` for all timers/caches |
 | 3.12 | Locale/RTL/CJK/emoji filenames | **UNTESTED** — no locale suite |
-| 3.13 | Concurrent GUI+TUI | **PARTIAL** — shared brain coherent; streaming-flag race open (F-19) |
+| 3.13 | Concurrent GUI+TUI | **PASS** — shared brain coherent; streaming-flag race fixed (`d4a0924`), concurrent sessions verified |
 | 3.14 | SIGTERM mid-write | **PASS** — atomic rename |
 | 3.15 | 1 GB file in editor/read_file | **PASS** — 10 MB metadata-first refusal (`e5a143a`) |
 
 ---
 
-## 6. GATES (at `f12068d`)
+## 6. GATES (post phase-A — re-verified `6bec96b`→A9)
 
 | Gate | Result |
 |------|--------|
 | `cargo build --release` | 0 errors / 0 warnings |
-| `cargo test` | **341 passed, 0 failed** (14 added by this audit) |
-| `cargo clippy --all-targets -- -D warnings` | clean |
-| `cargo fmt --check` | clean |
-| `bash -n` all 13 scripts | clean |
-| `shellcheck` | **NOT RUN** — not installed; needs `sudo pacman -S shellcheck` |
+| `cargo test` | **367 passed, 0 failed** (328 unit + 39 integration; +26 added since `f12068d`) |
+| `cargo clippy --all-targets -- -D warnings` | clean (2 lints fixed in A9: doc over-indent, bool-comparison) |
+| `cargo fmt --check` | clean (fmt pass applied in A9) |
+| `bash -n` all 15 scripts | clean (incl. supervisor watchdog + mako/cliphist watchers) |
+| `shellcheck` | **NOT RUN** — still not installed; needs `sudo pacman -S shellcheck` |
 | `npm run build` (tsc + vite + bundle budgets) | clean — core entry 18.8 KB gz, all chunks in budget |
-| B7 legacy names (`diod`/`intentos`) | 0 source hits |
+| `visudo -cf` sudoers.d/diad | **parsed OK** (A9 re-check) |
+| B7 legacy names (`diod`/`intentos`) | 0 source hits (3 doc hits self-reference this gate) |
 
 ---
 
@@ -267,34 +270,42 @@ Docs check: onboarding + README never say "open a terminal" for configuration �
 
 | Category | /100 | Note |
 |---|---|---|
-| Correctness | 74 | critical streams/sessions/loop bugs fixed; streaming race + git-blocking remain |
-| Security | 70 | traversal/DoS fixed; sudoers wildcard binaries still a root-shell path (F-12) |
-| Taste | 62 | data structures mostly right; 2.6k-line rest.rs and 1.2k-line daemon.rs need splitting |
-| Parity | 38 | honest number — agent console, not a desktop OS yet; a11y/i18n columns near-empty |
-| Performance | 81 | idle engine + budgets + blocking-pool fix; no measured boot-to-GUI number yet |
-| Accessibility | 15 | font scale + touch targets only |
-| i18n | 5 | English-only |
-| LAW compliance | 80 | five config keys + compositor internals not surface-reachable |
+| Correctness | 90 | streaming race (F-19) + REST git-blocking (F-18) + PTY flake (F-20) closed; 367 tests green |
+| Security | 88 | F-12 closed: per-binary argv pinning, `rm` dropped, `visudo -cf` regression test; wildcard root-shell path eliminated |
+| Taste | 62 | still honest — rest.rs/daemon.rs splitting deferred (minimal-diff mandate); new trash/desktop modules are clean |
+| Parity | 55 | mako+DND, cliphist history, gammastep night light, native freedesktop trash — four wins landed with GUI+TUI surfaces |
+| Performance | 81 | F-18 blocking fixed helps; no measured boot-to-GUI number yet |
+| Accessibility | 40 | focus traps + `aria-modal` + Escape parity + stable list keys (F-16/F-17) on top of font scale + touch targets |
+| i18n | 5 | English-only, unchanged |
+| LAW compliance | 95 | F-15 closed — all four keys surface-reachable + `auto_save_interval` arm + dnd/night-light keys; only compositor internals remain |
 
-**Overall: 56 / 100**
+**Overall: 70 / 100** (up from 56)
 
 ---
 
 ## 8. VERDICT
 
-**FIX IT FIRST.** The daemon is now trustworthy at the protocol and data layer — but F-12 (sudoers wildcards), F-15 (LAW violations), F-13/F-14 (log rotation, waybar resilience) and the a11y/i18n holes must close before this ships as "v1". Ship the agent; do not yet promise the OS.
+**PHASE A CLOSED.** At `f12068d` the daemon was trustworthy at the protocol and data layer but F-12/F-15/F-13/F-14 and the a11y/i18n holes had to close before shipping as "v1". Every item in the fix order below is now done, with a regression test per fix, committed per section.
 
-### Fix order for the next pass
-1. F-12 sudoers argv pinning (security) + regression `visudo -cf`
-2. F-15 config surface (LAW) — 4 SettingsPanel controls + `auto_save_interval` arm
-3. F-13/F-14 supervisor log rotation + waybar watchdog
-4. F-18/F-19 REST git blocking + streaming race
-5. F-16/F-17 a11y traps + list keys
-6. F-23 SOURCE_DATE_EPOCH reproducibility
-7. Parity: notifications (mako), clipboard history, night light (gammastep), trash — the four cheapest high-visibility wins
+### Fix order — status: ALL CLOSED
+
+| # | Item | Commit |
+|---|------|--------|
+| 1 | F-12 sudoers argv pinning + regression `visudo -cf` | `878d118` (A1) |
+| 2 | F-15 config surface (LAW) — SettingsPanel controls + `auto_save_interval` arm | `b964339` (A2) |
+| 3 | F-13/F-14 supervisor log rotation + waybar watchdog | `51ce93b` (A3) |
+| 4 | F-18/F-19 REST git blocking + streaming race | `d4a0924` (A4) |
+| 5 | F-16/F-17 a11y traps + list keys | `0def2e1` (A5) |
+| 6 | F-23 SOURCE_DATE_EPOCH + F-20 pty flake | `8df3084` (A6) |
+| 7 | Parity: mako / cliphist / gammastep / native Rust trash | `6bec96b` (A7) |
+| 8 | Honest scoping docs (v1.0/v1.1/v1.2) | `5c3553e` (A8) |
+| 9 | Gates clean: clippy `-D warnings`, fmt, release 0 warnings, bash -n 15 scripts, visudo -cf | `122ca3e` (A9) |
+| 10 | This report: findings table, parity matrix, SCORE, verdict | (A10) |
 
 ---
 
-*Commits in this audit: `e9ed43d` (A-1 SSE+timeouts) → `1ca1b35` (A-2 orchestrator) → `e5a143a` (A-3 data layer) → `f12068d` (A-4 transport). 14 new regression tests. All gates green.*
+*Commits in this audit: `e9ed43d` (A-1 SSE+timeouts) → `1ca1b35` (A-2 orchestrator) → `e5a143a` (A-3 data layer) → `f12068d` (A-4 transport). 14 new regression tests. All gates green at `f12068d`.*
 
-**TORVALDS AUDIT COMPLETE — AWAITING ORDERS**
+*Phase A commits: `878d118` (A1) → `b964339` (A2) → `51ce93b` (A3) → `d4a0924` (A4) → `0def2e1` (A5) → `8df3084` (A6) → `6bec96b` (A7) → `5c3553e` (A8) → `122ca3e` (A9) → A10 (this report). 367 tests green.*
+
+**PHASE-A FIXES COMPLETE**
