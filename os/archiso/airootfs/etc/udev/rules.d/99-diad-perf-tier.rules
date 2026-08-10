@@ -1,0 +1,9 @@
+# =============================================================================
+# DIAD — hotplug re-detection of the performance tier
+# =============================================================================
+# Major hardware changes (GPU appearing/changing, disks added or removed)
+# re-run the tier detector. The script debounces itself (10 s freshness
+# window) so bursts of udev events cost at most one detection.
+SUBSYSTEM=="drm", ACTION=="change", RUN+="/usr/local/bin/diad-perf-tier.sh"
+SUBSYSTEM=="block", ACTION=="add", RUN+="/usr/local/bin/diad-perf-tier.sh"
+SUBSYSTEM=="block", ACTION=="remove", RUN+="/usr/local/bin/diad-perf-tier.sh"

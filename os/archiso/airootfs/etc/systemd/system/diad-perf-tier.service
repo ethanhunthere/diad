@@ -1,0 +1,22 @@
+# =============================================================================
+# DIAD — Performance tier detection
+# =============================================================================
+# Runs diad-perf-tier.sh once, early in boot, BEFORE the display session
+# starts: the compositor and the daemon both read /etc/diad/perf-tier to pick
+# effects and thread policy (spec section 1).
+#
+# Type=oneshot + RemainAfterExit: detection costs one short process; nothing
+# stays resident afterwards (P3: pay only for what you use).
+
+[Unit]
+Description=DIAD performance tier detection
+After=local-fs.target systemd-udevd.service
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/diad-perf-tier.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

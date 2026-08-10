@@ -24,6 +24,7 @@ noto-fonts-emoji
 openssl
 pacman-contrib
 pacman-mirrorlist
+pciutils
 pipewire
 pipewire-pulse
 pkg-config

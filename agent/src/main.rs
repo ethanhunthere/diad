@@ -48,6 +48,19 @@ struct Cli {
     /// Do not auto-open the GUI after the daemon is up
     #[arg(long)]
     no_gui: bool,
+
+    /// Detect hardware, classify the perf tier, write /etc/diad/perf-tier
+    /// and /etc/diad/hw-profile.json, print a summary, and exit.
+    #[arg(long)]
+    perf_tier: bool,
+
+    /// Print `x y w h` snap rectangles (one per line) for N windows and exit.
+    #[arg(long)]
+    snap: Option<usize>,
+
+    /// Output size `WxH` for --snap (defaults to the focused sway output).
+    #[arg(long)]
+    snap_size: Option<String>,
 }
 
 /// Shared daemon singletons (config, factory, state).
@@ -107,8 +120,7 @@ async fn ensure_daemon(brain: &Brain, port: u16) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     // ---- Initialize tracing ----
@@ -119,6 +131,131 @@ async fn main() -> anyhow::Result<()> {
         .with(env_filter)
         .init();
 
+    // ---- --perf-tier: detect + classify + persist (no runtime needed) ----
+    if cli.perf_tier {
+        return run_perf_tier();
+    }
+
+    // ---- --snap N: print integer-pixel snap geometry and exit ----
+    if let Some(n) = cli.snap {
+        return run_snap(n, cli.snap_size.as_deref());
+    }
+
+    // ---- Tier-aware tokio runtime (spec 1.6): pay only for the cores the
+    // tier allows. `active_tier()` never fails — missing profile falls back
+    // to on-the-spot detection (spec 1.9).
+    let tier = diad_agent::core::perf::active_tier();
+    let cores = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1);
+    let workers = tier.tokio_workers(cores);
+    tracing::info!(
+        "perf tier {:?} — tokio worker threads: {workers} (cores: {cores})",
+        tier
+    );
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(workers)
+        .enable_all()
+        .build()?;
+    runtime.block_on(run(cli))
+}
+
+/// `--perf-tier`: detect, classify, persist, summarize.
+fn run_perf_tier() -> anyhow::Result<()> {
+    use diad_agent::core::perf;
+
+    let profile = perf::detect_profile();
+    let written = perf::write_profiles(&profile).is_ok();
+
+    println!("=== DIAD — Hardware Profile ===");
+    println!("RAM:        {} MB", profile.ram_kb / 1024);
+    println!(
+        "CPU:        {} cores — {}",
+        profile.cpu_cores, profile.cpu_model
+    );
+    println!("AVX2:       {}", profile.has_avx2);
+    println!(
+        "Max freq:   {}",
+        profile
+            .cpu_max_freq_khz
+            .map(|k| format!("{} MHz", k / 1000))
+            .unwrap_or_else(|| "n/a".into())
+    );
+    println!("GPU:        {:?}", profile.gpu_kind);
+    println!("GPU desc:   {}", profile.gpu_desc);
+    println!("Storage:    {:?}", profile.storage);
+    println!("Thermal:    {}", profile.has_thermal);
+    println!("Battery:    {}", profile.has_battery);
+    println!("Tier:       {:?}", profile.tier);
+    println!(
+        "Workers:    {}",
+        profile.tier.tokio_workers(profile.cpu_cores)
+    );
+    println!(
+        "Profiles:   {}",
+        if written {
+            format!(
+                "written to {} + {}",
+                perf::PERF_TIER_PATH,
+                perf::HW_PROFILE_PATH
+            )
+        } else {
+            "NOT written (permission denied — run as root)".into()
+        }
+    );
+    Ok(())
+}
+
+/// `--snap N [--snap-size WxH]`: print snap rectangles for the focused output.
+fn run_snap(n: usize, size: Option<&str>) -> anyhow::Result<()> {
+    use diad_agent::core::perf;
+
+    let (w, h, portrait) = match size {
+        Some(s) => {
+            let (w, h) = s
+                .split_once('x')
+                .and_then(|(a, b)| Some((a.parse().ok()?, b.parse().ok()?)))
+                .ok_or_else(|| anyhow::anyhow!("--snap-size must be WxH, e.g. 1920x1080"))?;
+            (w, h, h > w)
+        }
+        None => focused_output_size()?,
+    };
+
+    // Portrait outputs snap into vertical stacks (spec 2.3): compute the
+    // tiling with swapped dimensions, then swap the rects back.
+    let rects = if portrait {
+        perf::snap_rects(h, w, n)
+            .into_iter()
+            .map(|(x, y, rw, rh)| (y, x, rh, rw))
+            .collect()
+    } else {
+        perf::snap_rects(w, h, n)
+    };
+    for (x, y, rw, rh) in rects {
+        println!("{x} {y} {rw} {rh}");
+    }
+    Ok(())
+}
+
+/// Ask sway for the focused output's size (integer px) + orientation.
+fn focused_output_size() -> anyhow::Result<(u32, u32, bool)> {
+    let out = std::process::Command::new("swaymsg")
+        .args(["-t", "get_outputs", "--raw"])
+        .output()
+        .map_err(|e| anyhow::anyhow!("swaymsg unavailable: {e}"))?;
+    let outputs: Vec<serde_json::Value> = serde_json::from_slice(&out.stdout)?;
+    let focused = outputs
+        .iter()
+        .find(|o| o.get("focused").and_then(|f| f.as_bool()).unwrap_or(false))
+        .ok_or_else(|| anyhow::anyhow!("no focused sway output"))?;
+    let rect = &focused["rect"];
+    let w = rect["width"].as_u64().unwrap_or(1920) as u32;
+    let h = rect["height"].as_u64().unwrap_or(1080) as u32;
+    Ok((w, h, h > w))
+}
+
+async fn run(cli: Cli) -> anyhow::Result<()> {
     tracing::info!("DIAD AGENT v{} starting...", env!("CARGO_PKG_VERSION"));
 
     let brain = build_brain(&cli)?;

@@ -53,7 +53,11 @@ file_permissions=(
 
     # --- systemd units / drop-ins ---
     ["/etc/systemd/system/diad-firewall.service"]="0:0:644"
+    ["/etc/systemd/system/diad-perf-tier.service"]="0:0:644"
     ["/etc/systemd/system/getty@tty1.service.d/autologin.conf"]="0:0:644"
+
+    # --- udev rules ---
+    ["/etc/udev/rules.d/99-diad-perf-tier.rules"]="0:0:644"
 
     # --- initramfs (archiso hooks) ---
     ["/etc/mkinitcpio.conf.d/archiso.conf"]="0:0:644"
@@ -63,6 +67,7 @@ file_permissions=(
     ["/usr/local/bin/diad-agent"]="0:0:755"
     ["/usr/local/bin/diad-diagnose.sh"]="0:0:755"
     ["/usr/local/bin/diad-launch.sh"]="0:0:755"
+    ["/usr/local/bin/diad-perf-tier.sh"]="0:0:755"
     ["/usr/local/bin/diad-display-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-first-run.sh"]="0:0:755"
     ["/usr/local/bin/diad-hardware-setup.sh"]="0:0:755"

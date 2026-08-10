@@ -12,6 +12,7 @@
 pub mod daemon;
 pub mod debug;
 pub mod notes;
+pub mod perf;
 pub mod protocol;
 pub mod pty;
 pub mod rest;
