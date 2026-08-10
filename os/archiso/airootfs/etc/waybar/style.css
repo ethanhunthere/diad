@@ -36,6 +36,8 @@
 }
 
 /* MASTER FIX S3 — power buttons (sleep / restart / shutdown) */
+/* PROMPT-2 S3 — right-side pills share 6px gaps (margin 3+3) with the joined
+   window-control pill [–][□][×] directly to their left. */
 #custom-suspend,
 #custom-reboot,
 #custom-power {
@@ -56,4 +58,45 @@
 /* Shutdown is the destructive one — tint it warm-red so it stands apart. */
 #custom-power {
   color: #e06c75;
+}
+
+/* PROMPT-2 S3 — window-control pill [–][□][×]: three modules fused into one
+   rounded pill (winmin left cap, winmax center, winclose right cap) with
+   6px gaps to everything else. */
+#custom-winmin,
+#custom-winmax,
+#custom-winclose {
+  background: rgba(46, 32, 24, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #eadbcf;
+  padding: 4px 10px;
+}
+
+#custom-winmin {
+  border-radius: 12px 0 0 12px;
+  margin: 6px 0 6px 3px;
+}
+
+#custom-winmax {
+  border-radius: 0;
+  margin: 6px 0;
+}
+
+#custom-winclose {
+  border-radius: 0 12px 12px 0;
+  margin: 6px 3px 6px 0;
+}
+
+/* Hover tints: minimize dims, maximize warms to copper, close warns red. */
+#custom-winmin:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#custom-winmax:hover {
+  background: rgba(139, 94, 60, 0.35);
+}
+
+#custom-winclose:hover {
+  background: rgba(224, 122, 122, 0.3);
+  color: #e07a7a;
 }
