@@ -66,6 +66,8 @@ assign [app_id="brave-browser"] 2
 assign [app_id="com.brave.Browser"] 2
 
 # ---- Autostart ----
+# Launch mako (notification daemon) before anything that may notify.
+exec mako
 # Launch Waybar (top bar: clock left, workspaces center, nothing right)
 exec waybar -c /etc/waybar/config -s /etc/waybar/style.css
 

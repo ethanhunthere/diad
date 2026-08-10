@@ -53,4 +53,6 @@ export const VIEW_LABELS: Record<ViewId, string> = {
   debug: "Debug",
   preview: "Preview",
   projects: "Projects",
+  clipboard: "Clipboard History",
+  trash: "Trash",
 };

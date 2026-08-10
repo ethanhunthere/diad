@@ -3,5 +3,6 @@
 
 pub mod files_universal;
 pub mod filesystem;
+pub mod trash;
 
 pub use crate::tools::{valid_identifier, ToolResult};

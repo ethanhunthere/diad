@@ -1135,7 +1135,207 @@ pub(crate) async fn handle_client_msg(state: &DaemonState, conn: &Conn, msg: Cli
                 agents: state.detected_agents(),
             });
         }
+        ClientMsg::TrashList { id } => {
+            let tx = conn.tx.clone();
+            tokio::task::spawn_blocking(move || {
+                let result = crate::tools::files::trash::trash_list();
+                let _ = tx.try_send(server_trash_list_response(id, result));
+            });
+        }
+        ClientMsg::TrashMove { id, path } => {
+            let registry = Arc::clone(&state.registry);
+            let tx = conn.tx.clone();
+            tokio::task::spawn_blocking(move || {
+                if !registry.is_path_allowed(&path) {
+                    let _ = tx.try_send(ServerMsg::Error {
+                        id: Some(id.clone()),
+                        message: format!("path not allowed: {path}"),
+                    });
+                    return;
+                }
+                // Expand `~` like file.read/file.write so GUI paths work;
+                // trash_move's own valid_path requires an absolute path.
+                let expanded = shellexpand::tilde(&path).to_string();
+                let result = crate::tools::files::trash::trash_move(&expanded);
+                match result {
+                    Ok(r) if r.success => {
+                        let _ = tx.try_send(ServerMsg::TrashMoved { id });
+                    }
+                    Ok(r) => {
+                        let _ = tx.try_send(ServerMsg::Error {
+                            id: Some(id),
+                            message: r.error.unwrap_or_default(),
+                        });
+                    }
+                    Err(e) => {
+                        let _ = tx.try_send(ServerMsg::Error {
+                            id: Some(id),
+                            message: format!("trash: {e}"),
+                        });
+                    }
+                }
+            });
+        }
+        ClientMsg::TrashRestore { id, name } => {
+            let tx = conn.tx.clone();
+            tokio::task::spawn_blocking(move || {
+                let result = crate::tools::files::trash::trash_restore(&name);
+                match result {
+                    Ok(r) if r.success => {
+                        let _ = tx.try_send(ServerMsg::TrashRestored { id });
+                    }
+                    Ok(r) => {
+                        let _ = tx.try_send(ServerMsg::Error {
+                            id: Some(id),
+                            message: r.error.unwrap_or_default(),
+                        });
+                    }
+                    Err(e) => {
+                        let _ = tx.try_send(ServerMsg::Error {
+                            id: Some(id),
+                            message: format!("trash: {e}"),
+                        });
+                    }
+                }
+            });
+        }
+        ClientMsg::TrashEmpty { id } => {
+            let tx = conn.tx.clone();
+            tokio::task::spawn_blocking(move || {
+                let result = crate::tools::files::trash::trash_empty();
+                match result {
+                    Ok(r) if r.success => {
+                        let _ = tx.try_send(ServerMsg::TrashEmptied { id });
+                    }
+                    Ok(r) => {
+                        let _ = tx.try_send(ServerMsg::Error {
+                            id: Some(id),
+                            message: r.error.unwrap_or_default(),
+                        });
+                    }
+                    Err(e) => {
+                        let _ = tx.try_send(ServerMsg::Error {
+                            id: Some(id),
+                            message: format!("trash: {e}"),
+                        });
+                    }
+                }
+            });
+        }
+        ClientMsg::ClipboardList { id } => {
+            let tx = conn.tx.clone();
+            tokio::task::spawn_blocking(move || {
+                let result = crate::tools::files::files_universal::get_clipboard_history();
+                let entries = match result {
+                    Ok(r) if r.success => parse_clipboard_entries(&r.output),
+                    _ => Vec::new(),
+                };
+                let _ = tx.try_send(ServerMsg::ClipboardList { id, items: entries });
+            });
+        }
+        ClientMsg::ClipboardPick { id, index } => {
+            let tx = conn.tx.clone();
+            tokio::task::spawn_blocking(move || {
+                let result = crate::tools::files::files_universal::clipboard_pick(index);
+                match result {
+                    Ok(r) if r.success => {
+                        let _ = tx.try_send(ServerMsg::ClipboardPicked { id });
+                    }
+                    Ok(r) => {
+                        let _ = tx.try_send(ServerMsg::Error {
+                            id: Some(id),
+                            message: r.error.unwrap_or_default(),
+                        });
+                    }
+                    Err(e) => {
+                        let _ = tx.try_send(ServerMsg::Error {
+                            id: Some(id),
+                            message: format!("clipboard: {e}"),
+                        });
+                    }
+                }
+            });
+        }
+        ClientMsg::ClipboardClear { id } => {
+            let tx = conn.tx.clone();
+            tokio::task::spawn_blocking(move || {
+                let result = crate::tools::files::files_universal::clear_clipboard_history();
+                match result {
+                    Ok(r) if r.success => {
+                        let _ = tx.try_send(ServerMsg::ClipboardCleared { id });
+                    }
+                    Ok(r) => {
+                        let _ = tx.try_send(ServerMsg::Error {
+                            id: Some(id),
+                            message: r.error.unwrap_or_default(),
+                        });
+                    }
+                    Err(e) => {
+                        let _ = tx.try_send(ServerMsg::Error {
+                            id: Some(id),
+                            message: format!("clipboard: {e}"),
+                        });
+                    }
+                }
+            });
+        }
     }
+}
+
+/// Map a `trash_list` result onto the structured `ServerMsg::TrashList`
+/// (empty trash degrades to an empty item list, never an error).
+fn server_trash_list_response(
+    id: String,
+    result: anyhow::Result<crate::tools::ToolResult>,
+) -> ServerMsg {
+    let items = match result {
+        Ok(r) if r.success => parse_trash_entries(&r.output),
+        _ => Vec::new(),
+    };
+    ServerMsg::TrashList { id, items }
+}
+
+/// Parse `trash_list` output lines: `name | date | size | original-path`.
+fn parse_trash_entries(output: &str) -> Vec<crate::core::protocol::TrashEntryDto> {
+    let mut entries = Vec::new();
+    if output.trim().is_empty() || output.trim() == "trash is empty" {
+        return entries;
+    }
+    for line in output.lines() {
+        let mut parts = line.splitn(4, " | ");
+        let name = parts.next().unwrap_or("").trim();
+        let deleted_at = parts.next().unwrap_or("").trim();
+        let size = parts.next().unwrap_or("0").trim().parse::<u64>().unwrap_or(0);
+        let original_path = parts.next().unwrap_or("").trim();
+        if !name.is_empty() {
+            entries.push(crate::core::protocol::TrashEntryDto {
+                name: name.to_string(),
+                original_path: original_path.to_string(),
+                deleted_at: deleted_at.to_string(),
+                size,
+            });
+        }
+    }
+    entries
+}
+
+/// Parse `cliphist list` output (`<id>\t<preview>`) into clipboard entries.
+fn parse_clipboard_entries(output: &str) -> Vec<crate::core::protocol::ClipboardEntryDto> {
+    let mut entries = Vec::new();
+    for line in output.lines() {
+        let preview = match line.split_once('\t') {
+            Some((_, v)) => v,
+            None => line,
+        };
+        let preview = preview.trim();
+        if !preview.is_empty() {
+            entries.push(crate::core::protocol::ClipboardEntryDto {
+                index: entries.len(),
+                preview: preview.to_string(),
+            });
+        }
+    }
+    entries
 }
 
 /// THE LAW F-15: serializable snapshot of the user-configurable surface.
@@ -1149,6 +1349,8 @@ pub(crate) fn config_snapshot(config: &crate::config::settings::DiadConfig) -> s
         "stream_tokens": config.stream_tokens,
         "max_history": config.max_history,
         "auto_save_interval": config.auto_save_interval,
+        "dnd_enabled": config.dnd_enabled,
+        "night_light_temp": config.night_light_temp,
     })
 }
 
@@ -1248,6 +1450,27 @@ fn apply_config_set(state: &DaemonState, key: &str, value: serde_json::Value) {
                     return;
                 }
             }
+        }
+        "dnd_enabled" => {
+            // A7 parity: mako do-not-disturb via makoctl.
+            if let Some(v) = value.as_bool() {
+                config.dnd_enabled = v;
+                let _ = crate::tools::system::desktop::dnd(v);
+            }
+        }
+        "night_light" => {
+            // A7 parity: gammastep. Value is {"enabled": bool,
+            // "temperature": u64} or a bare bool/u64 for compatibility.
+            let enabled = match value.get("enabled") {
+                Some(v) => v.as_bool().unwrap_or(false),
+                None => value.as_bool().unwrap_or(false),
+            };
+            let temp = value
+                .get("temperature")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(config.night_light_temp);
+            config.night_light_temp = if enabled { temp } else { 0 };
+            let _ = crate::tools::system::desktop::night_light(enabled, temp as u32);
         }
         _ => {
             state.broadcast(ServerMsg::Error {

@@ -42,6 +42,9 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
           store.send?.({ v: 1, type: "providers_list", id: nextId("pl") });
           store.send?.({ v: 1, type: "stats_get", id: nextId("st") });
           store.send?.({ v: 1, type: "agents_list", id: nextId("ag") });
+          // A7 parity surfaces.
+          store.send?.({ v: 1, type: "trash_list", id: nextId("tr") });
+          store.send?.({ v: 1, type: "clipboard_list", id: nextId("cb") });
           break;
         }
         case "token":
@@ -161,6 +164,29 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
           break;
         case "files":
           store.setExplorer(m.path, m.entries, false);
+          break;
+        case "trash_list":
+          store.setTrash(m.items);
+          break;
+        case "trash_moved":
+        case "trash_restored": {
+          // Refresh the trash view after a mutation.
+          store.send?.({ v: 1, type: "trash_list", id: nextId("tr") });
+          break;
+        }
+        case "trash_emptied":
+          store.setTrash([]);
+          break;
+        case "clipboard_list":
+          store.setClipboard(m.items);
+          break;
+        case "clipboard_picked": {
+          // Refresh so the picked entry moves to the top.
+          store.send?.({ v: 1, type: "clipboard_list", id: nextId("cb") });
+          break;
+        }
+        case "clipboard_cleared":
+          store.setClipboard([]);
           break;
         default:
           break;

@@ -190,7 +190,7 @@ fn valid_value(v: &str) -> bool {
 
 /// Validate an absolute path-like value. Blocks `..`, `~` expansion, quotes,
 /// `$` and shell metacharacters; requires an absolute path.
-fn valid_path(p: &str) -> bool {
+pub fn valid_path(p: &str) -> bool {
     !p.is_empty()
         && !p.contains("..")
         && !p.contains('$')
@@ -673,6 +673,10 @@ pub fn move_download(name: &str, destination: &str) -> anyhow::Result<ToolResult
 }
 
 /// Delete a download (DESTRUCTIVE — requires confirmation).
+///
+/// A7 parity: "delete" now moves the file into the freedesktop trash instead
+/// of permanently removing it, so a mistaken delete is recoverable via
+/// `trash_restore` / the Trash panel. The confirm gate still applies.
 pub fn delete_download(name: &str) -> anyhow::Result<ToolResult> {
     let path = match download_path(name) {
         Some(p) => p,
@@ -681,10 +685,7 @@ pub fn delete_download(name: &str) -> anyhow::Result<ToolResult> {
     if !Path::new(&path).exists() {
         return Ok(ToolResult::err(format!("download not found: {name}")));
     }
-    match std::fs::remove_file(&path) {
-        Ok(_) => Ok(ToolResult::ok(format!("deleted {name}"))),
-        Err(e) => Ok(ToolResult::err(format!("delete failed: {e}"))),
-    }
+    super::trash::trash_move(&path)
 }
 
 /// Organize the Downloads folder into category subdirectories
@@ -976,6 +977,33 @@ pub fn get_clipboard_history() -> anyhow::Result<ToolResult> {
 /// Clear clipboard history (DESTRUCTIVE — requires confirmation).
 pub fn clear_clipboard_history() -> anyhow::Result<ToolResult> {
     run_timeout(&["cliphist", "wipe"], 3)
+}
+
+/// Copy a specific clipboard-history entry back to the clipboard
+/// (Win+V style pick). `index` is the 0-based position in `cliphist list`.
+pub fn clipboard_pick(index: usize) -> anyhow::Result<ToolResult> {
+    let list = run_timeout(&["cliphist", "list"], 3)?;
+    if !list.success {
+        return Ok(list);
+    }
+    let text = list.output;
+    let line = text.lines().nth(index).unwrap_or("");
+    // cliphist list format: "<id>\t<text preview>".
+    let value = match line.split_once('\t') {
+        Some((_, v)) => v,
+        None => return Ok(ToolResult::err(format!("clipboard entry {index} not found"))),
+    };
+    // Restore the full value (not the truncated preview) via cliphist decode,
+    // then write it to the clipboard with the same wl-copy path as
+    // set_clipboard_text.
+    let decoded = match run_timeout(&["cliphist", "decode"], 3) {
+        Ok(r) if r.success => r.output,
+        _ => value.to_string(),
+    };
+    if decoded.is_empty() {
+        return Ok(ToolResult::err("clipboard entry is empty"));
+    }
+    set_clipboard_text(&decoded)
 }
 
 /// Share a file with the best available method (Bluetooth/KDE Connect).
@@ -2144,6 +2172,13 @@ pub fn register_universal_file_tools(registry: &mut crate::tools::ToolRegistry) 
         "Clear clipboard history (DESTRUCTIVE, requires confirmation)",
         json!({}),
         |_| clear_clipboard_history()
+    );
+    reg!(
+        registry,
+        "clipboard_pick",
+        "Copy a clipboard-history entry (by 0-based index) back to the clipboard",
+        json!({"type":"object","properties":{"index":{"type":"integer"}},"required":["index"]}),
+        |p: serde_json::Value| clipboard_pick(p["index"].as_u64().unwrap_or(0) as usize)
     );
     reg!(
         registry,

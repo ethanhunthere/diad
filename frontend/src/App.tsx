@@ -33,6 +33,8 @@ const GitPanel = lazyNamed(() => import("./panels/GitPanel"), (m) => m.GitPanel)
 const DebugPanel = lazyNamed(() => import("./panels/DebugPanel"), (m) => m.DebugPanel);
 const PreviewPanel = lazyNamed(() => import("./panels/PreviewPanel"), (m) => m.PreviewPanel);
 const ProjectsPanel = lazyNamed(() => import("./panels/ProjectsPanel"), (m) => m.ProjectsPanel);
+const ClipboardPanel = lazyNamed(() => import("./panels/ClipboardPanel"), (m) => m.ClipboardPanel);
+const TrashPanel = lazyNamed(() => import("./panels/TrashPanel"), (m) => m.TrashPanel);
 
 /** Suspense fallback while a lazy panel chunk streams in. */
 function PanelLoading() {
@@ -160,6 +162,8 @@ export default function App() {
             {view === "debug" && <DebugPanel />}
             {view === "preview" && <PreviewPanel />}
             {view === "projects" && <ProjectsPanel />}
+            {view === "clipboard" && <ClipboardPanel />}
+            {view === "trash" && <TrashPanel />}
           </Suspense>
         </main>
       </div>

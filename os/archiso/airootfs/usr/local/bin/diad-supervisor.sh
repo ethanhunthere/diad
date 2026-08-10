@@ -140,18 +140,29 @@ else
     log "supervisor: brave not found"
 fi
 
-# ---- Waybar watchdog (F-14, spec 6.6) + periodic log rotation ----
+# ---- Waybar watchdog (F-14, spec 6.6) + mako/cliphist (A7 parity)
+#      + periodic log rotation ----
 # Sway starts waybar once at boot; if it dies nothing restarts it. This loop
 # is the supervisor's steady state: check waybar every 10 s, relaunch it with
 # the same flags Sway used (also what makes `diad-conf-write waybar-mode`
 # take effect — that handler pkill's waybar and this loop brings it back
-# with the freshly installed config). Logs are rotated every 10 cycles to
-# amortize the stat cost.
+# with the freshly installed config). mako and the cliphist wl-paste watcher
+# get the same treatment, and logs are rotated every 10 cycles to amortize
+# the stat cost.
 cycles=0
 while true; do
     if ! pgrep -x waybar >/dev/null 2>&1; then
         log "supervisor: waybar not running — relaunching"
         waybar -c /etc/waybar/config -s /etc/waybar/style.css >/dev/null 2>&1 &
+    fi
+    if ! pgrep -x mako >/dev/null 2>&1; then
+        log "supervisor: mako not running — relaunching"
+        mako >/dev/null 2>&1 &
+    fi
+    # cliphist is populated by a persistent `wl-paste --watch` process.
+    if ! pgrep -f "wl-paste --watch" >/dev/null 2>&1; then
+        log "supervisor: cliphist watcher not running — relaunching"
+        wl-paste --watch cliphist store >/dev/null 2>&1 &
     fi
     cycles=$((cycles + 1))
     if [[ $((cycles % 10)) -eq 0 ]]; then

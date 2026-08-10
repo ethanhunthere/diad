@@ -135,6 +135,26 @@ pub struct App {
     /// Set by `/set <key> <value>` (THE LAW F-15 TUI parity); the event loop
     /// forwards it to the daemon via `config_set`.
     pub pending_config_set: Option<(String, serde_json::Value)>,
+    /// Set by the A7 parity slash commands (/trash, /clipboard, /nightlight,
+    /// /dnd); the event loop forwards them to the daemon via the matching
+    /// `ClientHandle` methods.
+    pub pending_action: Option<DesktopAction>,
+}
+
+/// A7 parity actions the TUI can trigger (trash, clipboard history, night
+/// light, do-not-disturb) — resolved by the event loop in main.rs.
+#[derive(Debug, Clone)]
+pub enum DesktopAction {
+    TrashList,
+    TrashMove(String),
+    TrashRestore(String),
+    TrashEmpty,
+    ClipboardList,
+    ClipboardPick(usize),
+    ClipboardClear,
+    NightLight(u32),
+    NightLightOff,
+    Dnd(bool),
 }
 
 impl App {
@@ -179,6 +199,7 @@ impl App {
             picker_requested: false,
             connect_target,
             pending_config_set: None,
+            pending_action: None,
         }
     }
 
@@ -531,6 +552,92 @@ impl App {
                 self.pending_config_set = Some((key.to_string(), value));
                 self.messages.push(format!("[system] setting {key}…"));
             }
+            self.input_buffer.clear();
+            self.cursor_position = 0;
+            return;
+        }
+
+        // A7 parity: /trash [list|restore <name>|empty|move <path>]
+        if input == "/trash" || input.starts_with("/trash ") {
+            let rest = input.strip_prefix("/trash").unwrap_or("").trim();
+            self.pending_action = match rest {
+                "" => Some(DesktopAction::TrashList),
+                "empty" => Some(DesktopAction::TrashEmpty),
+                _ if rest.starts_with("restore ") => {
+                    Some(DesktopAction::TrashRestore(rest[8..].trim().to_string()))
+                }
+                _ if rest.starts_with("move ") => {
+                    Some(DesktopAction::TrashMove(rest[5..].trim().to_string()))
+                }
+                _ => {
+                    self.messages.push(
+                        "[system] usage: /trash [list|restore <name>|empty|move <path>]".into(),
+                    );
+                    None
+                }
+            };
+            self.input_buffer.clear();
+            self.cursor_position = 0;
+            return;
+        }
+
+        // A7 parity: /clipboard [list|pick <index>|clear]
+        if input == "/clipboard" || input.starts_with("/clipboard ") {
+            let rest = input.strip_prefix("/clipboard").unwrap_or("").trim();
+            self.pending_action = match rest {
+                "" => Some(DesktopAction::ClipboardList),
+                "clear" => Some(DesktopAction::ClipboardClear),
+                _ if rest.starts_with("pick ") => rest[5..]
+                    .trim()
+                    .parse::<usize>()
+                    .ok()
+                    .map(DesktopAction::ClipboardPick),
+                _ => {
+                    self.messages.push(
+                        "[system] usage: /clipboard [list|pick <index>|clear]".into(),
+                    );
+                    None
+                }
+            };
+            self.input_buffer.clear();
+            self.cursor_position = 0;
+            return;
+        }
+
+        // A7 parity: /nightlight [temp|off] (gammastep)
+        if input == "/nightlight" || input.starts_with("/nightlight ") {
+            let rest = input.strip_prefix("/nightlight").unwrap_or("").trim();
+            self.pending_action = if rest == "off" {
+                Some(DesktopAction::NightLightOff)
+            } else if rest.is_empty() {
+                Some(DesktopAction::NightLight(3500))
+            } else {
+                match rest.parse::<u32>() {
+                    Ok(t) if (1000..=6500).contains(&t) => Some(DesktopAction::NightLight(t)),
+                    _ => {
+                        self.messages.push(
+                            "[system] usage: /nightlight [temp 1000-6500|off]".into(),
+                        );
+                        None
+                    }
+                }
+            };
+            self.input_buffer.clear();
+            self.cursor_position = 0;
+            return;
+        }
+
+        // A7 parity: /dnd [on|off]
+        if input == "/dnd" || input.starts_with("/dnd ") {
+            let rest = input.strip_prefix("/dnd").unwrap_or("").trim();
+            self.pending_action = match rest {
+                "" | "on" => Some(DesktopAction::Dnd(true)),
+                "off" => Some(DesktopAction::Dnd(false)),
+                _ => {
+                    self.messages.push("[system] usage: /dnd [on|off]".into());
+                    None
+                }
+            };
             self.input_buffer.clear();
             self.cursor_position = 0;
             return;

@@ -79,6 +79,7 @@ pub const CONFIRM_TOOLS: &[&str] = &[
     "clean_old_downloads",
     "move_download",
     "clear_clipboard_history",
+    "trash_empty",
 ];
 
 /// A single tool call requested by the LLM.

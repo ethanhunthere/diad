@@ -11,6 +11,8 @@ import {
   FolderKanban,
   PanelLeftClose,
   PanelLeftOpen,
+  ClipboardCopy,
+  Trash2,
 } from "lucide-react";
 import { useStore } from "../stores/useStore";
 import type { ViewId } from "../lib/types";
@@ -27,6 +29,8 @@ export const VIEWS: { id: ViewId; icon: typeof MessageSquare }[] = [
   { id: "projects", icon: FolderKanban },
   { id: "terminal", icon: TerminalSquare },
   { id: "agents", icon: Bot },
+  { id: "clipboard", icon: ClipboardCopy },
+  { id: "trash", icon: Trash2 },
   { id: "settings", icon: Settings2 },
 ];
 

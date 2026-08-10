@@ -37,19 +37,25 @@ pub mod testutil {
     pub struct TestHome {
         _lock: std::sync::MutexGuard<'static, ()>,
         original: Option<std::ffi::OsString>,
+        original_xdg: Option<std::ffi::OsString>,
         _dir: tempfile::TempDir,
     }
 
     impl TestHome {
-        /// Point `HOME` at a fresh temp dir for this test.
+        /// Point `HOME` at a fresh temp dir for this test (and clear
+        /// `XDG_DATA_HOME` so tools that resolve data dirs via XDG stay
+        /// inside the sandboxed HOME, e.g. the A7 freedesktop trash).
         pub fn new() -> Self {
             let lock = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
             let original = std::env::var_os("HOME");
+            let original_xdg = std::env::var_os("XDG_DATA_HOME");
             let dir = tempfile::tempdir().expect("tempdir for test HOME");
             std::env::set_var("HOME", dir.path());
+            std::env::remove_var("XDG_DATA_HOME");
             Self {
                 _lock: lock,
                 original,
+                original_xdg,
                 _dir: dir,
             }
         }
@@ -72,6 +78,10 @@ pub mod testutil {
             match &self.original {
                 Some(home) => std::env::set_var("HOME", home),
                 None => std::env::remove_var("HOME"),
+            }
+            match &self.original_xdg {
+                Some(xdg) => std::env::set_var("XDG_DATA_HOME", xdg),
+                None => std::env::remove_var("XDG_DATA_HOME"),
             }
         }
     }

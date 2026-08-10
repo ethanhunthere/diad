@@ -105,6 +105,20 @@ pub enum ClientMsg {
     ModelsList { id: String, provider: String },
     /// Request the list of detected external AI coding CLIs.
     AgentsList { id: String },
+    /// List the trash (A7 parity: freedesktop trash).
+    TrashList { id: String },
+    /// Move a file into the trash.
+    TrashMove { id: String, path: String },
+    /// Restore a trashed entry by name.
+    TrashRestore { id: String, name: String },
+    /// Permanently empty the trash (destructive).
+    TrashEmpty { id: String },
+    /// List the clipboard history (A7 parity: cliphist).
+    ClipboardList { id: String },
+    /// Copy the clipboard-history entry at `index` back to the clipboard.
+    ClipboardPick { id: String, index: usize },
+    /// Clear the clipboard history (destructive).
+    ClipboardClear { id: String },
 }
 
 // ---------------------------------------------------------------------------
@@ -238,6 +252,42 @@ pub enum ServerMsg {
     },
     /// File write acknowledgement (file.write).
     FileWritten { id: String, path: String },
+    /// Trash listing response (A7 parity: freedesktop trash).
+    TrashList {
+        id: String,
+        items: Vec<TrashEntryDto>,
+    },
+    /// Trash move acknowledgement.
+    TrashMoved { id: String },
+    /// Trash restore acknowledgement.
+    TrashRestored { id: String },
+    /// Trash empty acknowledgement.
+    TrashEmptied { id: String },
+    /// Clipboard history listing response (A7 parity: cliphist).
+    ClipboardList {
+        id: String,
+        items: Vec<ClipboardEntryDto>,
+    },
+    /// Clipboard-history entry copied back to the clipboard.
+    ClipboardPicked { id: String },
+    /// Clipboard history cleared.
+    ClipboardCleared { id: String },
+}
+
+/// One trashed entry (mirrors `tools::files::trash::TrashEntry`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrashEntryDto {
+    pub name: String,
+    pub original_path: String,
+    pub deleted_at: String,
+    pub size: u64,
+}
+
+/// One clipboard-history entry (`cliphist list` preview).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClipboardEntryDto {
+    pub index: usize,
+    pub preview: String,
 }
 
 impl ServerMsg {
@@ -502,9 +552,40 @@ mod tests {
                 "models_list",
             ),
             (ClientMsg::AgentsList { id: "r1".into() }, "agents_list"),
+            (ClientMsg::TrashList { id: "r1".into() }, "trash_list"),
+            (
+                ClientMsg::TrashMove {
+                    id: "r1".into(),
+                    path: "/tmp/a.txt".into(),
+                },
+                "trash_move",
+            ),
+            (
+                ClientMsg::TrashRestore {
+                    id: "r1".into(),
+                    name: "a.txt".into(),
+                },
+                "trash_restore",
+            ),
+            (ClientMsg::TrashEmpty { id: "r1".into() }, "trash_empty"),
+            (
+                ClientMsg::ClipboardList { id: "r1".into() },
+                "clipboard_list",
+            ),
+            (
+                ClientMsg::ClipboardPick {
+                    id: "r1".into(),
+                    index: 2,
+                },
+                "clipboard_pick",
+            ),
+            (
+                ClientMsg::ClipboardClear { id: "r1".into() },
+                "clipboard_clear",
+            ),
         ];
 
-        assert_eq!(msgs.len(), 22, "every ClientMsg variant must be covered");
+        assert_eq!(msgs.len(), 29, "every ClientMsg variant must be covered");
 
         for (msg, expected_tag) in msgs {
             let json = serde_json::to_string(&msg).unwrap();
@@ -692,9 +773,45 @@ mod tests {
                 },
                 "file_written",
             ),
+            (
+                ServerMsg::TrashList {
+                    id: "r1".into(),
+                    items: vec![TrashEntryDto {
+                        name: "a.txt".into(),
+                        original_path: "/tmp/a.txt".into(),
+                        deleted_at: "2026-06-01T00:00:00Z".into(),
+                        size: 42,
+                    }],
+                },
+                "trash_list",
+            ),
+            (ServerMsg::TrashMoved { id: "r1".into() }, "trash_moved"),
+            (
+                ServerMsg::TrashRestored { id: "r1".into() },
+                "trash_restored",
+            ),
+            (ServerMsg::TrashEmptied { id: "r1".into() }, "trash_emptied"),
+            (
+                ServerMsg::ClipboardList {
+                    id: "r1".into(),
+                    items: vec![ClipboardEntryDto {
+                        index: 0,
+                        preview: "hello world".into(),
+                    }],
+                },
+                "clipboard_list",
+            ),
+            (
+                ServerMsg::ClipboardPicked { id: "r1".into() },
+                "clipboard_picked",
+            ),
+            (
+                ServerMsg::ClipboardCleared { id: "r1".into() },
+                "clipboard_cleared",
+            ),
         ];
 
-        assert_eq!(msgs.len(), 19, "every ServerMsg variant must be covered");
+        assert_eq!(msgs.len(), 26, "every ServerMsg variant must be covered");
 
         for (msg, expected_tag) in msgs {
             let json = serde_json::to_string(&msg).unwrap();

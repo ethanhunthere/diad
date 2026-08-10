@@ -1,6 +1,7 @@
 //! System tooling — OS inspection, packages, services, processes,
 //! power, updates, security, and the agent's own help surface.
 
+pub mod desktop;
 pub mod exec;
 pub mod help;
 pub mod os;

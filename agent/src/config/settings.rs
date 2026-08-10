@@ -43,6 +43,14 @@ pub struct DiadConfig {
     #[serde(default)]
     pub auto_save_interval: u64,
 
+    /// A7 parity: mako do-not-disturb state (false = notifications on).
+    #[serde(default)]
+    pub dnd_enabled: bool,
+
+    /// A7 parity: gammastep night-light temperature in Kelvin (0 = off).
+    #[serde(default)]
+    pub night_light_temp: u64,
+
     /// Persistent storage location (e.g. the DIAD-DATA partition)
     #[serde(default = "default_storage")]
     pub storage: StorageConfig,
@@ -137,6 +145,8 @@ impl Default for DiadConfig {
             keybindings: HashMap::new(),
             max_history: 100,
             auto_save_interval: 0,
+            dnd_enabled: false,
+            night_light_temp: 0,
             storage: StorageConfig::default(),
             providers: HashMap::new(),
         }

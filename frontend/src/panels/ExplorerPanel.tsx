@@ -6,6 +6,7 @@ import {
   GitBranch,
   RefreshCw,
   Home,
+  Trash2,
 } from "lucide-react";
 import { useStore, sendMsg } from "../stores/useStore";
 import { nextId, formatBytes } from "../lib/format";
@@ -64,6 +65,16 @@ export function ExplorerPanel() {
     } else {
       sendMsg({ type: "file_read", id: nextId("fr"), path: full });
     }
+  };
+
+  // A7 parity: delete now moves the file to the freedesktop trash (the
+  // daemon expands `~` and re-checks the allowed-path sandbox).
+  const trash = (e: FileEntryDto) => {
+    const full = path === HOME ? `~/${e.name}` : `${path}/${e.name}`;
+    if (!window.confirm(`Move ${e.name} to trash?`)) return;
+    sendMsg({ type: "trash_move", id: nextId("tm"), path: full });
+    // Refresh the listing; the daemon ack re-syncs the Trash panel.
+    list(path);
   };
 
   const gitBadges = entries.filter((e) => e.git && e.git !== "✓");
@@ -126,10 +137,18 @@ export function ExplorerPanel() {
             const isDir = e.kind === "dir";
             const badge = e.git && e.git !== "✓" ? e.git : null;
             return (
-              <button
+              <div
                 key={e.name}
                 onClick={() => open(e)}
-                className="flex w-full items-center gap-2 rounded-control px-2 py-1 text-left text-[12.5px] hover:bg-surface-2 transition-colors duration-100"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(ev) => {
+                  if (ev.key === "Enter" || ev.key === " ") {
+                    ev.preventDefault();
+                    open(e);
+                  }
+                }}
+                className="group flex w-full cursor-pointer items-center gap-2 rounded-control px-2 py-1 text-left text-[12.5px] hover:bg-surface-2 transition-colors duration-100"
                 title={`${isDir ? "Directory" : "File"} — ${e.name}`}
               >
                 {isDir ? (
@@ -151,7 +170,19 @@ export function ExplorerPanel() {
                     {formatBytes(e.size)}
                   </span>
                 )}
-              </button>
+                {!isDir && (
+                  <button
+                    className="icon-btn hidden h-6 w-6 group-hover:inline-flex"
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      trash(e);
+                    }}
+                    title={`Move ${e.name} to trash`}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>

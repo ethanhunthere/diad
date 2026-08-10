@@ -17,6 +17,7 @@ function queueCacheWrite(path: string, content: string): void {
 }
 import type {
   ChatMessage,
+  ClipboardEntryDto,
   ConfirmPrompt,
   EditDiffCard,
   FileEntryDto,
@@ -27,6 +28,7 @@ import type {
   SettingsState,
   Toast,
   ToolCallCard,
+  TrashEntryDto,
   ViewId,
 } from "../lib/types";
 import { nextId } from "../lib/format";
@@ -87,6 +89,11 @@ interface StoreState {
   termCols: number;
   termRows: number;
 
+  // -- A7 parity: clipboard history + trash -------------------------------------
+  clipboard: ClipboardEntryDto[];
+  trash: TrashEntryDto[];
+  trashLoading: boolean;
+
   // -- stats / status ----------------------------------------------------------
   stats: Stats;
   workspace: string;
@@ -115,6 +122,8 @@ const initialSettings: SettingsState = {
   streamTokens: true,
   maxHistory: 100,
   autoSaveInterval: 0,
+  dndEnabled: false,
+  nightLightTemp: 0,
   loaded: false,
 };
 
@@ -159,6 +168,11 @@ interface StoreActions {
   appendTermOutput: (data: string) => void;
   setTermSize: (cols: number, rows: number) => void;
 
+  // A7 parity: clipboard history + trash
+  setClipboard: (items: ClipboardEntryDto[]) => void;
+  setTrash: (items: TrashEntryDto[]) => void;
+  setTrashLoading: (v: boolean) => void;
+
   // stats
   setStats: (s: Partial<Stats>) => void;
   setWorkspace: (w: string) => void;
@@ -176,6 +190,8 @@ interface StoreActions {
     stream_tokens?: boolean;
     max_history?: number;
     auto_save_interval?: number;
+    dnd_enabled?: boolean;
+    night_light_temp?: number;
   }) => void;
   setAgents: (a: string[]) => void;
 }
@@ -214,6 +230,10 @@ export const useStore = create<Store>((set, get) => ({
   termBuffer: "",
   termCols: 80,
   termRows: 24,
+
+  clipboard: [],
+  trash: [],
+  trashLoading: false,
 
   stats: { tokens: 0, latency_ms: 0, battery: "", wifi: "", cwd: "", idle_stage: "", rss_mb: 0, perf_tier: "" },
   workspace: "",
@@ -421,6 +441,10 @@ export const useStore = create<Store>((set, get) => ({
 
   setTermSize: (cols, rows) => set({ termCols: cols, termRows: rows }),
 
+  setClipboard: (items) => set({ clipboard: items }),
+  setTrash: (items) => set({ trash: items, trashLoading: false }),
+  setTrashLoading: (v) => set({ trashLoading: v }),
+
   setStats: (partial) => set((s) => ({ stats: { ...s.stats, ...partial } })),
   setWorkspace: (w) => set({ workspace: w }),
 
@@ -449,6 +473,8 @@ export const useStore = create<Store>((set, get) => ({
         ...(c.stream_tokens !== undefined ? { streamTokens: c.stream_tokens } : {}),
         ...(c.max_history !== undefined ? { maxHistory: c.max_history } : {}),
         ...(c.auto_save_interval !== undefined ? { autoSaveInterval: c.auto_save_interval } : {}),
+        ...(c.dnd_enabled !== undefined ? { dndEnabled: c.dnd_enabled } : {}),
+        ...(c.night_light_temp !== undefined ? { nightLightTemp: c.night_light_temp } : {}),
         loaded: true,
       },
     })),

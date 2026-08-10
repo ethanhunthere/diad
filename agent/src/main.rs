@@ -472,6 +472,35 @@ async fn run_tui_event_loop(
                     client.config_set(key, value);
                 }
 
+                // ---- A7 parity slash commands (trash/clipboard/night light) ----
+                if let Some(action) = app.pending_action.take() {
+                    use diad_agent::tui::app::DesktopAction;
+                    match action {
+                        DesktopAction::TrashList => client.trash_list(),
+                        DesktopAction::TrashMove(p) => client.trash_move(p),
+                        DesktopAction::TrashRestore(n) => client.trash_restore(n),
+                        DesktopAction::TrashEmpty => client.trash_empty(),
+                        DesktopAction::ClipboardList => client.clipboard_list(),
+                        DesktopAction::ClipboardPick(i) => client.clipboard_pick(i),
+                        DesktopAction::ClipboardClear => client.clipboard_clear(),
+                        DesktopAction::NightLight(t) => {
+                            client.config_set(
+                                "night_light".into(),
+                                serde_json::json!({ "enabled": true, "temperature": t }),
+                            );
+                        }
+                        DesktopAction::NightLightOff => {
+                            client.config_set(
+                                "night_light".into(),
+                                serde_json::json!({ "enabled": false }),
+                            );
+                        }
+                        DesktopAction::Dnd(on) => {
+                            client.config_set("dnd_enabled".into(), serde_json::json!(on));
+                        }
+                    }
+                }
+
                 // ---- User submitted a message while streaming just started ----
                 if !prev_streaming && app.streaming {
                     let input = app.messages.last().cloned().unwrap_or_default();

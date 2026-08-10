@@ -36,7 +36,16 @@ export type ClientMsg =
   | { type: "providers_list"; id: string }
   | { type: "stats_get"; id: string }
   | { type: "models_list"; id: string; provider: string }
-  | { type: "agents_list"; id: string };
+  | { type: "agents_list"; id: string }
+  // A7 parity: freedesktop trash (native, spec v1.0).
+  | { type: "trash_list"; id: string }
+  | { type: "trash_move"; id: string; path: string }
+  | { type: "trash_restore"; id: string; name: string }
+  | { type: "trash_empty"; id: string }
+  // A7 parity: clipboard history (cliphist).
+  | { type: "clipboard_list"; id: string }
+  | { type: "clipboard_pick"; id: string; index: number }
+  | { type: "clipboard_clear"; id: string };
 
 /** Flat client envelope: `{ v: 1 }` + the message fields at the top level. */
 export type ClientEnvelope = { v: number } & ClientMsg;
@@ -90,6 +99,10 @@ export type ServerMsg =
         stream_tokens?: boolean;
         max_history?: number;
         auto_save_interval?: number;
+        /** A7 parity: mako do-not-disturb (false = notifications on). */
+        dnd_enabled?: boolean;
+        /** A7 parity: gammastep temperature in Kelvin (0 = off). */
+        night_light_temp?: number;
       };
     }
   | { type: "providers"; id: string; entries: ProviderEntryDto[] }
@@ -135,11 +148,38 @@ export type ServerMsg =
         stream_tokens?: boolean;
         max_history?: number;
         auto_save_interval?: number;
+        /** A7 parity: mako do-not-disturb (false = notifications on). */
+        dnd_enabled?: boolean;
+        /** A7 parity: gammastep temperature in Kelvin (0 = off). */
+        night_light_temp?: number;
       };
     }
   | { type: "file_content"; id: string; path: string; content: string }
   | { type: "files"; id: string; path: string; entries: FileEntryDto[] }
-  | { type: "file_written"; id: string; path: string };
+  | { type: "file_written"; id: string; path: string }
+  // A7 parity: freedesktop trash.
+  | { type: "trash_list"; id: string; items: TrashEntryDto[] }
+  | { type: "trash_moved"; id: string }
+  | { type: "trash_restored"; id: string }
+  | { type: "trash_emptied"; id: string }
+  // A7 parity: clipboard history (cliphist).
+  | { type: "clipboard_list"; id: string; items: ClipboardEntryDto[] }
+  | { type: "clipboard_picked"; id: string }
+  | { type: "clipboard_cleared"; id: string };
+
+/** A7 parity: one entry in the freedesktop trash. */
+export interface TrashEntryDto {
+  name: string;
+  original_path: string;
+  deleted_at: string;
+  size: number;
+}
+
+/** A7 parity: one clipboard-history entry (cliphist). */
+export interface ClipboardEntryDto {
+  index: number;
+  preview: string;
+}
 
 // ---- Frontend domain types --------------------------------------------------
 
@@ -153,7 +193,10 @@ export type ViewId =
   | "git"
   | "debug"
   | "preview"
-  | "projects";
+  | "projects"
+  // A7 parity views.
+  | "clipboard"
+  | "trash";
 
 export interface ChatMessage {
   id: string;
@@ -228,6 +271,9 @@ export interface SettingsState {
   streamTokens: boolean;
   maxHistory: number;
   autoSaveInterval: number;
+  /** A7 parity: mako do-not-disturb + gammastep night light (0 = off). */
+  dndEnabled: boolean;
+  nightLightTemp: number;
   loaded: boolean;
 }
 

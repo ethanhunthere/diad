@@ -192,6 +192,45 @@ impl ClientHandle {
         self.send(ClientMsg::ConfigSet { key, value });
     }
 
+    // ---- A7 parity surfaces: trash + clipboard history ----------------
+
+    pub fn trash_list(&self) {
+        self.send(ClientMsg::TrashList { id: self.next_id() });
+    }
+
+    pub fn trash_move(&self, path: String) {
+        self.send(ClientMsg::TrashMove {
+            id: self.next_id(),
+            path,
+        });
+    }
+
+    pub fn trash_restore(&self, name: String) {
+        self.send(ClientMsg::TrashRestore {
+            id: self.next_id(),
+            name,
+        });
+    }
+
+    pub fn trash_empty(&self) {
+        self.send(ClientMsg::TrashEmpty { id: self.next_id() });
+    }
+
+    pub fn clipboard_list(&self) {
+        self.send(ClientMsg::ClipboardList { id: self.next_id() });
+    }
+
+    pub fn clipboard_pick(&self, index: usize) {
+        self.send(ClientMsg::ClipboardPick {
+            id: self.next_id(),
+            index,
+        });
+    }
+
+    pub fn clipboard_clear(&self) {
+        self.send(ClientMsg::ClipboardClear { id: self.next_id() });
+    }
+
     pub fn event(&self, event: Event) {
         let _ = self.events.send(event);
     }
@@ -344,6 +383,53 @@ fn map_server_msg(
         | ServerMsg::FileContent { .. }
         | ServerMsg::Files { .. }
         | ServerMsg::FileWritten { .. } => {}
+        // A7 parity surfaces: trash + clipboard history reach the TUI as
+        // plain [system] lines (the GUI gets the structured panels).
+        ServerMsg::TrashList { items, .. } => {
+            if items.is_empty() {
+                let _ = events.send(Event::AppendMessage("[system] trash is empty".into()));
+            } else {
+                for e in items {
+                    let _ = events.send(Event::AppendMessage(format!(
+                        "[system] trash: {} | {} | {} | {}",
+                        e.name, e.deleted_at, e.size, e.original_path
+                    )));
+                }
+            }
+        }
+        ServerMsg::TrashMoved { .. } => {
+            let _ = events.send(Event::AppendMessage("[system] moved to trash".into()));
+        }
+        ServerMsg::TrashRestored { .. } => {
+            let _ = events.send(Event::AppendMessage("[system] restored from trash".into()));
+        }
+        ServerMsg::TrashEmptied { .. } => {
+            let _ = events.send(Event::AppendMessage("[system] trash emptied".into()));
+        }
+        ServerMsg::ClipboardList { items, .. } => {
+            if items.is_empty() {
+                let _ = events.send(Event::AppendMessage(
+                    "[system] clipboard history is empty".into(),
+                ));
+            } else {
+                for e in items {
+                    let _ = events.send(Event::AppendMessage(format!(
+                        "[system] clipboard[{}]: {}",
+                        e.index, e.preview
+                    )));
+                }
+            }
+        }
+        ServerMsg::ClipboardPicked { .. } => {
+            let _ = events.send(Event::AppendMessage(
+                "[system] clipboard entry copied to clipboard".into(),
+            ));
+        }
+        ServerMsg::ClipboardCleared { .. } => {
+            let _ = events.send(Event::AppendMessage(
+                "[system] clipboard history cleared".into(),
+            ));
+        }
     }
 }
 

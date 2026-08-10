@@ -341,6 +341,81 @@ export function SettingsPanel() {
         </div>
       </section>
 
+      {/* A7 parity: mako do-not-disturb + gammastep night light. Persist
+          through the same config.set surface as the other daemon prefs. */}
+      <section className="mt-4">
+        <div className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wider text-faint">
+          🌙 Desktop
+        </div>
+        <div className="panel p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[12px] text-ink">Do not disturb</div>
+              <div className="text-[10.5px] text-faint">
+                Quiet mako notifications (makoctl mode dnd).
+              </div>
+            </div>
+            <button
+              className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-150 ease-out ${
+                settings.dndEnabled
+                  ? "border-copper/60 bg-copper/25"
+                  : "border-border-strong bg-surface-2"
+              }`}
+              onClick={() => {
+                const v = !settings.dndEnabled;
+                setSettings({ dndEnabled: v });
+                persist("dnd_enabled", v, "do not disturb");
+              }}
+              title={settings.dndEnabled ? "Do not disturb on" : "Do not disturb off"}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full transition-all duration-150 ease-out ${
+                  settings.dndEnabled ? "left-[22px] bg-copper-hover" : "left-0.5 bg-faint"
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="mt-3 border-t border-border-subtle/60 pt-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[12px] text-ink">Night light</div>
+                <div className="text-[10.5px] text-faint">
+                  gammastep colour temperature; 0 (left) is off.
+                </div>
+              </div>
+              <span className="shrink-0 font-mono text-[11px] text-dim">
+                {settings.nightLightTemp > 0 ? `${settings.nightLightTemp} K` : "off"}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={6500}
+              step={100}
+              className="mt-2 w-full accent-copper-hover"
+              value={settings.nightLightTemp}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10) || 0;
+                setSettings({ nightLightTemp: v });
+              }}
+              onMouseUp={() =>
+                persist("night_light", { enabled: settings.nightLightTemp > 0, temperature: settings.nightLightTemp }, "night light")
+              }
+              onTouchEnd={() =>
+                persist("night_light", { enabled: settings.nightLightTemp > 0, temperature: settings.nightLightTemp }, "night light")
+              }
+              title="Night light temperature (0 = off)"
+            />
+            <div className="mt-1 flex justify-between text-[9.5px] text-faint">
+              <span>0 — off</span>
+              <span>3500 — warm</span>
+              <span>6500 — daylight</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* THE LAW F-15: compositor intent surfaces (chat intents exist too —
           "remap my keys", "set perf tier to high", "compact waybar"). */}
       <section className="mt-4">

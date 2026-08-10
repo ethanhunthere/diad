@@ -12,12 +12,14 @@ use std::time::{Duration, Instant};
 
 use super::files::files_universal;
 use super::files::filesystem;
+use super::files::trash;
 use super::hardware::device;
 use super::hardware::display;
 use super::hardware::hardware_universal;
 use super::hardware::input;
 use super::network::connectivity;
 use super::network::external;
+use super::system::desktop;
 use super::system::help;
 use super::system::os;
 use super::system::power;
@@ -1156,6 +1158,64 @@ pub fn create_default_registry() -> ToolRegistry {
 
     // ---- Universal file tools (6 subsections) ----
     files_universal::register_universal_file_tools(&mut registry);
+
+    // ---- Trash (A7 parity: freedesktop trash, no external binary) ----
+    trash::register_trash_tools(&mut registry);
+
+    // ---- Desktop environment (A7 parity: mako + gammastep) ----
+    registry.register_tool(
+        "notify",
+        "Send a desktop notification (requires mako running)",
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "title": { "type": "string" },
+                "body": { "type": "string" },
+                "urgency": { "type": "string", "enum": ["low", "normal", "critical"] }
+            },
+            "required": ["title", "body"]
+        }),
+        Arc::new(|params| {
+            let title = params["title"].as_str().unwrap_or("");
+            let body = params["body"].as_str().unwrap_or("");
+            let urgency = params["urgency"].as_str().unwrap_or("normal");
+            desktop::notify(title, body, urgency)
+        }),
+    );
+
+    registry.register_tool(
+        "dnd",
+        "Toggle do-not-disturb for desktop notifications (mako)",
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "enabled": { "type": "boolean" }
+            },
+            "required": ["enabled"]
+        }),
+        Arc::new(|params| {
+            let enabled = params["enabled"].as_bool().unwrap_or(false);
+            desktop::dnd(enabled)
+        }),
+    );
+
+    registry.register_tool(
+        "night_light",
+        "Set the session colour temperature with gammastep (enabled=false resets)",
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "enabled": { "type": "boolean" },
+                "temperature": { "type": "integer" }
+            },
+            "required": ["enabled"]
+        }),
+        Arc::new(|params| {
+            let enabled = params["enabled"].as_bool().unwrap_or(false);
+            let temperature = params["temperature"].as_u64().unwrap_or(3500) as u32;
+            desktop::night_light(enabled, temperature)
+        }),
+    );
 
     //
     // Capture the full tool inventory for help::show_tool_list.
