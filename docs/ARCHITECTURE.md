@@ -58,10 +58,12 @@ flowchart LR
     E --> F[diad-hardware-setup.sh]
     E --> G[diad-network-setup.sh]
     E --> H[diad-power-setup.sh]
-    E --> I[diad-first-run.sh / diad-splash.sh]
-    E --> J[diad-launch.sh]
-    J --> K[diad-agent daemon :7860]
-    J --> L[Brave app window]
+    E --> I[diad-first-run.sh in its own foot window]
+    E --> D2[diad-display-setup.sh]
+    E --> D3[diad-storage-setup.sh]
+    E --> K[diad-agent daemon :7860]
+    E --> L[Brave app window]
+    E --> L2[Brave browser ws2]
     K --> M[React GUI served by daemon]
     K --> N[TUI client via WebSocket]
 ```
@@ -72,42 +74,50 @@ flowchart LR
 3. **Sway**: the compositor starts and `exec`s `diad-supervisor.sh`
    (`os/archiso/airootfs/etc/sway/config`).
 4. **Supervisor** (`usr/local/bin/diad-supervisor.sh`): runs the marker-gated
-   setup scripts (hardware/network/power) *before* the wizard, then calls
-   `diad-launch.sh`. No `set -e` — a failing setup step never blocks the
-   desktop; every step is logged to `~/.diad/logs/boot.log`.
-5. **Launch** (`usr/local/bin/diad-launch.sh`): ensures the `diad-agent` daemon
-   is running (it binds `127.0.0.1:7860` and serves the embedded GUI), opens
-   the Brave app window on the agent workspace, and Brave on workspace 2.
+   setup scripts (hardware/network/power, then display/storage on every boot)
+   and launches the first-run wizard in its own foot window when the marker is
+   missing. No `set -e` — a failing setup step never blocks the desktop; every
+   step is logged to `~/.diad/logs/boot.log`.
+5. **Daemon + surfaces** (still inside the supervisor): ensures the
+   `diad-agent` daemon is running (it binds `127.0.0.1:7860` and serves the
+   embedded GUI), waits up to 20 s for `/health`, opens the Brave app window
+   on the agent workspace, then polls for the Brave Flatpak and launches the
+   plain browser on workspace 2. (`diad-launch.sh` is a legacy standalone
+   launcher kept for manual use; the boot path does not call it.)
 6. **Firewall**: `diad-firewall.service` (nftables) is enabled at install and
    drops inbound traffic except loopback.
 
 ## WebSocket Protocol
 
 The daemon exposes a versioned WebSocket JSON API at `ws://127.0.0.1:7860/ws`
-that both the React GUI and the ratatui TUI consume. Every message carries
-`"v": 1` (protocol version) and a `"type"` tag; long-running requests carry an
-`id` echoed by the daemon so clients can match replies.
+that both the React GUI and the ratatui TUI consume. All type tags are
+`snake_case`. Client → daemon messages are sent as a FLAT envelope —
+`{ "v": 1, "type": "<tag>", ...fields }` (the Rust `Envelope` flattens the
+message into the top level); daemon → client messages are bare `ServerMsg`
+frames (only the `connected` greeting carries a `v` field). Long-running
+requests carry an `id` echoed by the daemon so clients can match replies.
 
 **Client → daemon** (`ClientMsg`):
 
 | Type                | Purpose                                        |
 |---------------------|------------------------------------------------|
-| `chat.send`         | Send chat text (routed to agent loop / offline router) |
-| `tool.approve` / `tool.reject` | Approve or reject a pending tool call |
-| `edit.approve` / `edit.reject` | Approve or reject a proposed file edit |
-| `file.read` / `file.write` / `file.list` | Sandboxed file operations |
-| `term.input` / `term.resize` | Daemon-spawned PTY shell I/O |
-| `provider.switch` / `model.switch` | Change active provider/model |
-| `provider.connect`  | Store and validate an API key |
-| `agent.delegate`    | Delegate a task to an external AI CLI |
-| `config.set`        | Set a config value |
-| `providers.list` / `stats.get` / `models.list` / `agents.list` | Snapshots |
-| `secret.submit` / `secret.cancel` | Respond to masked-secret prompts |
+| `chat_send`         | Send chat text (routed to agent loop / offline router) |
+| `tool_approve` / `tool_reject` | Approve or reject a pending tool call |
+| `edit_approve` / `edit_reject` | Approve or reject a proposed file edit |
+| `file_read` / `file_write` / `file_list` | Sandboxed file operations |
+| `term_input` / `term_resize` | Daemon-spawned PTY shell I/O |
+| `provider_switch` / `model_switch` | Change active provider/model |
+| `provider_connect`  | Store and validate an API key |
+| `agent_delegate`    | Delegate a task to an external AI CLI |
+| `config_set`        | Set a config value |
+| `providers_list` / `stats_get` / `models_list` / `agents_list` | Snapshots |
+| `secret_submit` / `secret_cancel` | Respond to masked-secret prompts |
 | `spawn_tui`         | Open the TUI in a foot terminal (GUI hotkey) |
 
 **Daemon → client** (`ServerMsg`): `token` (streaming deltas), `tool_use`,
-`tool_result`, `edit_diff`, `secret.request`, `system`, `error`, `agents`,
-`connected` plus stream-end/result messages echoing request `id`s.
+`tool_result`, `edit_diff`, `secret_request`, `confirm_request`, `status`,
+`system`, `error`, `agents`, `connected`, `term_output`, `file_content`,
+`files`, `file_written`, plus stream-end/result messages echoing request `id`s.
 
 ## Component Diagram
 

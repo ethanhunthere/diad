@@ -28,7 +28,7 @@ Status legend: `[x]` done · `[~]` partially done · `[ ]` not started.
 - [x] Git-aware file tree, `AgentDelegate` to external AI CLIs
 - [~] Token usage / cost tracking (stats snapshot exists; per-provider cost
       ledger not yet implemented)
-- [ ] Provider failover on API error
+- [x] Provider failover on API error
 - [ ] Session list view / search in the UI
 
 ## Phase 3: Multi-Provider & Polish — PARTIAL
