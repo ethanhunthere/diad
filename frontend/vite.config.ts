@@ -11,6 +11,17 @@ export default defineConfig({
     emptyOutDir: true,
     target: "es2020",
     sourcemap: false,
+    // Chunk splitting (spec 6.1/6.2): framework vendor code is isolated so
+    // the app CORE chunk stays under budget; every panel is its own lazy
+    // chunk and drags its heavy libs (CodeMirror, xterm, markdown) with it.
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react/jsx-runtime"],
+          "vendor-zustand": ["zustand"],
+        },
+      },
+    },
   },
   server: {
     port: 5173,

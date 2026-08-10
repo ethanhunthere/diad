@@ -130,7 +130,12 @@ fn content_type(path: &str) -> &'static str {
 
 async fn index_html() -> impl IntoResponse {
     (
-        [("Content-Type", "text/html; charset=utf-8")],
+        [
+            ("Content-Type", "text/html; charset=utf-8"),
+            // Entry point must revalidate so a new daemon build swaps the
+            // hashed asset references (spec 6.6).
+            ("Cache-Control", "no-cache"),
+        ],
         Assets::get("index.html")
             .map(|f| f.data.into_owned())
             .unwrap_or_else(|| {
@@ -145,11 +150,23 @@ async fn static_handler(State(_state): State<Arc<DaemonState>>, path: String) ->
     let clean = path.trim_start_matches('/');
     let asset = Assets::get(clean).or_else(|| Assets::get("index.html"));
     match asset {
-        Some(file) => (
-            [("Content-Type", content_type(clean))],
-            file.data.into_owned(),
-        )
-            .into_response(),
+        Some(file) => {
+            // Hashed build assets are content-addressed: cache for a year
+            // (spec 6.6). Everything else revalidates.
+            let cache = if clean.starts_with("assets/") {
+                "public, max-age=31536000, immutable"
+            } else {
+                "public, max-age=300"
+            };
+            (
+                [
+                    ("Content-Type", content_type(clean)),
+                    ("Cache-Control", cache),
+                ],
+                file.data.into_owned(),
+            )
+                .into_response()
+        }
         None => (axum::http::StatusCode::NOT_FOUND, "not found").into_response(),
     }
 }

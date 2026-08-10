@@ -1,19 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import type { ComponentType } from "react";
 import { Menu } from "lucide-react";
 import { useStore } from "./stores/useStore";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { TopBar } from "./components/TopBar";
 import { ActivityBar, VIEWS } from "./components/ActivityBar";
-import { ChatPanel } from "./panels/ChatPanel";
-import { ExplorerPanel } from "./panels/ExplorerPanel";
-import { EditorPanel } from "./panels/EditorPanel";
-import { TerminalPanel } from "./panels/TerminalPanel";
-import { AgentsPanel } from "./panels/AgentsPanel";
-import { SettingsPanel } from "./panels/SettingsPanel";
-import { GitPanel } from "./panels/GitPanel";
-import { DebugPanel } from "./panels/DebugPanel";
-import { PreviewPanel } from "./panels/PreviewPanel";
-import { ProjectsPanel } from "./panels/ProjectsPanel";
 import { StatusBar } from "./components/StatusBar";
 import { CommandPalette } from "./components/CommandPalette";
 import { ToastStack } from "./components/ToastStack";
@@ -22,6 +13,36 @@ import { MaskedInputModal } from "./components/MaskedInputModal";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { useGlobalKeys } from "./hooks/useGlobalKeys";
 import { VIEW_LABELS } from "./lib/format";
+import { prefetchAggressive, setPerfTier } from "./lib/prefetch";
+
+// Lazy-loaded panels (spec 6.1/6.2): each panel is its own chunk and drags
+// its heavy libs with it — CodeMirror with EditorPanel, xterm with
+// TerminalPanel, the markdown renderer with ChatPanel. Nothing here loads
+// until the view is opened (LOW/ULTRA_LOW tiers) or prefetched (MID+).
+// The panels keep their named exports; the then() maps them to `default`.
+const lazyNamed = <T,>(load: () => Promise<T>, pick: (m: T) => unknown) =>
+  lazy(() => load().then((m) => ({ default: pick(m) as ComponentType })));
+
+const ChatPanel = lazyNamed(() => import("./panels/ChatPanel"), (m) => m.ChatPanel);
+const ExplorerPanel = lazyNamed(() => import("./panels/ExplorerPanel"), (m) => m.ExplorerPanel);
+const EditorPanel = lazyNamed(() => import("./panels/EditorPanel"), (m) => m.EditorPanel);
+const TerminalPanel = lazyNamed(() => import("./panels/TerminalPanel"), (m) => m.TerminalPanel);
+const AgentsPanel = lazyNamed(() => import("./panels/AgentsPanel"), (m) => m.AgentsPanel);
+const SettingsPanel = lazyNamed(() => import("./panels/SettingsPanel"), (m) => m.SettingsPanel);
+const GitPanel = lazyNamed(() => import("./panels/GitPanel"), (m) => m.GitPanel);
+const DebugPanel = lazyNamed(() => import("./panels/DebugPanel"), (m) => m.DebugPanel);
+const PreviewPanel = lazyNamed(() => import("./panels/PreviewPanel"), (m) => m.PreviewPanel);
+const ProjectsPanel = lazyNamed(() => import("./panels/ProjectsPanel"), (m) => m.ProjectsPanel);
+
+/** Suspense fallback while a lazy panel chunk streams in. */
+function PanelLoading() {
+  return (
+    <div className="flex h-full items-center justify-center text-[12px] text-faint">
+      <span className="streaming-dot mr-2 inline-block h-2 w-2 rounded-full bg-copper" />
+      loading panel…
+    </div>
+  );
+}
 
 /**
  * GUI breakpoints (spec 2.1) — the exact thresholds mirrored from
@@ -98,6 +119,20 @@ export default function App() {
     localStorage.setItem("diad.density", density);
   }, [density]);
 
+  // Tier-aware prefetch (spec 6.4): learn the daemon's perf tier, then warm
+  // the heavy chunks only on tiers that can afford it.
+  useEffect(() => {
+    import("./services/api")
+      .then(({ apiGet }) => apiGet<{ perf_tier?: string }>("/status"))
+      .then((status) => {
+        setPerfTier(status.perf_tier ?? "MID");
+        prefetchAggressive();
+      })
+      .catch(() => {
+        /* daemon offline — MID defaults apply */
+      });
+  }, []);
+
   return (
     <div ref={rootRef} className="flex h-full flex-col bg-obsidian text-ink">
       <TopBar
@@ -114,16 +149,18 @@ export default function App() {
       <div className="flex min-h-0 flex-1">
         <ActivityBar collapsed={activityBarCollapsed} />
         <main className="min-w-0 flex-1 overflow-hidden">
-          {view === "chat" && <ChatPanel />}
-          {view === "explorer" && <ExplorerPanel />}
-          {view === "editor" && <EditorPanel />}
-          {view === "terminal" && <TerminalPanel />}
-          {view === "agents" && <AgentsPanel />}
-          {view === "settings" && <SettingsPanel />}
-          {view === "git" && <GitPanel />}
-          {view === "debug" && <DebugPanel />}
-          {view === "preview" && <PreviewPanel />}
-          {view === "projects" && <ProjectsPanel />}
+          <Suspense fallback={<PanelLoading />}>
+            {view === "chat" && <ChatPanel />}
+            {view === "explorer" && <ExplorerPanel />}
+            {view === "editor" && <EditorPanel />}
+            {view === "terminal" && <TerminalPanel />}
+            {view === "agents" && <AgentsPanel />}
+            {view === "settings" && <SettingsPanel />}
+            {view === "git" && <GitPanel />}
+            {view === "debug" && <DebugPanel />}
+            {view === "preview" && <PreviewPanel />}
+            {view === "projects" && <ProjectsPanel />}
+          </Suspense>
         </main>
       </div>
       <StatusBar />

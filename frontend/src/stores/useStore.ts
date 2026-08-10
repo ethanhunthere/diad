@@ -1,4 +1,20 @@
 import { create } from "zustand";
+import { cacheFile, dropCache, readCache } from "../lib/filecache";
+
+// Debounced per-file IndexedDB writes (spec 6.6): one write per second of
+// typing, not one per keystroke.
+const cacheTimers = new Map<string, ReturnType<typeof setTimeout>>();
+function queueCacheWrite(path: string, content: string): void {
+  const prev = cacheTimers.get(path);
+  if (prev) clearTimeout(prev);
+  cacheTimers.set(
+    path,
+    setTimeout(() => {
+      cacheTimers.delete(path);
+      void cacheFile(path, content);
+    }, 1000),
+  );
+}
 import type {
   ChatMessage,
   ConfirmPrompt,
@@ -325,7 +341,7 @@ export const useStore = create<Store>((set, get) => ({
   setExplorer: (path, entries, loading) =>
     set({ explorerPath: path, explorerEntries: entries, explorerLoading: loading }),
 
-  openFile: (path, content) =>
+  openFile: (path, content) => {
     set((s) => {
       const exists = s.openFiles.some((f) => f.path === path);
       return {
@@ -335,12 +351,27 @@ export const useStore = create<Store>((set, get) => ({
         activeFile: path,
         view: "editor",
       };
-    }),
+    });
+    // Restore a locally cached unsaved edit if one exists (spec 6.6).
+    void readCache(path).then((cached) => {
+      if (cached === null) return;
+      const current = get().openFiles.find((f) => f.path === path);
+      if (current && !current.dirty && cached !== current.content) {
+        set((s) => ({
+          openFiles: s.openFiles.map((f) =>
+            f.path === path ? { ...f, content: cached, dirty: true } : f,
+          ),
+        }));
+      }
+    });
+  },
 
-  setFileContent: (path, content) =>
+  setFileContent: (path, content) => {
     set((s) => ({
       openFiles: s.openFiles.map((f) => (f.path === path ? { ...f, content, dirty: true } : f)),
-    })),
+    }));
+    queueCacheWrite(path, content);
+  },
 
   closeFile: (path) =>
     set((s) => {
@@ -359,10 +390,12 @@ export const useStore = create<Store>((set, get) => ({
 
   setActiveFile: (path) => set({ activeFile: path }),
 
-  markFileSaved: (path) =>
+  markFileSaved: (path) => {
     set((s) => ({
       openFiles: s.openFiles.map((f) => (f.path === path ? { ...f, dirty: false } : f)),
-    })),
+    }));
+    void dropCache(path);
+  },
 
   appendTermOutput: (data) =>
     set((s) => ({

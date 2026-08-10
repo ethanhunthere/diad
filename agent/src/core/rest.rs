@@ -371,6 +371,8 @@ async fn api_status(State(state): State<Arc<DaemonState>>) -> Json<Value> {
         "connected": state.connected.load(std::sync::atomic::Ordering::SeqCst),
         "streaming": state.streaming.load(std::sync::atomic::Ordering::SeqCst),
         "daemon_version": env!("CARGO_PKG_VERSION"),
+        "perf_tier": state.perf_tier,
+        "idle_stage": state.idle.get().label(),
     }))
 }
 

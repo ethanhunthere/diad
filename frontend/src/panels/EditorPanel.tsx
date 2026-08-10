@@ -1,55 +1,57 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { xcodeDark } from "@uiw/codemirror-theme-xcode";
-import { javascript } from "@codemirror/lang-javascript";
-import { python } from "@codemirror/lang-python";
-import { rust } from "@codemirror/lang-rust";
-import { json } from "@codemirror/lang-json";
-import { markdown } from "@codemirror/lang-markdown";
-import { html } from "@codemirror/lang-html";
-import { css } from "@codemirror/lang-css";
 import { lintGutter, linter } from "@codemirror/lint";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { keymap } from "@codemirror/view";
 import type { EditorView, ViewUpdate } from "@codemirror/view";
+import type { Extension } from "@codemirror/state";
 import { X, Save, CheckCircle2, FileText, Sparkles, Wand2 } from "lucide-react";
 import { useStore, sendMsg } from "../stores/useStore";
 import { nextId, basename } from "../lib/format";
 
-function langFor(path: string) {
+/**
+ * Language packs load ON DEMAND (spec 6.2): each pack is its own dynamic
+ * import, so opening a .py file never pays for the TypeScript grammar.
+ */
+async function loadLang(path: string): Promise<Extension | undefined> {
   const ext = path.split(".").pop()?.toLowerCase() ?? "";
   switch (ext) {
     case "js":
     case "jsx":
     case "ts":
     case "tsx":
-    case "mjs":
+    case "mjs": {
+      const { javascript } = await import("@codemirror/lang-javascript");
       return javascript({ jsx: ext === "jsx" || ext === "tsx", typescript: ext === "ts" || ext === "tsx" });
-    case "py":
+    }
+    case "py": {
+      const { python } = await import("@codemirror/lang-python");
       return python();
-    case "rs":
+    }
+    case "rs": {
+      const { rust } = await import("@codemirror/lang-rust");
       return rust();
-    case "json":
+    }
+    case "json": {
+      const { json } = await import("@codemirror/lang-json");
       return json();
+    }
     case "md":
-    case "markdown":
+    case "markdown": {
+      const { markdown } = await import("@codemirror/lang-markdown");
       return markdown();
+    }
     case "html":
-    case "htm":
+    case "htm": {
+      const { html } = await import("@codemirror/lang-html");
       return html();
+    }
     case "css":
-    case "scss":
+    case "scss": {
+      const { css } = await import("@codemirror/lang-css");
       return css();
-    case "sh":
-    case "bash":
-    case "zsh":
-    case "fish":
-    case "toml":
-    case "yaml":
-    case "yml":
-    case "conf":
-    case "ini":
-      return undefined;
+    }
     default:
       return undefined;
   }
@@ -154,8 +156,22 @@ export function EditorPanel() {
     [activeFile, setFileContent],
   );
 
+  // Language pack loads on demand (spec 6.2): swap it in when it arrives.
+  const [lang, setLang] = useState<Extension | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setLang(null);
+    if (activeFile) {
+      void loadLang(activeFile).then((l) => {
+        if (alive) setLang(l ?? null);
+      });
+    }
+    return () => {
+      alive = false;
+    };
+  }, [activeFile]);
+
   const extensions = useMemo(() => {
-    const lang = activeFile ? langFor(activeFile) : undefined;
     return [
       lang ? lang : [],
       lintGutter(),
@@ -163,7 +179,7 @@ export function EditorPanel() {
       highlightSelectionMatches(),
       keymap.of([...searchKeymap]),
     ];
-  }, [activeFile]);
+  }, [lang]);
 
   // Track the current selection so the AI assist chip can float above it.
   const onUpdate = useCallback((vu: ViewUpdate) => {

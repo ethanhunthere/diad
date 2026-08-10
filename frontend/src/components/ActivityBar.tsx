@@ -15,6 +15,7 @@ import {
 import { useStore } from "../stores/useStore";
 import type { ViewId } from "../lib/types";
 import { VIEW_LABELS } from "../lib/format";
+import { prefetchView } from "../lib/prefetch";
 
 export const VIEWS: { id: ViewId; icon: typeof MessageSquare }[] = [
   { id: "chat", icon: MessageSquare },
@@ -63,6 +64,7 @@ export function ActivityBar({ collapsed }: { collapsed: boolean }) {
           <button
             key={id}
             onClick={() => setView(id)}
+            onMouseEnter={() => prefetchView(id)}
             title={VIEW_LABELS[id]}
             className={`relative flex h-10 w-10 items-center justify-center rounded-panel transition-all duration-150 ease-out ${
               active
