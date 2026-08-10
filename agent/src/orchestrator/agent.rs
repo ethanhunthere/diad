@@ -13,6 +13,8 @@
 //!    and the provider is re-called — until it produces a final answer
 //!    (`end_turn`) or the iteration budget (`MAX_ITERATIONS`) is exhausted.
 
+use std::sync::Arc;
+
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
 use crate::providers::traits::{LlmProvider, Message, StreamEvent, ToolDefinition};
@@ -22,6 +24,25 @@ use crate::tui::event::Event;
 
 /// Maximum number of tool-call rounds within a single agentic turn.
 pub const MAX_ITERATIONS: usize = 5;
+
+/// Hard cap on conversation messages sent to the provider (spec 2.8:
+/// context growth must be bounded or long sessions blow the context
+/// window and every fallback provider burns the same 400).
+pub const MAX_CONTEXT_MESSAGES: usize = 200;
+
+/// Trim the oldest messages once the cap is exceeded. The cut point always
+/// advances to a `user` message so assistant-tool_use / tool_result pairs are
+/// never split (a dangling tool result is a 400 on most providers).
+fn trim_context(messages: &mut Vec<Message>, cap: usize) {
+    if messages.len() <= cap {
+        return;
+    }
+    let mut cut = messages.len() - cap;
+    while cut < messages.len() && messages[cut].role != "user" {
+        cut += 1;
+    }
+    messages.drain(..cut);
+}
 
 /// Tools that always require an explicit user confirmation (y/N) before the
 /// orchestrator executes them.
@@ -85,7 +106,7 @@ pub struct AgentOutcome {
 /// for tool lines, SecurePromptRequest / ConfirmationRequest for user input).
 pub async fn run_agentic_loop(
     provider: &dyn LlmProvider,
-    registry: &ToolRegistry,
+    registry: Arc<ToolRegistry>,
     messages: Vec<Message>,
     tx: UnboundedSender<Event>,
 ) -> anyhow::Result<AgentOutcome> {
@@ -113,6 +134,7 @@ pub async fn run_agentic_loop(
             })
             .collect();
 
+        trim_context(&mut messages, MAX_CONTEXT_MESSAGES);
         let stream = match provider.stream_chat(messages.clone(), tool_defs).await {
             Ok(s) => s,
             Err(e) => {
@@ -193,7 +215,7 @@ pub async fn run_agentic_loop(
 
         // ---- 4. Execute each tool (with secure prompts / confirmations) ----
         for tc in tool_calls {
-            let execution = execute_tool_with_prompts(registry, &tc, &tx).await;
+            let execution = execute_tool_with_prompts(Arc::clone(&registry), &tc, &tx).await;
             let _ = tx.send(Event::AppendMessage(execution.status_line(&tc.name)));
             let _ = tx.send(Event::ToolCallResult {
                 call_id: tc.id.clone(),
@@ -261,7 +283,7 @@ impl ToolExecution {
 ///   tool parameters and the tool is re-executed. The secret never reaches the
 ///   LLM or the logs.
 async fn execute_tool_with_prompts(
-    registry: &ToolRegistry,
+    registry: Arc<ToolRegistry>,
     tc: &ToolCall,
     tx: &UnboundedSender<Event>,
 ) -> ToolExecution {
@@ -332,13 +354,30 @@ async fn execute_tool_with_prompts(
         }
     }
 
-    let mut result = match registry.execute_tool(&tc.name, params.clone()) {
-        Ok(r) => r,
-        Err(e) => {
+    // Tools spawn processes and walk filesystems: run them on the blocking
+    // pool so a slow tool never stalls the daemon's async runtime (on a
+    // 1-worker ULTRA_LOW box that would freeze the whole daemon).
+    let exec_name = tc.name.clone();
+    let exec_params = params.clone();
+    let exec_registry = Arc::clone(&registry);
+    let mut result = match tokio::task::spawn_blocking(move || {
+        exec_registry.execute_tool(&exec_name, exec_params)
+    })
+    .await
+    {
+        Ok(Ok(r)) => r,
+        Ok(Err(e)) => {
             return ToolExecution {
                 success: false,
                 output: String::new(),
                 error: Some(format!("Tool error: {e}")),
+            };
+        }
+        Err(e) => {
+            return ToolExecution {
+                success: false,
+                output: String::new(),
+                error: Some(format!("Tool task panicked: {e}")),
             };
         }
     };
@@ -354,10 +393,18 @@ async fn execute_tool_with_prompts(
                         if let Some(secret) = request_secret(tx, label).await {
                             if !secret.is_empty() {
                                 params["password"] = serde_json::Value::String(secret);
-                                result =
-                                    registry.execute_tool(&tc.name, params).unwrap_or_else(|e| {
-                                        ToolResult::err(format!("Tool error: {e}"))
-                                    });
+                                let retry_name = tc.name.clone();
+                                let retry_params = params.clone();
+                                let retry_registry = Arc::clone(&registry);
+                                result = match tokio::task::spawn_blocking(move || {
+                                    retry_registry.execute_tool(&retry_name, retry_params)
+                                })
+                                .await
+                                {
+                                    Ok(Ok(r)) => r,
+                                    Ok(Err(e)) => ToolResult::err(format!("Tool error: {e}")),
+                                    Err(e) => ToolResult::err(format!("Tool error: {e}")),
+                                };
                             } else {
                                 result = ToolResult::err("Password entry cancelled.");
                             }
@@ -373,6 +420,11 @@ async fn execute_tool_with_prompts(
     ToolExecution::from_result(&result)
 }
 
+/// How long a user prompt may go unanswered before the turn treats it as
+/// declined. Without this a hung frontend pins the streaming flag forever
+/// and every later chat is blocked.
+const PROMPT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600);
+
 /// Request a masked (hidden) secret from the user and await the answer.
 ///
 /// Returns `None` if the prompt channel closed unexpectedly.
@@ -382,7 +434,13 @@ async fn request_secret(tx: &UnboundedSender<Event>, label: String) -> Option<St
         label,
         reply: reply_tx,
     });
-    reply_rx.recv().await
+    match tokio::time::timeout(PROMPT_TIMEOUT, reply_rx.recv()).await {
+        Ok(v) => v,
+        Err(_) => {
+            tracing::warn!("secret prompt timed out after {PROMPT_TIMEOUT:?}");
+            None
+        }
+    }
 }
 
 /// Request an explicit yes/no confirmation from the user and await the answer.
@@ -394,7 +452,13 @@ async fn request_confirmation(tx: &UnboundedSender<Event>, label: String) -> boo
         label,
         reply: reply_tx,
     });
-    reply_rx.recv().await.unwrap_or_default()
+    match tokio::time::timeout(PROMPT_TIMEOUT, reply_rx.recv()).await {
+        Ok(v) => v.unwrap_or_default(),
+        Err(_) => {
+            tracing::warn!("prompt timed out after {PROMPT_TIMEOUT:?}");
+            false
+        }
+    }
 }
 
 /// Request approval for a proposed file edit and await the answer.
@@ -408,7 +472,13 @@ async fn request_edit_approval(tx: &UnboundedSender<Event>, path: String, diff: 
         diff,
         reply: reply_tx,
     });
-    reply_rx.recv().await.unwrap_or_default()
+    match tokio::time::timeout(PROMPT_TIMEOUT, reply_rx.recv()).await {
+        Ok(v) => v.unwrap_or_default(),
+        Err(_) => {
+            tracing::warn!("prompt timed out after {PROMPT_TIMEOUT:?}");
+            false
+        }
+    }
 }
 
 /// Build a small unified diff between two file contents (line based).
@@ -426,8 +496,18 @@ fn unified_diff(path: &str, old: &str, new: &str) -> String {
         new_lines.len()
     ));
 
-    // LCS table (compact: only one row kept) → backtrace.
     let (n, m) = (old_lines.len(), new_lines.len());
+
+    // LCS is O(n*m) memory. Beyond this the diff card shows a summary
+    // instead — an AI edit of a huge file must not allocate gigabytes.
+    const MAX_LCS_CELLS: usize = 4_000_000;
+    if (n + 1).saturating_mul(m + 1) > MAX_LCS_CELLS {
+        out.push_str(&format!(
+            "@@ large file: {n} lines -> {m} lines; diff suppressed @@\n"
+        ));
+        return out;
+    }
+
     let mut table = vec![vec![0usize; m + 1]; n + 1];
     for i in (0..n).rev() {
         for j in (0..m).rev() {
@@ -466,6 +546,44 @@ fn unified_diff(path: &str, old: &str, new: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_trim_context_keeps_recent_and_user_boundary() {
+        let mut msgs: Vec<Message> = Vec::new();
+        msgs.push(Message::user("first"));
+        for i in 0..10 {
+            msgs.push(Message::assistant_tool_use(
+                format!("id{i}"),
+                "t",
+                serde_json::json!({}),
+            ));
+            msgs.push(Message::tool_result(format!("id{i}"), "ok"));
+        }
+        msgs.push(Message::user("last"));
+
+        trim_context(&mut msgs, 5);
+        assert!(msgs.len() <= 5);
+        assert_eq!(msgs[0].role, "user", "cut must land on a user message");
+        assert_eq!(msgs.last().unwrap().content, "last");
+    }
+
+    #[test]
+    fn test_trim_context_noop_under_cap() {
+        let mut msgs = vec![Message::user("a"), Message::user("b")];
+        trim_context(&mut msgs, 200);
+        assert_eq!(msgs.len(), 2);
+    }
+
+    #[test]
+    fn test_unified_diff_suppresses_huge_files() {
+        let old: String = (0..2001).map(|i| format!("line {i}\n")).collect();
+        let new: String = (0..2001).map(|i| format!("changed {i}\n")).collect();
+        let diff = unified_diff("big.txt", &old, &new);
+        assert!(
+            diff.contains("diff suppressed"),
+            "huge diffs must not run LCS"
+        );
+    }
 
     #[test]
     fn test_unified_diff_adds_lines() {
