@@ -152,6 +152,22 @@ usage in the codebase.
 
 ---
 
+## 6.5 MASTER FIX S7 — regression gates (re-verified on boot-chain changes)
+
+| Gate | Command | Result |
+|------|---------|--------|
+| Build | `cargo build` | ✅ 0 errors, 0 warnings |
+| Tests | `cargo test --lib` | ✅ 328 passed, 0 failed |
+| Clippy | `cargo clippy -- -D warnings` | ✅ 0 findings |
+| Format | `cargo fmt --check` | ✅ clean |
+| Shell syntax | `ls *.sh \| xargs -n1 bash -n` (all `airootfs/usr/local/bin`) | ✅ all clean |
+| Sudoers | `visudo -cf /etc/sudoers.d/diad` | ✅ parsed OK |
+| Frontend | `npm run build` (frontend/) | ✅ EXIT 0, all chunks within budget |
+| Legacy names | `rg -i "diod\|intentos"` (excluding docs) | ✅ 0 source hits |
+| shellcheck | NOT RUN — not installed on build host (same as 9.6) | ⚠️ skip |
+
+---
+
 ## 7. GOOGLE ENGINEER TEST — 10-step walkthrough
 
 A senior engineer cloning this repo and reading in order can fully understand
