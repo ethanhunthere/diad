@@ -27,7 +27,28 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "${LOG_FILE}"
 }
 
+# ---- Log rotation (F-13) ----
+# Size-capped: any ~/.diad/logs/*.log (and the daemon log at ~/.diad/
+# daemon.log, which sits outside the logs dir) over 1 MiB is copied to .1
+# (one backup kept) and the live file truncated. copytruncate (not mv) so
+# the daemon's open fd keeps writing to the live file. The live ISO runs
+# from RAM — without this, logs grow forever and OOM the session.
+rotate_logs() {
+    local max_bytes log size
+    max_bytes=1048576  # 1 MiB
+    for log in "${LOG_DIR}"/*.log "${DIAD_HOME}/daemon.log"; do
+        [[ -f "${log}" ]] || continue
+        size=$(stat -c %s "${log}" 2>/dev/null || echo 0)
+        if [[ ${size} -gt ${max_bytes} ]]; then
+            cp -f "${log}" "${log}.1" 2>/dev/null || continue
+            : > "${log}" 2>/dev/null || true
+            log "supervisor: rotated ${log##*/} (${size} bytes -> .1)"
+        fi
+    done
+}
+
 log "supervisor: session start"
+rotate_logs
 
 # ---- First-boot hardware/network/power setup (marker-gated inside) ----
 # Run BEFORE the wizard so NetworkManager/power-profiles-daemon are up when
@@ -119,5 +140,22 @@ else
     log "supervisor: brave not found"
 fi
 
-log "supervisor: complete"
-exit 0
+# ---- Waybar watchdog (F-14, spec 6.6) + periodic log rotation ----
+# Sway starts waybar once at boot; if it dies nothing restarts it. This loop
+# is the supervisor's steady state: check waybar every 10 s, relaunch it with
+# the same flags Sway used (also what makes `diad-conf-write waybar-mode`
+# take effect — that handler pkill's waybar and this loop brings it back
+# with the freshly installed config). Logs are rotated every 10 cycles to
+# amortize the stat cost.
+cycles=0
+while true; do
+    if ! pgrep -x waybar >/dev/null 2>&1; then
+        log "supervisor: waybar not running — relaunching"
+        waybar -c /etc/waybar/config -s /etc/waybar/style.css >/dev/null 2>&1 &
+    fi
+    cycles=$((cycles + 1))
+    if [[ $((cycles % 10)) -eq 0 ]]; then
+        rotate_logs
+    fi
+    sleep 10
+done
