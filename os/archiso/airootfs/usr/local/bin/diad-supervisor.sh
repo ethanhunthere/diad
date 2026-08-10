@@ -97,6 +97,21 @@ browser_possible() {
     command -v chromium >/dev/null 2>&1
 }
 
+# Number of DIAD AGENT windows (GUI app-window OR TUI foot) anywhere. The GUI
+# is a browser app-window whose title is "DIAD AGENT"; the TUI foot window
+# carries the same --title. The 7860 alternative covers any future window
+# whose name exposes the daemon URL.
+agent_window_count() {
+    if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
+        swaymsg -t get_tree 2>/dev/null \
+            | jq -r '.. | objects | select(.type? == "con" and (.name? // "" | test("7860|DIAD AGENT"))) | .name' 2>/dev/null \
+            | wc -l
+    else
+        # Pre-sway fallback: only the TUI process can exist yet.
+        pgrep -fc 'diad-agent --tui' 2>/dev/null || echo 0
+    fi
+}
+
 # =============================================================================
 log "supervisor: session start"
 rotate_logs
@@ -139,19 +154,66 @@ else
     FALLBACK=1
 fi
 
-# ---- (c) workspace 1: DIAD AGENT GUI, or TUI fallback ----
-if [[ ${FALLBACK} -eq 1 ]]; then
+# ---- (c) workspace 1: EXACTLY ONE DIAD AGENT window, focused ----
+# PROMPT-2 S1.1 — never launch GUI and TUI together; WS1 agent windows == 1
+# always. If an agent window already exists, do nothing (no duplicates).
+# Daemon healthy → GUI via the shim (brave --app=…:7860), verify the window
+# maps within 3 s, retry ONCE, then TUI fallback with the reason logged.
+# Daemon down → foot diad-agent --tui directly.
+launch_agent_tui() {
     foot --app-id=foot --title "DIAD AGENT" -e diad-agent --tui >/dev/null 2>&1 &
     log "supervisor: TUI fallback opened on workspace 1"
-else
+}
+launch_agent_gui() {
     brave --app=http://127.0.0.1:7860 >/dev/null 2>&1 &
-    log "supervisor: DIAD AGENT GUI opened on workspace 1"
+}
+
+if [[ $(agent_window_count) -gt 0 ]]; then
+    log "supervisor: agent window already present — skipping WS1 launch (no duplicates)"
+elif [[ ${FALLBACK} -eq 1 ]]; then
+    launch_agent_tui
+else
+    launch_agent_gui
+    sleep 3
+    if [[ $(agent_window_count) -gt 0 ]]; then
+        log "supervisor: DIAD AGENT GUI verified on workspace 1"
+    else
+        log "supervisor: GUI window not mapped after 3 s — retrying once"
+        launch_agent_gui
+        sleep 3
+        if [[ $(agent_window_count) -gt 0 ]]; then
+            log "supervisor: DIAD AGENT GUI verified on workspace 1 (retry)"
+        else
+            log "supervisor: GUI failed twice — engaging TUI fallback (reason in daemon.log)"
+            tail -n 10 "${DIAD_HOME}/daemon.log" >> "${LOG_FILE}" 2>&1 || true
+            launch_agent_tui
+        fi
+    fi
 fi
 
-# ---- (f) first-run wizard (independent window — never blocks the boot) ----
+# ---- (f) first-run wizard — GUI mode: onboarding is a GUI modal (existing
+#      browser wizard, localStorage-driven); TUI mode only: foot wizard.
+#      Never both (PROMPT-2 S1.2). ----
 if [[ ! -f "${DIAD_HOME}/.first-run-complete" ]]; then
-    log "supervisor: launching first-run wizard..."
-    foot --app-id=foot --title "DIAD Setup" -e diad-first-run.sh >/dev/null 2>&1 &
+    if [[ ${FALLBACK} -eq 1 ]]; then
+        log "supervisor: first-run wizard via foot (TUI mode)"
+        foot --app-id=foot --title "DIAD Setup" -e diad-first-run.sh >/dev/null 2>&1 &
+    else
+        log "supervisor: first-run onboarding runs in the GUI — no foot wizard"
+    fi
+fi
+
+# ---- end-of-boot: focus workspace 1 on the primary output (PROMPT-2 S1.3) —-
+#      the agent window is focused and visible WITHOUT any user click.
+if command -v swaymsg >/dev/null 2>&1; then
+    swaymsg workspace 1 >/dev/null 2>&1
+    output_name="$(swaymsg -t get_outputs 2>/dev/null | jq -r '.[0].name // empty' 2>/dev/null)"
+    if [[ -n "${output_name}" ]]; then
+        swaymsg focus output "${output_name}" >/dev/null 2>&1
+        log "supervisor: focus → workspace 1 on output ${output_name}"
+    else
+        log "supervisor: focus → workspace 1 (output query failed)"
+    fi
 fi
 
 # ---- (d) workspace 2: browser respawn loop (5 s, quiet) ----

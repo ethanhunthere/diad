@@ -46,6 +46,14 @@ for_window [app_id="foot"] border pixel 1
 for_window [app_id="brave-browser"] border pixel 1
 for_window [app_id="com.brave.Browser"] border pixel 1
 
+# PROMPT-2 S1 — auto-focus at boot (no user click ever needed): the GUI
+# app-window (chromium, URL :7860) and any foot window grab focus when they
+# map and are pinned to workspace 1. `focus_follows_mouse no` keeps the
+# pointer from ever stealing focus from the agent window.
+for_window [app_id="chromium" title="*7860*"] focus, move to workspace 1
+for_window [app_id="foot"] focus, move to workspace 1
+focus_follows_mouse no
+
 # Gaps
 gaps inner 4
 gaps outer 0
