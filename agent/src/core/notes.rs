@@ -110,7 +110,9 @@ impl NotesStore {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.extension().map(|e| e == "md").unwrap_or(false) {
-                let Ok(meta) = fs::metadata(&path) else { continue };
+                let Ok(meta) = fs::metadata(&path) else {
+                    continue;
+                };
                 let name = path
                     .file_stem()
                     .and_then(|s| s.to_str())
@@ -121,7 +123,11 @@ impl NotesStore {
                 }
                 notes.push(NoteMeta {
                     name,
-                    updated_at: meta.modified().ok().map(DateTime::<Utc>::from).unwrap_or_else(Utc::now),
+                    updated_at: meta
+                        .modified()
+                        .ok()
+                        .map(DateTime::<Utc>::from)
+                        .unwrap_or_else(Utc::now),
                     size: meta.len(),
                 });
             }
@@ -149,8 +155,7 @@ impl NotesStore {
 
     /// Write (create or overwrite) a note. Returns its metadata.
     pub fn write(&self, name: &str, content: &str) -> anyhow::Result<NoteMeta> {
-        let safe = Self::sanitize_name(name)
-            .ok_or_else(|| anyhow::anyhow!("invalid note name"))?;
+        let safe = Self::sanitize_name(name).ok_or_else(|| anyhow::anyhow!("invalid note name"))?;
         let path = self.dir.join(format!("{safe}.md"));
         fs::write(&path, content)?;
         let meta = fs::metadata(&path)?;
@@ -180,12 +185,18 @@ mod tests {
 
     #[test]
     fn test_sanitize_name_accepts_plain() {
-        assert_eq!(NotesStore::sanitize_name("roadmap").as_deref(), Some("roadmap"));
+        assert_eq!(
+            NotesStore::sanitize_name("roadmap").as_deref(),
+            Some("roadmap")
+        );
         assert_eq!(
             NotesStore::sanitize_name("  ideas.md  ").as_deref(),
             Some("ideas.md")
         );
-        assert_eq!(NotesStore::sanitize_name("a-b_c.d").as_deref(), Some("a-b_c.d"));
+        assert_eq!(
+            NotesStore::sanitize_name("a-b_c.d").as_deref(),
+            Some("a-b_c.d")
+        );
     }
 
     #[test]

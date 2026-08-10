@@ -113,7 +113,10 @@ pub fn read_file(path: &str, allowed: &[String]) -> anyhow::Result<ToolResult> {
         Ok(contents) => {
             let preview = if contents.lines().count() > 100 {
                 let truncated: String = contents.lines().take(100).collect::<Vec<_>>().join("\n");
-                format!("{truncated}\n\n... (truncated, {} total lines)", contents.lines().count())
+                format!(
+                    "{truncated}\n\n... (truncated, {} total lines)",
+                    contents.lines().count()
+                )
             } else {
                 contents
             };
@@ -132,9 +135,8 @@ pub fn write_file(path: &str, content: &str, allowed: &[String]) -> anyhow::Resu
 
     // Create parent directories
     if let Some(parent) = file_path.parent() {
-        fs::create_dir_all(parent).map_err(|e| {
-            anyhow::anyhow!("Failed to create parent directories: {e}")
-        })?;
+        fs::create_dir_all(parent)
+            .map_err(|e| anyhow::anyhow!("Failed to create parent directories: {e}"))?;
     }
 
     match fs::write(&file_path, content) {
@@ -265,7 +267,9 @@ pub fn chmod_file(path: &str, mode: &str, allowed: &[String]) -> anyhow::Result<
     perms.set_mode(mode_val);
     fs::set_permissions(&file_path, perms)?;
 
-    Ok(ToolResult::ok(format!("Changed permissions of {path} to {mode}")))
+    Ok(ToolResult::ok(format!(
+        "Changed permissions of {path} to {mode}"
+    )))
 }
 
 /// Check if a file is executable.

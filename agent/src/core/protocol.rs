@@ -63,10 +63,7 @@ pub enum ClientMsg {
         id: String,
     },
     /// Read a file.
-    FileRead {
-        id: String,
-        path: String,
-    },
+    FileRead { id: String, path: String },
     /// Write a file.
     FileWrite {
         id: String,
@@ -74,27 +71,15 @@ pub enum ClientMsg {
         content: String,
     },
     /// List a directory (single level, git-aware).
-    FileList {
-        id: String,
-        path: String,
-    },
+    FileList { id: String, path: String },
     /// Keyboard/data input for the daemon-spawned PTY shell.
-    TermInput {
-        data: String,
-    },
+    TermInput { data: String },
     /// Resize the daemon-spawned PTY.
-    TermResize {
-        cols: u16,
-        rows: u16,
-    },
+    TermResize { cols: u16, rows: u16 },
     /// Switch the active provider (opens model picker flow in GUI).
-    ProviderSwitch {
-        name: String,
-    },
+    ProviderSwitch { name: String },
     /// Switch the active model for the current provider.
-    ModelSwitch {
-        model: String,
-    },
+    ModelSwitch { model: String },
     /// Store an API key for a provider after validation.
     ProviderConnect {
         id: String,
@@ -113,22 +98,13 @@ pub enum ClientMsg {
         value: serde_json::Value,
     },
     /// Request the full provider list (with connection status).
-    ProvidersList {
-        id: String,
-    },
+    ProvidersList { id: String },
     /// Request the daemon stats snapshot.
-    StatsGet {
-        id: String,
-    },
+    StatsGet { id: String },
     /// Request the current model list for a provider.
-    ModelsList {
-        id: String,
-        provider: String,
-    },
+    ModelsList { id: String, provider: String },
     /// Request the list of detected external AI coding CLIs.
-    AgentsList {
-        id: String,
-    },
+    AgentsList { id: String },
 }
 
 // ---------------------------------------------------------------------------
@@ -157,10 +133,7 @@ pub struct FileEntryDto {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ServerMsg {
     /// Streaming text delta for a chat turn.
-    Token {
-        id: String,
-        text: String,
-    },
+    Token { id: String, text: String },
     /// The model requested a tool call; frontend must confirm/reject.
     ToolUse {
         /// Request id (echo of chat.send id + call suffix).
@@ -215,37 +188,19 @@ pub enum ServerMsg {
         cwd: String,
     },
     /// PTY output.
-    TermOutput {
-        data: String,
-    },
+    TermOutput { data: String },
     /// Request a masked (hidden) input from the user.
-    SecretRequest {
-        id: String,
-        label: String,
-    },
+    SecretRequest { id: String, label: String },
     /// Request an explicit yes/no confirmation.
-    ConfirmRequest {
-        id: String,
-        label: String,
-    },
+    ConfirmRequest { id: String, label: String },
     /// A streaming turn finished.
-    StreamDone {
-        id: String,
-    },
+    StreamDone { id: String },
     /// A plain status/event line (rendered as [system]).
-    System {
-        message: String,
-    },
+    System { message: String },
     /// An error (optionally tied to a request id).
-    Error {
-        id: Option<String>,
-        message: String,
-    },
+    Error { id: Option<String>, message: String },
     /// List of detected external AI coding CLIs.
-    Agents {
-        id: String,
-        agents: Vec<String>,
-    },
+    Agents { id: String, agents: Vec<String> },
     /// Greeting sent right after the WebSocket connects.
     Connected {
         v: u32,
@@ -268,10 +223,7 @@ pub enum ServerMsg {
         entries: Vec<FileEntryDto>,
     },
     /// File write acknowledgement (file.write).
-    FileWritten {
-        id: String,
-        path: String,
-    },
+    FileWritten { id: String, path: String },
 }
 
 impl ServerMsg {
@@ -399,7 +351,10 @@ mod tests {
         let back: ServerMsg = serde_json::from_str(&json).unwrap();
         match back {
             ServerMsg::Status {
-                provider, model, connected, ..
+                provider,
+                model,
+                connected,
+                ..
             } => {
                 assert_eq!(provider, "kimi");
                 assert_eq!(model, "kimi-k2-0905");
@@ -429,27 +384,108 @@ mod tests {
     #[test]
     fn test_all_client_msg_variants_roundtrip() {
         let msgs: Vec<(ClientMsg, &str)> = vec![
-            (ClientMsg::ChatSend { id: "r1".into(), text: "hi".into() }, "chat_send"),
+            (
+                ClientMsg::ChatSend {
+                    id: "r1".into(),
+                    text: "hi".into(),
+                },
+                "chat_send",
+            ),
             (ClientMsg::ToolApprove { id: "r1".into() }, "tool_approve"),
             (ClientMsg::ToolReject { id: "r1".into() }, "tool_reject"),
             (ClientMsg::EditApprove { id: "r1".into() }, "edit_approve"),
             (ClientMsg::EditReject { id: "r1".into() }, "edit_reject"),
             (ClientMsg::SpawnTui, "spawn_tui"),
-            (ClientMsg::SecretSubmit { id: "r1".into(), value: "s".into() }, "secret_submit"),
+            (
+                ClientMsg::SecretSubmit {
+                    id: "r1".into(),
+                    value: "s".into(),
+                },
+                "secret_submit",
+            ),
             (ClientMsg::SecretCancel { id: "r1".into() }, "secret_cancel"),
-            (ClientMsg::FileRead { id: "r1".into(), path: "/etc/hostname".into() }, "file_read"),
-            (ClientMsg::FileWrite { id: "r1".into(), path: "/tmp/a".into(), content: "x".into() }, "file_write"),
-            (ClientMsg::FileList { id: "r1".into(), path: "/tmp".into() }, "file_list"),
-            (ClientMsg::TermInput { data: "ls\n".into() }, "term_input"),
-            (ClientMsg::TermResize { cols: 120, rows: 40 }, "term_resize"),
-            (ClientMsg::ProviderSwitch { name: "kimi".into() }, "provider_switch"),
-            (ClientMsg::ModelSwitch { model: "kimi-k2-0905".into() }, "model_switch"),
-            (ClientMsg::ProviderConnect { id: "r1".into(), name: "kimi".into(), key: "sk-x".into() }, "provider_connect"),
-            (ClientMsg::AgentDelegate { id: "r1".into(), agent: "claude".into(), task: "refactor".into() }, "agent_delegate"),
-            (ClientMsg::ConfigSet { key: "theme".into(), value: serde_json::json!("#C87F4A") }, "config_set"),
-            (ClientMsg::ProvidersList { id: "r1".into() }, "providers_list"),
+            (
+                ClientMsg::FileRead {
+                    id: "r1".into(),
+                    path: "/etc/hostname".into(),
+                },
+                "file_read",
+            ),
+            (
+                ClientMsg::FileWrite {
+                    id: "r1".into(),
+                    path: "/tmp/a".into(),
+                    content: "x".into(),
+                },
+                "file_write",
+            ),
+            (
+                ClientMsg::FileList {
+                    id: "r1".into(),
+                    path: "/tmp".into(),
+                },
+                "file_list",
+            ),
+            (
+                ClientMsg::TermInput {
+                    data: "ls\n".into(),
+                },
+                "term_input",
+            ),
+            (
+                ClientMsg::TermResize {
+                    cols: 120,
+                    rows: 40,
+                },
+                "term_resize",
+            ),
+            (
+                ClientMsg::ProviderSwitch {
+                    name: "kimi".into(),
+                },
+                "provider_switch",
+            ),
+            (
+                ClientMsg::ModelSwitch {
+                    model: "kimi-k2-0905".into(),
+                },
+                "model_switch",
+            ),
+            (
+                ClientMsg::ProviderConnect {
+                    id: "r1".into(),
+                    name: "kimi".into(),
+                    key: "sk-x".into(),
+                },
+                "provider_connect",
+            ),
+            (
+                ClientMsg::AgentDelegate {
+                    id: "r1".into(),
+                    agent: "claude".into(),
+                    task: "refactor".into(),
+                },
+                "agent_delegate",
+            ),
+            (
+                ClientMsg::ConfigSet {
+                    key: "theme".into(),
+                    value: serde_json::json!("#C87F4A"),
+                },
+                "config_set",
+            ),
+            (
+                ClientMsg::ProvidersList { id: "r1".into() },
+                "providers_list",
+            ),
             (ClientMsg::StatsGet { id: "r1".into() }, "stats_get"),
-            (ClientMsg::ModelsList { id: "r1".into(), provider: "openai".into() }, "models_list"),
+            (
+                ClientMsg::ModelsList {
+                    id: "r1".into(),
+                    provider: "openai".into(),
+                },
+                "models_list",
+            ),
             (ClientMsg::AgentsList { id: "r1".into() }, "agents_list"),
         ];
 
@@ -489,62 +525,153 @@ mod tests {
         };
 
         let msgs: Vec<(ServerMsg, &str)> = vec![
-            (ServerMsg::Token { id: "r1".into(), text: "Hello".into() }, "token"),
-            (ServerMsg::ToolUse {
-                id: "r1".into(),
-                call_id: "call_1".into(),
-                name: "power".into(),
-                args: serde_json::json!({"action": "reboot"}),
-                confirm_required: true,
-            }, "tool_use"),
-            (ServerMsg::ToolResult {
-                id: "r1".into(),
-                call_id: "call_1".into(),
-                success: true,
-                output: "ok".into(),
-                status_line: "[ok]".into(),
-            }, "tool_result"),
-            (ServerMsg::EditDiff { id: "r1".into(), path: "a.rs".into(), diff: "-x\n+y".into() }, "edit_diff"),
-            (ServerMsg::Status {
-                provider: "kimi".into(),
-                model: "kimi-k2-0905".into(),
-                connected: true,
-                streaming: false,
-                daemon_version: "0.1.0".into(),
-            }, "status"),
-            (ServerMsg::Providers { id: "r1".into(), entries: vec![entry.clone()] }, "providers"),
-            (ServerMsg::Models {
-                id: "r1".into(),
-                provider: "openai".into(),
-                models: vec!["gpt-5".into()],
-                current: "gpt-5".into(),
-            }, "models"),
-            (ServerMsg::Stats {
-                id: "r1".into(),
-                tokens: 1234,
-                latency_ms: 567,
-                battery: "100%".into(),
-                wifi: "diad".into(),
-                cwd: "/home".into(),
-            }, "stats"),
-            (ServerMsg::TermOutput { data: "ls\n".into() }, "term_output"),
-            (ServerMsg::SecretRequest { id: "r1".into(), label: "API key".into() }, "secret_request"),
-            (ServerMsg::ConfirmRequest { id: "r1".into(), label: "Reboot?".into() }, "confirm_request"),
+            (
+                ServerMsg::Token {
+                    id: "r1".into(),
+                    text: "Hello".into(),
+                },
+                "token",
+            ),
+            (
+                ServerMsg::ToolUse {
+                    id: "r1".into(),
+                    call_id: "call_1".into(),
+                    name: "power".into(),
+                    args: serde_json::json!({"action": "reboot"}),
+                    confirm_required: true,
+                },
+                "tool_use",
+            ),
+            (
+                ServerMsg::ToolResult {
+                    id: "r1".into(),
+                    call_id: "call_1".into(),
+                    success: true,
+                    output: "ok".into(),
+                    status_line: "[ok]".into(),
+                },
+                "tool_result",
+            ),
+            (
+                ServerMsg::EditDiff {
+                    id: "r1".into(),
+                    path: "a.rs".into(),
+                    diff: "-x\n+y".into(),
+                },
+                "edit_diff",
+            ),
+            (
+                ServerMsg::Status {
+                    provider: "kimi".into(),
+                    model: "kimi-k2-0905".into(),
+                    connected: true,
+                    streaming: false,
+                    daemon_version: "0.1.0".into(),
+                },
+                "status",
+            ),
+            (
+                ServerMsg::Providers {
+                    id: "r1".into(),
+                    entries: vec![entry.clone()],
+                },
+                "providers",
+            ),
+            (
+                ServerMsg::Models {
+                    id: "r1".into(),
+                    provider: "openai".into(),
+                    models: vec!["gpt-5".into()],
+                    current: "gpt-5".into(),
+                },
+                "models",
+            ),
+            (
+                ServerMsg::Stats {
+                    id: "r1".into(),
+                    tokens: 1234,
+                    latency_ms: 567,
+                    battery: "100%".into(),
+                    wifi: "diad".into(),
+                    cwd: "/home".into(),
+                },
+                "stats",
+            ),
+            (
+                ServerMsg::TermOutput {
+                    data: "ls\n".into(),
+                },
+                "term_output",
+            ),
+            (
+                ServerMsg::SecretRequest {
+                    id: "r1".into(),
+                    label: "API key".into(),
+                },
+                "secret_request",
+            ),
+            (
+                ServerMsg::ConfirmRequest {
+                    id: "r1".into(),
+                    label: "Reboot?".into(),
+                },
+                "confirm_request",
+            ),
             (ServerMsg::StreamDone { id: "r1".into() }, "stream_done"),
-            (ServerMsg::System { message: "daemon ready".into() }, "system"),
-            (ServerMsg::Error { id: Some("r1".into()), message: "boom".into() }, "error"),
-            (ServerMsg::Agents { id: "r1".into(), agents: vec!["claude".into()] }, "agents"),
-            (ServerMsg::Connected {
-                v: 1,
-                provider: "kimi".into(),
-                model: "kimi-k2-0905".into(),
-                connected: true,
-                streaming: false,
-                daemon_version: "0.1.0".into(),
-            }, "connected"),
-            (ServerMsg::FileContent { id: "r1".into(), path: "/etc/hostname".into(), content: "diad\n".into() }, "file_content"),
-            (ServerMsg::Files { id: "r1".into(), path: "/tmp".into(), entries: vec![file.clone()] }, "files"),
-            (ServerMsg::FileWritten { id: "r1".into(), path: "/tmp/a".into() }, "file_written"),
+            (
+                ServerMsg::System {
+                    message: "daemon ready".into(),
+                },
+                "system",
+            ),
+            (
+                ServerMsg::Error {
+                    id: Some("r1".into()),
+                    message: "boom".into(),
+                },
+                "error",
+            ),
+            (
+                ServerMsg::Agents {
+                    id: "r1".into(),
+                    agents: vec!["claude".into()],
+                },
+                "agents",
+            ),
+            (
+                ServerMsg::Connected {
+                    v: 1,
+                    provider: "kimi".into(),
+                    model: "kimi-k2-0905".into(),
+                    connected: true,
+                    streaming: false,
+                    daemon_version: "0.1.0".into(),
+                },
+                "connected",
+            ),
+            (
+                ServerMsg::FileContent {
+                    id: "r1".into(),
+                    path: "/etc/hostname".into(),
+                    content: "diad\n".into(),
+                },
+                "file_content",
+            ),
+            (
+                ServerMsg::Files {
+                    id: "r1".into(),
+                    path: "/tmp".into(),
+                    entries: vec![file.clone()],
+                },
+                "files",
+            ),
+            (
+                ServerMsg::FileWritten {
+                    id: "r1".into(),
+                    path: "/tmp/a".into(),
+                },
+                "file_written",
+            ),
         ];
 
         assert_eq!(msgs.len(), 19, "every ServerMsg variant must be covered");

@@ -161,7 +161,8 @@ impl DebugSession {
         let _guard = self.cmd_lock.lock().unwrap();
         let (lock, cv) = &*self.prompt_count;
         let before = *lock.lock().unwrap();
-        self.send(mi).map_err(|e| format!("gdb write failed: {e}"))?;
+        self.send(mi)
+            .map_err(|e| format!("gdb write failed: {e}"))?;
         let mut n = lock.lock().unwrap();
         let deadline = std::time::Instant::now() + CMD_TIMEOUT;
         while *n <= before {
@@ -221,8 +222,7 @@ impl DebugSession {
                 st.stack = vec![frame];
             }
             st.exited = st.reason.as_deref() == Some("exited");
-            st.exit_code = extract_field(line, "exit-code")
-                .and_then(|v| v.parse::<i32>().ok());
+            st.exit_code = extract_field(line, "exit-code").and_then(|v| v.parse::<i32>().ok());
             return;
         }
         if line.starts_with("*running") {
@@ -282,23 +282,28 @@ impl DebugSession {
     }
 
     pub fn run(&self) -> Result<(), String> {
-        self.send("-exec-run").map_err(|e| format!("gdb write failed: {e}"))
+        self.send("-exec-run")
+            .map_err(|e| format!("gdb write failed: {e}"))
     }
 
     pub fn continue_exec(&self) -> Result<(), String> {
-        self.send("-exec-continue").map_err(|e| format!("gdb write failed: {e}"))
+        self.send("-exec-continue")
+            .map_err(|e| format!("gdb write failed: {e}"))
     }
 
     pub fn step(&self) -> Result<(), String> {
-        self.send("-exec-step").map_err(|e| format!("gdb write failed: {e}"))
+        self.send("-exec-step")
+            .map_err(|e| format!("gdb write failed: {e}"))
     }
 
     pub fn next(&self) -> Result<(), String> {
-        self.send("-exec-next").map_err(|e| format!("gdb write failed: {e}"))
+        self.send("-exec-next")
+            .map_err(|e| format!("gdb write failed: {e}"))
     }
 
     pub fn finish(&self) -> Result<(), String> {
-        self.send("-exec-finish").map_err(|e| format!("gdb write failed: {e}"))
+        self.send("-exec-finish")
+            .map_err(|e| format!("gdb write failed: {e}"))
     }
 
     /// Refresh the stack + local variables (call while stopped).
@@ -338,7 +343,8 @@ fn extract_field(line: &str, key: &str) -> Option<String> {
     while i < bytes.len() {
         if let Some(stripped) = line[i..].strip_prefix(key) {
             if let Some(after_eq) = stripped.strip_prefix('=') {
-                let prev_ok = i == 0 || matches!(bytes[i - 1] as char, ',' | '{' | '[' | ' ' | '\t');
+                let prev_ok =
+                    i == 0 || matches!(bytes[i - 1] as char, ',' | '{' | '[' | ' ' | '\t');
                 if prev_ok {
                     return Some(strip_value(after_eq));
                 }
@@ -395,9 +401,16 @@ fn parse_bkpt(line: &str) -> Option<BreakpointDto> {
     let file = extract_field(&body, "fullname")
         .or_else(|| extract_field(&body, "file"))
         .unwrap_or_default();
-    let line_no = extract_field(&body, "line").and_then(|v| v.parse::<u32>().ok()).unwrap_or(0);
+    let line_no = extract_field(&body, "line")
+        .and_then(|v| v.parse::<u32>().ok())
+        .unwrap_or(0);
     let enabled = extract_field(&body, "enabled").as_deref() != Some("n");
-    Some(BreakpointDto { number, file, line: line_no, enabled })
+    Some(BreakpointDto {
+        number,
+        file,
+        line: line_no,
+        enabled,
+    })
 }
 
 fn parse_breakpoint_numbers(line: &str) -> Vec<u32> {
@@ -417,10 +430,16 @@ fn parse_frame(line: &str) -> Option<FrameDto> {
     let start = line.find("frame=")?;
     let body = strip_value(&line[start + 6..]);
     Some(FrameDto {
-        level: extract_field(&body, "level").and_then(|v| v.parse().ok()).unwrap_or(0),
+        level: extract_field(&body, "level")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0),
         func: extract_field(&body, "func").unwrap_or_default(),
-        file: extract_field(&body, "fullname").or_else(|| extract_field(&body, "file")).unwrap_or_default(),
-        line: extract_field(&body, "line").and_then(|v| v.parse().ok()).unwrap_or(0),
+        file: extract_field(&body, "fullname")
+            .or_else(|| extract_field(&body, "file"))
+            .unwrap_or_default(),
+        line: extract_field(&body, "line")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0),
     })
 }
 
@@ -456,7 +475,11 @@ fn parse_variables(line: &str) -> Option<Vec<VarDto>> {
         }
         i += 1;
         if i.is_multiple_of(3) {
-            vars.push(VarDto { name: name.clone(), value: value.clone(), kind: kind.clone() });
+            vars.push(VarDto {
+                name: name.clone(),
+                value: value.clone(),
+                kind: kind.clone(),
+            });
             name.clear();
             kind.clear();
             value.clear();
@@ -530,7 +553,10 @@ pub struct DebugManager {
 
 impl DebugManager {
     pub fn new() -> Self {
-        Self { sessions: Mutex::new(HashMap::new()), seq: AtomicU64::new(0) }
+        Self {
+            sessions: Mutex::new(HashMap::new()),
+            seq: AtomicU64::new(0),
+        }
     }
 
     /// Start a new GDB session for `program`.
@@ -543,7 +569,10 @@ impl DebugManager {
         let id = format!("dbg-{}", self.seq.fetch_add(1, Ordering::SeqCst));
         let session = DebugSession::start(id.clone(), program, args, cwd)
             .map_err(|e| format!("failed to start gdb: {e}"))?;
-        self.sessions.lock().unwrap().insert(id.clone(), Arc::clone(&session));
+        self.sessions
+            .lock()
+            .unwrap()
+            .insert(id.clone(), Arc::clone(&session));
         Ok((id, session))
     }
 
@@ -586,7 +615,10 @@ mod tests {
     #[test]
     fn test_extract_field() {
         let line = r#"*stopped,reason="breakpoint-hit",frame={level="0",func="main",file="/tmp/a.c",line="7"},thread-id="1""#;
-        assert_eq!(extract_field(line, "reason").as_deref(), Some("breakpoint-hit"));
+        assert_eq!(
+            extract_field(line, "reason").as_deref(),
+            Some("breakpoint-hit")
+        );
         assert_eq!(extract_field(line, "exit-code"), None);
     }
 
@@ -623,7 +655,8 @@ mod tests {
 
     #[test]
     fn test_parse_variables() {
-        let line = r#"^done,variables=[name="x",arg="int",value="42",name="y",arg="float",value="1.5"]"#;
+        let line =
+            r#"^done,variables=[name="x",arg="int",value="42",name="y",arg="float",value="1.5"]"#;
         let vars = parse_variables(line).unwrap();
         assert_eq!(vars.len(), 2);
         assert_eq!(vars[0].name, "x");

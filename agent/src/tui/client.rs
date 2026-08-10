@@ -12,11 +12,11 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use futures_util::{SinkExt, StreamExt};
+use tokio::net::TcpStream;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 use tokio_tungstenite::MaybeTlsStream;
 use tokio_tungstenite::WebSocketStream;
-use tokio::net::TcpStream;
 
 use crate::core::protocol::{ClientMsg, Envelope, ServerMsg, PROTOCOL_VERSION};
 use crate::providers::ProviderEntry;
@@ -92,9 +92,8 @@ impl DaemonClient {
                         let server: ServerMsg = match serde_json::from_str(&text) {
                             Ok(m) => m,
                             Err(e) => {
-                                let _ = reader_events.send(Event::Error(format!(
-                                    "protocol error: {e}"
-                                )));
+                                let _ = reader_events
+                                    .send(Event::Error(format!("protocol error: {e}")));
                                 continue;
                             }
                         };
@@ -102,9 +101,8 @@ impl DaemonClient {
                     }
                     Ok(WsMessage::Close(_)) => break,
                     Err(e) => {
-                        let _ = reader_events.send(Event::Error(format!(
-                            "daemon connection lost: {e}"
-                        )));
+                        let _ = reader_events
+                            .send(Event::Error(format!("daemon connection lost: {e}")));
                         break;
                     }
                     _ => {}
@@ -168,9 +166,7 @@ impl ClientHandle {
     }
 
     pub fn providers_list(&self) {
-        self.send(ClientMsg::ProvidersList {
-            id: self.next_id(),
-        });
+        self.send(ClientMsg::ProvidersList { id: self.next_id() });
     }
 
     pub fn models_list(&self, provider: String) {
@@ -181,9 +177,7 @@ impl ClientHandle {
     }
 
     pub fn agents_list(&self) {
-        self.send(ClientMsg::AgentsList {
-            id: self.next_id(),
-        });
+        self.send(ClientMsg::AgentsList { id: self.next_id() });
     }
 
     pub fn agent_delegate(&self, agent: String, task: String) {
@@ -212,7 +206,11 @@ impl ClientHandle {
 ///
 /// Secret/confirm/diff prompts register a reply channel; when the TUI answers
 /// (via `App` request flows), the value is forwarded over WS to the daemon.
-fn map_server_msg(msg: ServerMsg, events: &UnboundedSender<Event>, out: &UnboundedSender<ClientMsg>) {
+fn map_server_msg(
+    msg: ServerMsg,
+    events: &UnboundedSender<Event>,
+    out: &UnboundedSender<ClientMsg>,
+) {
     match msg {
         ServerMsg::Token { text, .. } => {
             let _ = events.send(Event::StreamChunk(text));
@@ -234,7 +232,10 @@ fn map_server_msg(msg: ServerMsg, events: &UnboundedSender<Event>, out: &Unbound
                     let _ = out.send(ClientMsg::SecretSubmit { id, value });
                 }
             });
-            let _ = events.send(Event::SecurePromptRequest { label, reply: reply_tx });
+            let _ = events.send(Event::SecurePromptRequest {
+                label,
+                reply: reply_tx,
+            });
         }
         ServerMsg::ConfirmRequest { id, label } => {
             let (reply_tx, mut reply_rx) = unbounded_channel::<bool>();
@@ -248,7 +249,10 @@ fn map_server_msg(msg: ServerMsg, events: &UnboundedSender<Event>, out: &Unbound
                     });
                 }
             });
-            let _ = events.send(Event::ConfirmationRequest { label, reply: reply_tx });
+            let _ = events.send(Event::ConfirmationRequest {
+                label,
+                reply: reply_tx,
+            });
         }
         ServerMsg::EditDiff { id, path, diff: _ } => {
             // TUI parity: surface edit approval as a y/N confirmation.

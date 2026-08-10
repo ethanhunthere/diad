@@ -30,9 +30,17 @@ pub fn run(args: &[&str]) -> anyhow::Result<ToolResult> {
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
 
     if output.status.success() {
-        Ok(ToolResult::ok(if stdout.is_empty() { stderr } else { stdout }))
+        Ok(ToolResult::ok(if stdout.is_empty() {
+            stderr
+        } else {
+            stdout
+        }))
     } else {
-        Ok(ToolResult::err(if stderr.is_empty() { stdout } else { stderr }))
+        Ok(ToolResult::err(if stderr.is_empty() {
+            stdout
+        } else {
+            stderr
+        }))
     }
 }
 
@@ -78,9 +86,17 @@ pub fn run_privileged(args: &[&str]) -> anyhow::Result<ToolResult> {
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
 
         if output.status.success() {
-            Ok(ToolResult::ok(if stdout.is_empty() { stderr } else { stdout }))
+            Ok(ToolResult::ok(if stdout.is_empty() {
+                stderr
+            } else {
+                stdout
+            }))
         } else {
-            Ok(ToolResult::err(if stderr.is_empty() { stdout } else { stderr }))
+            Ok(ToolResult::err(if stderr.is_empty() {
+                stdout
+            } else {
+                stderr
+            }))
         }
     }
 }
@@ -126,17 +142,13 @@ mod tests {
         // Even in test mode the simulated command line must not echo args —
         // DIAD_TEST_NO_PRIVILEGED must never be able to leak a password.
         let secret = "wifi-password-s3cret";
-        let result = run_privileged(&["nmcli", "dev", "wifi", "connect", "MyNet", "password", secret])
-            .unwrap();
+        let result = run_privileged(&[
+            "nmcli", "dev", "wifi", "connect", "MyNet", "password", secret,
+        ])
+        .unwrap();
         let msg = format!("{:?}", result);
-        assert!(
-            msg.contains("nmcli"),
-            "should name the program: {msg}"
-        );
-        assert!(
-            !msg.contains(secret),
-            "test-mode must not leak argv: {msg}"
-        );
+        assert!(msg.contains("nmcli"), "should name the program: {msg}");
+        assert!(!msg.contains(secret), "test-mode must not leak argv: {msg}");
     }
 
     #[test]

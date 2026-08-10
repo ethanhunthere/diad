@@ -74,17 +74,13 @@ impl OAuthFlow {
         tracing::info!("Opening browser for OAuth: {}", self.provider);
 
         // Open browser
-        let open_result = Command::new("xdg-open")
-            .arg(&auth_request_url)
-            .spawn();
+        let open_result = Command::new("xdg-open").arg(&auth_request_url).spawn();
 
         match open_result {
             Ok(_) => tracing::info!("Browser opened for authentication."),
             Err(e) => {
                 // Try Brave directly
-                let _ = Command::new("brave")
-                    .arg(&auth_request_url)
-                    .spawn();
+                let _ = Command::new("brave").arg(&auth_request_url).spawn();
                 tracing::warn!("xdg-open failed ({e}), tried Brave directly.");
             }
         }

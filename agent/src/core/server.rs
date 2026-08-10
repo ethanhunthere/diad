@@ -4,8 +4,8 @@
 //! accepts WebSocket connections from both frontends, routing
 //! each client message to the brain in `daemon`. Binds loopback.
 
-use std::sync::Arc;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 
 use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
@@ -17,7 +17,7 @@ use rust_embed::RustEmbed;
 use tokio::sync::mpsc::unbounded_channel;
 
 use super::daemon::{handle_client_msg, Conn, DaemonState, PromptBroker};
-use super::protocol::{Envelope, PROTOCOL_VERSION, ServerMsg};
+use super::protocol::{Envelope, ServerMsg, PROTOCOL_VERSION};
 
 // ---------------------------------------------------------------------------
 // Embedded GUI bundle
@@ -31,10 +31,7 @@ struct Assets;
 // WebSocket handler
 // ---------------------------------------------------------------------------
 
-async fn ws_handler(
-    ws: WebSocketUpgrade,
-    State(state): State<Arc<DaemonState>>,
-) -> Response {
+async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<DaemonState>>) -> Response {
     ws.on_upgrade(move |socket| handle_socket(socket, state))
 }
 
@@ -136,7 +133,11 @@ async fn index_html() -> impl IntoResponse {
         [("Content-Type", "text/html; charset=utf-8")],
         Assets::get("index.html")
             .map(|f| f.data.into_owned())
-            .unwrap_or_else(|| "<h1>DIAD AGENT - frontend not built</h1>".as_bytes().to_vec()),
+            .unwrap_or_else(|| {
+                "<h1>DIAD AGENT - frontend not built</h1>"
+                    .as_bytes()
+                    .to_vec()
+            }),
     )
 }
 

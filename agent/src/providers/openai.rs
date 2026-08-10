@@ -71,8 +71,7 @@ impl LlmProvider for OpenAiProvider {
         messages: Vec<Message>,
         tools: Vec<ToolDefinition>,
     ) -> anyhow::Result<Pin<Box<dyn Stream<Item = anyhow::Result<StreamEvent>> + Send>>> {
-        let request =
-            openai_common::build_chat_request(&self.model, &messages, &tools, 4096, true);
+        let request = openai_common::build_chat_request(&self.model, &messages, &tools, 4096, true);
 
         let response = self
             .client

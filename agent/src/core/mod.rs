@@ -9,17 +9,17 @@
 //! - **TUI**: `diad-agent --tui` runs the ratatui client, which is a thin
 //!   WebSocket consumer of the same brain.
 
+pub mod daemon;
 pub mod debug;
 pub mod notes;
 pub mod protocol;
 pub mod pty;
 pub mod rest;
-pub mod daemon;
 pub mod server;
 pub mod usage;
 
-pub use protocol::{ClientMsg, ServerMsg};
 pub use daemon::DaemonState;
+pub use protocol::{ClientMsg, ServerMsg};
 
 /// The loopback port the daemon listens on.
 pub const DAEMON_PORT: u16 = 7860;
@@ -36,7 +36,9 @@ pub fn ws_url() -> String {
 
 /// Is a daemon already listening on the loopback port?
 pub async fn daemon_alive() -> bool {
-    tokio::net::TcpStream::connect(("127.0.0.1", DAEMON_PORT)).await.is_ok()
+    tokio::net::TcpStream::connect(("127.0.0.1", DAEMON_PORT))
+        .await
+        .is_ok()
 }
 
 /// Wait (bounded) for the daemon to accept connections.
@@ -70,6 +72,14 @@ pub fn open_gui() {
 /// Launch the TUI client in a foot terminal (used by Ctrl+Shift+X in GUI).
 pub fn spawn_tui() {
     let _ = std::process::Command::new("foot")
-        .args(["--app-id", "foot", "--title", "DIAD AGENT (TUI)", "-e", "diad-agent", "--tui"])
+        .args([
+            "--app-id",
+            "foot",
+            "--title",
+            "DIAD AGENT (TUI)",
+            "-e",
+            "diad-agent",
+            "--tui",
+        ])
         .spawn();
 }

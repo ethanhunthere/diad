@@ -42,10 +42,7 @@ fn test_tool_execute_unknown_tool() {
     let result = registry.execute_tool("nonexistent_tool", serde_json::json!({}));
 
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Unknown tool"));
+    assert!(result.unwrap_err().to_string().contains("Unknown tool"));
 }
 
 // ---------------------------------------------------------------------------
@@ -59,7 +56,10 @@ fn test_tool_list_dir_cwd() {
 
     assert!(result.is_ok());
     let tool_result = result.unwrap();
-    assert!(tool_result.success, "list_dir should succeed on current dir");
+    assert!(
+        tool_result.success,
+        "list_dir should succeed on current dir"
+    );
 }
 
 #[test]

@@ -50,9 +50,17 @@ fn run(args: &[&str]) -> anyhow::Result<ToolResult> {
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
     if output.status.success() {
-        Ok(ToolResult::ok(if stdout.is_empty() { stderr } else { stdout }))
+        Ok(ToolResult::ok(if stdout.is_empty() {
+            stderr
+        } else {
+            stdout
+        }))
     } else {
-        Ok(ToolResult::err(if stderr.is_empty() { stdout } else { stderr }))
+        Ok(ToolResult::err(if stderr.is_empty() {
+            stdout
+        } else {
+            stderr
+        }))
     }
 }
 
@@ -91,9 +99,17 @@ fn run_privileged(args: &[&str]) -> anyhow::Result<ToolResult> {
         let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
         if output.status.success() {
-            Ok(ToolResult::ok(if stdout.is_empty() { stderr } else { stdout }))
+            Ok(ToolResult::ok(if stdout.is_empty() {
+                stderr
+            } else {
+                stdout
+            }))
         } else {
-            Ok(ToolResult::err(if stderr.is_empty() { stdout } else { stderr }))
+            Ok(ToolResult::err(if stderr.is_empty() {
+                stdout
+            } else {
+                stderr
+            }))
         }
     }
 }
@@ -103,8 +119,9 @@ fn run_privileged(args: &[&str]) -> anyhow::Result<ToolResult> {
 fn valid_value(v: &str) -> bool {
     !v.is_empty()
         && !v.starts_with('-')
-        && v.chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.' | ':' | '@' | '/' | '+' | '='))
+        && v.chars().all(|c| {
+            c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.' | ':' | '@' | '/' | '+' | '=')
+        })
 }
 
 /// Validate a path-like value (mount points, directories). Allows `/` and
@@ -188,9 +205,7 @@ pub fn get_pen_status() -> anyhow::Result<ToolResult> {
             libinput
                 .output
                 .lines()
-                .filter(|l| {
-                    l.contains("Tablet") || l.contains("Pen") || l.contains("Pad")
-                })
+                .filter(|l| { l.contains("Tablet") || l.contains("Pen") || l.contains("Pad") })
                 .collect::<Vec<_>>()
                 .join("\n")
         )))
@@ -206,7 +221,9 @@ pub fn get_pen_status() -> anyhow::Result<ToolResult> {
 pub fn configure_pen(pressure: Option<u32>, eraser: bool) -> anyhow::Result<ToolResult> {
     let devices = run(&["xsetwacom", "--list", "devices"])?;
     if !devices.success {
-        return Ok(ToolResult::err("xsetwacom unavailable (no X/Wayland wacom tools)"));
+        return Ok(ToolResult::err(
+            "xsetwacom unavailable (no X/Wayland wacom tools)",
+        ));
     }
     let mut results = Vec::new();
     for line in devices.output.lines() {
@@ -248,7 +265,10 @@ pub fn calibrate_touchscreen(device: &str) -> anyhow::Result<ToolResult> {
     if !valid_value(device) {
         return Ok(ToolResult::err("invalid device name"));
     }
-    let id = match Command::new("xinput").args(["list", "--id-only", device]).output() {
+    let id = match Command::new("xinput")
+        .args(["list", "--id-only", device])
+        .output()
+    {
         Ok(o) => o,
         Err(e) => return Ok(ToolResult::err(format!("xinput unavailable: {e}"))),
     };
@@ -292,7 +312,9 @@ pub fn get_touch_events(seconds: u32) -> anyhow::Result<ToolResult> {
                 Ok(ToolResult::ok(text))
             }
         }
-        Err(e) => Ok(ToolResult::err(format!("timeout/libinput unavailable: {e}"))),
+        Err(e) => Ok(ToolResult::err(format!(
+            "timeout/libinput unavailable: {e}"
+        ))),
     }
 }
 
@@ -330,7 +352,10 @@ pub fn set_palm_rejection(enabled: bool) -> anyhow::Result<ToolResult> {
                 .output()
                 .map(|o| o.status.success())
                 .unwrap_or(false);
-            results.push(format!("  device {id} {prop}={state}: {}", if set { "ok" } else { "failed" }));
+            results.push(format!(
+                "  device {id} {prop}={state}: {}",
+                if set { "ok" } else { "failed" }
+            ));
         }
     }
     if results.is_empty() {
@@ -352,7 +377,9 @@ pub fn detect_fingerprint() -> anyhow::Result<ToolResult> {
             .lines()
             .filter(|l| {
                 let lower = l.to_lowercase();
-                lower.contains("fingerprint") || lower.contains("goodix") || lower.contains("synaptics")
+                lower.contains("fingerprint")
+                    || lower.contains("goodix")
+                    || lower.contains("synaptics")
             })
             .collect();
         if hits.is_empty() {
@@ -403,14 +430,18 @@ pub fn enable_fingerprint_sudo(enabled: bool) -> anyhow::Result<ToolResult> {
         // modify system PAM from here — report instructions.
         let content = std::fs::read_to_string(&file).unwrap_or_default();
         if content.contains("pam_fprintd") {
-            return Ok(ToolResult::ok("sudo already authenticates via fingerprint (pam_fprintd found)."));
+            return Ok(ToolResult::ok(
+                "sudo already authenticates via fingerprint (pam_fprintd found).",
+            ));
         }
         Ok(ToolResult::ok(
             "To enable: add `auth sufficient pam_fprintd.so` to /etc/pam.d/sudo \
              (DIAD installer configures this automatically when a reader is present).",
         ))
     } else {
-        Ok(ToolResult::ok("Fingerprint sudo: no system PAM change performed (installer-managed)."))
+        Ok(ToolResult::ok(
+            "Fingerprint sudo: no system PAM change performed (installer-managed).",
+        ))
     }
 }
 
@@ -458,7 +489,14 @@ pub fn get_camera_frame() -> anyhow::Result<ToolResult> {
     let path_str = path.to_string_lossy().to_string();
     match Command::new("ffmpeg")
         .args([
-            "-y", "-f", "v4l2", "-i", "/dev/video0", "-frames:v", "1", &path_str,
+            "-y",
+            "-f",
+            "v4l2",
+            "-i",
+            "/dev/video0",
+            "-frames:v",
+            "1",
+            &path_str,
         ])
         .output()
     {
@@ -472,7 +510,10 @@ pub fn get_camera_frame() -> anyhow::Result<ToolResult> {
 }
 
 /// Set camera brightness/contrast via v4l2-ctl.
-pub fn set_camera_settings(brightness: Option<i64>, contrast: Option<i64>) -> anyhow::Result<ToolResult> {
+pub fn set_camera_settings(
+    brightness: Option<i64>,
+    contrast: Option<i64>,
+) -> anyhow::Result<ToolResult> {
     let b_val = brightness.map(|b| b.to_string());
     let c_val = contrast.map(|c| c.to_string());
     let mut args = vec!["v4l2-ctl", "-d", "/dev/video0"];
@@ -558,7 +599,12 @@ pub fn set_audio_volume(percent: u8) -> anyhow::Result<ToolResult> {
     if out.success {
         return Ok(out);
     }
-    run(&["pactl", "set-source-volume", "@DEFAULT_SOURCE@", &format!("{p}%")])
+    run(&[
+        "pactl",
+        "set-source-volume",
+        "@DEFAULT_SOURCE@",
+        &format!("{p}%"),
+    ])
 }
 
 /// Toggle mute on the default sink (alias of the legacy tool).
@@ -590,7 +636,11 @@ pub fn enable_echo_cancellation(enabled: bool) -> anyhow::Result<ToolResult> {
 pub fn set_audio_profile(profile: &str) -> anyhow::Result<ToolResult> {
     match profile {
         "voice" | "music" | "gaming" | "balanced" => {}
-        _ => return Ok(ToolResult::err("profile must be voice|music|gaming|balanced")),
+        _ => {
+            return Ok(ToolResult::err(
+                "profile must be voice|music|gaming|balanced",
+            ))
+        }
     }
     Ok(ToolResult::ok(format!(
         "Audio profile '{profile}' selected — applied through DIAD's pipewire profile preset."
@@ -687,7 +737,9 @@ pub fn bluetooth_get_battery(mac: &str) -> anyhow::Result<ToolResult> {
         }
     }
     if battery.is_empty() {
-        Ok(ToolResult::ok(format!("{mac}: battery level not exposed by upower")))
+        Ok(ToolResult::ok(format!(
+            "{mac}: battery level not exposed by upower"
+        )))
     } else {
         Ok(ToolResult::ok(format!("{mac}: {battery}")))
     }
@@ -779,7 +831,9 @@ pub fn set_display_mode(mode: &str) -> anyhow::Result<ToolResult> {
             run(&["xrandr", "--auto"])
         }
         "extend" => run(&["xrandr", "--auto"]),
-        "internal-only" => run(&["xrandr", "--output", "eDP-1", "--auto", "--output", "HDMI-A-1", "--off"]),
+        "internal-only" => run(&[
+            "xrandr", "--output", "eDP-1", "--auto", "--output", "HDMI-A-1", "--off",
+        ]),
         _ => Ok(ToolResult::err("mode must be mirror|extend|internal-only")),
     }
 }
@@ -819,7 +873,11 @@ pub fn set_display_rotation(output: &str, rotation: &str) -> anyhow::Result<Tool
     }
     match rotation {
         "normal" | "left" | "right" | "inverted" => {}
-        _ => return Ok(ToolResult::err("rotation must be normal|left|right|inverted")),
+        _ => {
+            return Ok(ToolResult::err(
+                "rotation must be normal|left|right|inverted",
+            ))
+        }
     }
     run(&["xrandr", "--output", output, "--rotate", rotation])
 }
@@ -860,12 +918,17 @@ pub fn get_display_info(output: &str) -> anyhow::Result<ToolResult> {
     if !valid_value(output) {
         return Ok(ToolResult::err("invalid output name"));
     }
-    let out = match Command::new("wlr-randr").args(["--output", output]).output() {
+    let out = match Command::new("wlr-randr")
+        .args(["--output", output])
+        .output()
+    {
         Ok(o) => o,
         Err(e) => return Ok(ToolResult::err(format!("wlr-randr unavailable: {e}"))),
     };
     if out.status.success() {
-        return Ok(ToolResult::ok(String::from_utf8_lossy(&out.stdout).to_string()));
+        return Ok(ToolResult::ok(
+            String::from_utf8_lossy(&out.stdout).to_string(),
+        ));
     }
     run(&["xrandr", "--query"])
 }
@@ -898,8 +961,8 @@ pub fn load_display_profile(name: &str) -> anyhow::Result<ToolResult> {
     }
     let home = std::env::var("HOME").unwrap_or_else(|_| "/home/diad".into());
     let file = format!("{home}/.diad/display-profiles/{name}.conf");
-    let content = std::fs::read_to_string(&file)
-        .map_err(|e| anyhow::anyhow!("profile not found: {e}"))?;
+    let content =
+        std::fs::read_to_string(&file).map_err(|e| anyhow::anyhow!("profile not found: {e}"))?;
     Ok(ToolResult::ok(format!(
         "Profile '{name}' loaded — apply via sway reload or wlr-randr. Contents:\n{content}"
     )))
@@ -933,7 +996,8 @@ pub fn set_keyboard_layout(layout: &str, variant: Option<&str>) -> anyhow::Resul
 
 /// Set keyboard options (comma-separated xkb options, e.g. ctrl:nocaps).
 pub fn set_keyboard_options(options: &str) -> anyhow::Result<ToolResult> {
-    if options.is_empty() || options.contains(';') || options.contains('&') || options.contains('|') {
+    if options.is_empty() || options.contains(';') || options.contains('&') || options.contains('|')
+    {
         return Ok(ToolResult::err("invalid options"));
     }
     run(&["setxkbmap", "-option", options])
@@ -947,7 +1011,11 @@ pub fn set_key_repeat(delay_ms: u32, rate_hz: u32) -> anyhow::Result<ToolResult>
 }
 
 /// Configure touchpad: natural scroll, tap-to-click, speed.
-pub fn configure_touchpad(natural_scroll: bool, tap_to_click: bool, speed: f64) -> anyhow::Result<ToolResult> {
+pub fn configure_touchpad(
+    natural_scroll: bool,
+    tap_to_click: bool,
+    speed: f64,
+) -> anyhow::Result<ToolResult> {
     let speed = speed.clamp(-1.0, 1.0);
     let list = match Command::new("xinput").args(["list", "--id-only"]).output() {
         Ok(o) => String::from_utf8_lossy(&o.stdout).to_string(),
@@ -970,7 +1038,12 @@ pub fn configure_touchpad(natural_scroll: bool, tap_to_click: bool, speed: f64) 
         let natural = if natural_scroll { "1" } else { "0" };
         let tap = if tap_to_click { "1" } else { "0" };
         let _ = Command::new("xinput")
-            .args(["set-prop", &id, "libinput Natural Scrolling Enabled", natural])
+            .args([
+                "set-prop",
+                &id,
+                "libinput Natural Scrolling Enabled",
+                natural,
+            ])
             .output();
         let _ = Command::new("xinput")
             .args(["set-prop", &id, "libinput Tapping Enabled", tap])
@@ -978,10 +1051,14 @@ pub fn configure_touchpad(natural_scroll: bool, tap_to_click: bool, speed: f64) 
         let _ = Command::new("xinput")
             .args(["set-prop", &id, "libinput Accel Speed", &speed.to_string()])
             .output();
-        results.push(format!("  device {id}: natural={natural} tap={tap} speed={speed}"));
+        results.push(format!(
+            "  device {id}: natural={natural} tap={tap} speed={speed}"
+        ));
     }
     if results.is_empty() {
-        return Ok(ToolResult::ok("No libinput touchpad found (settings staged for next session)."));
+        return Ok(ToolResult::ok(
+            "No libinput touchpad found (settings staged for next session).",
+        ));
     }
     Ok(ToolResult::ok(results.join("\n")))
 }
@@ -1049,7 +1126,9 @@ pub fn create_macro(name: &str, keys: &str) -> anyhow::Result<ToolResult> {
     std::fs::create_dir_all(&dir).map_err(|e| anyhow::anyhow!("mkdir: {e}"))?;
     let file = format!("{dir}/{name}.keys");
     std::fs::write(&file, keys).map_err(|e| anyhow::anyhow!("write: {e}"))?;
-    Ok(ToolResult::ok(format!("Macro '{name}' saved ({file}) with {keys}")))
+    Ok(ToolResult::ok(format!(
+        "Macro '{name}' saved ({file}) with {keys}"
+    )))
 }
 
 /// List saved macros.
@@ -1089,7 +1168,13 @@ pub fn delete_macro(name: &str) -> anyhow::Result<ToolResult> {
 /// Enable sticky keys (accessibility).
 pub fn enable_sticky_keys(enabled: bool) -> anyhow::Result<ToolResult> {
     let state = if enabled { "1" } else { "0" };
-    let _ = run(&["gsettings", "set", "org.gnome.desktop.a11y.keyboard", "stickykeys-enable", state]);
+    let _ = run(&[
+        "gsettings",
+        "set",
+        "org.gnome.desktop.a11y.keyboard",
+        "stickykeys-enable",
+        state,
+    ]);
     Ok(ToolResult::ok(format!(
         "Sticky keys {}",
         if enabled { "enabled" } else { "disabled" }
@@ -1099,7 +1184,13 @@ pub fn enable_sticky_keys(enabled: bool) -> anyhow::Result<ToolResult> {
 /// Enable slow keys (hold-time filter).
 pub fn enable_slow_keys(enabled: bool) -> anyhow::Result<ToolResult> {
     let state = if enabled { "1" } else { "0" };
-    let _ = run(&["gsettings", "set", "org.gnome.desktop.a11y.keyboard", "slowkeys-enable", state]);
+    let _ = run(&[
+        "gsettings",
+        "set",
+        "org.gnome.desktop.a11y.keyboard",
+        "slowkeys-enable",
+        state,
+    ]);
     Ok(ToolResult::ok(format!(
         "Slow keys {}",
         if enabled { "enabled" } else { "disabled" }
@@ -1109,7 +1200,13 @@ pub fn enable_slow_keys(enabled: bool) -> anyhow::Result<ToolResult> {
 /// Enable bounce keys (debounce).
 pub fn enable_bounce_keys(enabled: bool) -> anyhow::Result<ToolResult> {
     let state = if enabled { "1" } else { "0" };
-    let _ = run(&["gsettings", "set", "org.gnome.desktop.a11y.keyboard", "bouncekeys-enable", state]);
+    let _ = run(&[
+        "gsettings",
+        "set",
+        "org.gnome.desktop.a11y.keyboard",
+        "bouncekeys-enable",
+        state,
+    ]);
     Ok(ToolResult::ok(format!(
         "Bounce keys {}",
         if enabled { "enabled" } else { "disabled" }
@@ -1143,10 +1240,20 @@ pub fn get_battery_health() -> anyhow::Result<ToolResult> {
         }
         if in_battery {
             if let Some(v) = t.strip_prefix("energy-full:") {
-                energy_full = v.split_whitespace().next().unwrap_or("0").parse().unwrap_or(0.0);
+                energy_full = v
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("0")
+                    .parse()
+                    .unwrap_or(0.0);
             }
             if let Some(v) = t.strip_prefix("energy-full-design:") {
-                energy_full_design = v.split_whitespace().next().unwrap_or("0").parse().unwrap_or(0.0);
+                energy_full_design = v
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("0")
+                    .parse()
+                    .unwrap_or(0.0);
             }
             if t.is_empty() {
                 break;
@@ -1154,7 +1261,9 @@ pub fn get_battery_health() -> anyhow::Result<ToolResult> {
         }
     }
     if energy_full_design <= 0.0 {
-        return Ok(ToolResult::ok("Battery health: n/a (desktop or no battery)"));
+        return Ok(ToolResult::ok(
+            "Battery health: n/a (desktop or no battery)",
+        ));
     }
     let health = (energy_full / energy_full_design) * 100.0;
     Ok(ToolResult::ok(format!(
@@ -1169,7 +1278,8 @@ pub fn set_power_mode(mode: &str) -> anyhow::Result<ToolResult> {
 
 /// Thermal status from /sys/class/thermal.
 pub fn get_thermal_status() -> anyhow::Result<ToolResult> {
-    let zones = std::fs::read_dir("/sys/class/thermal").unwrap_or_else(|_| std::fs::read_dir("/dev/null").unwrap());
+    let zones = std::fs::read_dir("/sys/class/thermal")
+        .unwrap_or_else(|_| std::fs::read_dir("/dev/null").unwrap());
     let mut lines = Vec::new();
     for entry in zones.flatten() {
         let name = entry.file_name().to_string_lossy().to_string();
@@ -1190,7 +1300,10 @@ pub fn get_thermal_status() -> anyhow::Result<ToolResult> {
     if lines.is_empty() {
         return Ok(ToolResult::ok("No thermal zones exposed."));
     }
-    Ok(ToolResult::ok(format!("Thermal status:\n{}", lines.join("\n"))))
+    Ok(ToolResult::ok(format!(
+        "Thermal status:\n{}",
+        lines.join("\n")
+    )))
 }
 
 /// Set the fan curve (hwm / lenovo / thinkpad style; best-effort).
@@ -1459,22 +1572,49 @@ pub fn scan_document(format: &str) -> anyhow::Result<ToolResult> {
         _ => return Ok(ToolResult::err("format must be png|jpeg|tiff|pnm")),
     }
     let tmp = std::env::temp_dir();
-    let file = tmp.join(format!("diad-scan-{}.{}", chrono::Utc::now().timestamp(), format));
-    run(&["scanimage", "--format", format, "-o", file.to_str().unwrap_or_default()])
+    let file = tmp.join(format!(
+        "diad-scan-{}.{}",
+        chrono::Utc::now().timestamp(),
+        format
+    ));
+    run(&[
+        "scanimage",
+        "--format",
+        format,
+        "-o",
+        file.to_str().unwrap_or_default(),
+    ])
 }
 
 /// Scan to PDF.
 pub fn scan_to_pdf() -> anyhow::Result<ToolResult> {
     let tmp = std::env::temp_dir();
     let file = tmp.join(format!("diad-scan-{}.pdf", chrono::Utc::now().timestamp()));
-    run(&["scanimage", "--format", "pdf", "-o", file.to_str().unwrap_or_default()])
+    run(&[
+        "scanimage",
+        "--format",
+        "pdf",
+        "-o",
+        file.to_str().unwrap_or_default(),
+    ])
 }
 
 /// Preview a scan (low resolution, fast).
 pub fn preview_scan() -> anyhow::Result<ToolResult> {
     let tmp = std::env::temp_dir();
-    let file = tmp.join(format!("diad-scan-preview-{}.png", chrono::Utc::now().timestamp()));
-    run(&["scanimage", "--resolution", "75", "--format", "png", "-o", file.to_str().unwrap_or_default()])
+    let file = tmp.join(format!(
+        "diad-scan-preview-{}.png",
+        chrono::Utc::now().timestamp()
+    ));
+    run(&[
+        "scanimage",
+        "--resolution",
+        "75",
+        "--format",
+        "png",
+        "-o",
+        file.to_str().unwrap_or_default(),
+    ])
 }
 
 // ===========================================================================
@@ -1487,16 +1627,32 @@ pub fn get_network_interfaces() -> anyhow::Result<ToolResult> {
 }
 
 /// Configure a static IP on an interface (NetworkManager).
-pub fn set_static_ip(interface: &str, ip: &str, gateway: &str, dns: &str) -> anyhow::Result<ToolResult> {
-    if !valid_identifier(interface) || !valid_value(ip) || !valid_value(gateway) || !valid_value(dns) {
+pub fn set_static_ip(
+    interface: &str,
+    ip: &str,
+    gateway: &str,
+    dns: &str,
+) -> anyhow::Result<ToolResult> {
+    if !valid_identifier(interface)
+        || !valid_value(ip)
+        || !valid_value(gateway)
+        || !valid_value(dns)
+    {
         return Ok(ToolResult::err("invalid network parameters"));
     }
     let mut args = vec![
-        "nmcli", "con", "mod", interface,
-        "ipv4.method", "manual",
-        "ipv4.addresses", ip,
-        "ipv4.gateway", gateway,
-        "ipv4.dns", dns,
+        "nmcli",
+        "con",
+        "mod",
+        interface,
+        "ipv4.method",
+        "manual",
+        "ipv4.addresses",
+        ip,
+        "ipv4.gateway",
+        gateway,
+        "ipv4.dns",
+        dns,
     ];
     args.push("ipv6.method");
     args.push("disabled");
@@ -1516,7 +1672,15 @@ pub fn create_vpn(name: &str, config: &str) -> anyhow::Result<ToolResult> {
     if !valid_value(name) || !valid_path(config) {
         return Ok(ToolResult::err("invalid VPN name or config path"));
     }
-    run_privileged(&["nmcli", "con", "import", "type", "wireguard", "file", config])
+    run_privileged(&[
+        "nmcli",
+        "con",
+        "import",
+        "type",
+        "wireguard",
+        "file",
+        config,
+    ])
 }
 
 /// Connect a VPN.
@@ -1555,9 +1719,7 @@ pub fn create_hotspot(ssid: &str, password: &str, enabled: bool) -> anyhow::Resu
         return run_privileged(&["nmcli", "radio", "wifi", "off"]);
     }
     run_privileged(&[
-        "nmcli", "dev", "wifi", "hotspot",
-        "ssid", ssid,
-        "password", password,
+        "nmcli", "dev", "wifi", "hotspot", "ssid", ssid, "password", password,
     ])
 }
 
@@ -1602,9 +1764,7 @@ pub fn port_scan(host: &str, ports: &str) -> anyhow::Result<ToolResult> {
     if !valid_value(host) || !valid_value(ports) {
         return Ok(ToolResult::err("invalid host or ports"));
     }
-    let out = Command::new("nc")
-        .args(["-z", "-w", "2", host])
-        .output();
+    let out = Command::new("nc").args(["-z", "-w", "2", host]).output();
     let _ = out;
     run(&["nmap", "-p", ports, "--open", host])
 }
@@ -1635,7 +1795,9 @@ pub fn detect_gpus() -> anyhow::Result<ToolResult> {
         .lines()
         .filter(|l| {
             let lower = l.to_lowercase();
-            lower.contains("vga") || lower.contains("3d controller") || lower.contains("display controller")
+            lower.contains("vga")
+                || lower.contains("3d controller")
+                || lower.contains("display controller")
         })
         .collect();
     if gpus.is_empty() {
@@ -1646,7 +1808,11 @@ pub fn detect_gpus() -> anyhow::Result<ToolResult> {
 
 /// GPU utilization (nvidia-smi or radeontop fallback).
 pub fn get_gpu_utilization() -> anyhow::Result<ToolResult> {
-    let nvidia = run(&["nvidia-smi", "--query-gpu=utilization.gpu,memory.used,memory.total", "--format=csv,noheader"]);
+    let nvidia = run(&[
+        "nvidia-smi",
+        "--query-gpu=utilization.gpu,memory.used,memory.total",
+        "--format=csv,noheader",
+    ]);
     if nvidia.as_ref().map(|r| r.success).unwrap_or(false) {
         return nvidia;
     }
@@ -1654,7 +1820,9 @@ pub fn get_gpu_utilization() -> anyhow::Result<ToolResult> {
     if radeon.as_ref().map(|r| r.success).unwrap_or(false) {
         return radeon;
     }
-    Ok(ToolResult::ok("GPU utilization: nvidia-smi/radeontop not available (integrated GPU)."))
+    Ok(ToolResult::ok(
+        "GPU utilization: nvidia-smi/radeontop not available (integrated GPU).",
+    ))
 }
 
 /// GPU power mode (NVIDIA: 0=auto,1=max,2=adaptive; AMD: manual via sysfs).
@@ -1693,7 +1861,9 @@ pub fn get_opencl_info() -> anyhow::Result<ToolResult> {
     if out.success {
         return Ok(out);
     }
-    Ok(ToolResult::ok("clinfo not installed — `sudo pacman -S clinfo` for OpenCL platform listing."))
+    Ok(ToolResult::ok(
+        "clinfo not installed — `sudo pacman -S clinfo` for OpenCL platform listing.",
+    ))
 }
 
 /// Set GPU fan curve (NVIDIA: fixed speed percentage).
@@ -1704,7 +1874,11 @@ pub fn set_gpu_fan_curve(percent: u8) -> anyhow::Result<ToolResult> {
 
 /// Processes using the GPU.
 pub fn get_gpu_processes() -> anyhow::Result<ToolResult> {
-    run(&["nvidia-smi", "--query-compute-apps=pid,process_name,used_memory", "--format=csv"])
+    run(&[
+        "nvidia-smi",
+        "--query-compute-apps=pid,process_name,used_memory",
+        "--format=csv",
+    ])
 }
 
 /// Kill a GPU process (DESTRUCTIVE — orchestrator confirms).
@@ -1734,157 +1908,992 @@ pub fn register_universal_tools(registry: &mut crate::tools::ToolRegistry) {
 
     macro_rules! reg {
         ($reg:expr, $name:expr, $desc:expr, $schema:expr, $f:expr) => {
-            $reg.register_tool($name, $desc, $schema, Arc::new(|p: serde_json::Value| $f(p)));
+            $reg.register_tool(
+                $name,
+                $desc,
+                $schema,
+                Arc::new(|p: serde_json::Value| $f(p)),
+            );
         };
     }
 
     use serde_json::json;
 
     // ---- 1. Touchscreen & pen ----
-    reg!(registry, "detect_touch_devices", "List all touch/pen input devices", json!({}), |_| detect_touch_devices());
-    reg!(registry, "enable_touch_mode", "Enable or disable the touchscreen", json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}), |p: serde_json::Value| enable_touch_mode(p["enabled"].as_bool().unwrap_or(true)));
-    reg!(registry, "get_pen_status", "Report pen/tablet device status", json!({}), |_| get_pen_status());
-    reg!(registry, "configure_pen", "Configure pen pressure curve and eraser mode", json!({"type":"object","properties":{"pressure":{"type":"integer"},"eraser":{"type":"boolean"}},"required":["eraser"]}), |p: serde_json::Value| configure_pen(p["pressure"].as_u64().map(|v| v as u32), p["eraser"].as_bool().unwrap_or(false)));
-    reg!(registry, "calibrate_touchscreen", "Calibrate a touchscreen device", json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}), |p: serde_json::Value| calibrate_touchscreen(p["device"].as_str().unwrap_or("")));
-    reg!(registry, "get_touch_events", "Capture touch events for N seconds (max 30)", json!({"type":"object","properties":{"seconds":{"type":"integer"}},"required":["seconds"]}), |p: serde_json::Value| get_touch_events(p["seconds"].as_u64().unwrap_or(3) as u32));
-    reg!(registry, "set_palm_rejection", "Enable or disable palm rejection", json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}), |p: serde_json::Value| set_palm_rejection(p["enabled"].as_bool().unwrap_or(true)));
+    reg!(
+        registry,
+        "detect_touch_devices",
+        "List all touch/pen input devices",
+        json!({}),
+        |_| detect_touch_devices()
+    );
+    reg!(
+        registry,
+        "enable_touch_mode",
+        "Enable or disable the touchscreen",
+        json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}),
+        |p: serde_json::Value| enable_touch_mode(p["enabled"].as_bool().unwrap_or(true))
+    );
+    reg!(
+        registry,
+        "get_pen_status",
+        "Report pen/tablet device status",
+        json!({}),
+        |_| get_pen_status()
+    );
+    reg!(
+        registry,
+        "configure_pen",
+        "Configure pen pressure curve and eraser mode",
+        json!({"type":"object","properties":{"pressure":{"type":"integer"},"eraser":{"type":"boolean"}},"required":["eraser"]}),
+        |p: serde_json::Value| configure_pen(
+            p["pressure"].as_u64().map(|v| v as u32),
+            p["eraser"].as_bool().unwrap_or(false)
+        )
+    );
+    reg!(
+        registry,
+        "calibrate_touchscreen",
+        "Calibrate a touchscreen device",
+        json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}),
+        |p: serde_json::Value| calibrate_touchscreen(p["device"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "get_touch_events",
+        "Capture touch events for N seconds (max 30)",
+        json!({"type":"object","properties":{"seconds":{"type":"integer"}},"required":["seconds"]}),
+        |p: serde_json::Value| get_touch_events(p["seconds"].as_u64().unwrap_or(3) as u32)
+    );
+    reg!(
+        registry,
+        "set_palm_rejection",
+        "Enable or disable palm rejection",
+        json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}),
+        |p: serde_json::Value| set_palm_rejection(p["enabled"].as_bool().unwrap_or(true))
+    );
 
     // ---- 2. Fingerprint / biometrics ----
-    reg!(registry, "detect_fingerprint", "Detect the fingerprint reader", json!({}), |_| detect_fingerprint());
-    reg!(registry, "enroll_fingerprint", "Enroll a new fingerprint (interactive scan)", json!({}), |_| enroll_fingerprint());
-    reg!(registry, "list_enrolled_fingers", "List enrolled fingerprints for the current user", json!({}), |_| list_enrolled_fingers());
-    reg!(registry, "authenticate_fingerprint", "Verify a fingerprint (non-interactive check)", json!({}), |_| authenticate_fingerprint());
-    reg!(registry, "delete_fingerprint", "Delete an enrolled finger (omit finger to delete all)", json!({"type":"object","properties":{"finger":{"type":"string"}}}), |p: serde_json::Value| delete_fingerprint(p["finger"].as_str().unwrap_or("")));
-    reg!(registry, "enable_fingerprint_sudo", "Enable or disable fingerprint sudo via PAM", json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}), |p: serde_json::Value| enable_fingerprint_sudo(p["enabled"].as_bool().unwrap_or(true)));
-    reg!(registry, "enable_fingerprint_unlock", "Enable or disable fingerprint unlock for the display manager", json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}), |p: serde_json::Value| enable_fingerprint_unlock(p["enabled"].as_bool().unwrap_or(true)));
-    reg!(registry, "enable_fingerprint_vault", "Enable or disable fingerprint access to the DIAD vault", json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}), |p: serde_json::Value| enable_fingerprint_vault(p["enabled"].as_bool().unwrap_or(true)));
+    reg!(
+        registry,
+        "detect_fingerprint",
+        "Detect the fingerprint reader",
+        json!({}),
+        |_| detect_fingerprint()
+    );
+    reg!(
+        registry,
+        "enroll_fingerprint",
+        "Enroll a new fingerprint (interactive scan)",
+        json!({}),
+        |_| enroll_fingerprint()
+    );
+    reg!(
+        registry,
+        "list_enrolled_fingers",
+        "List enrolled fingerprints for the current user",
+        json!({}),
+        |_| list_enrolled_fingers()
+    );
+    reg!(
+        registry,
+        "authenticate_fingerprint",
+        "Verify a fingerprint (non-interactive check)",
+        json!({}),
+        |_| authenticate_fingerprint()
+    );
+    reg!(
+        registry,
+        "delete_fingerprint",
+        "Delete an enrolled finger (omit finger to delete all)",
+        json!({"type":"object","properties":{"finger":{"type":"string"}}}),
+        |p: serde_json::Value| delete_fingerprint(p["finger"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "enable_fingerprint_sudo",
+        "Enable or disable fingerprint sudo via PAM",
+        json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}),
+        |p: serde_json::Value| enable_fingerprint_sudo(p["enabled"].as_bool().unwrap_or(true))
+    );
+    reg!(
+        registry,
+        "enable_fingerprint_unlock",
+        "Enable or disable fingerprint unlock for the display manager",
+        json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}),
+        |p: serde_json::Value| enable_fingerprint_unlock(p["enabled"].as_bool().unwrap_or(true))
+    );
+    reg!(
+        registry,
+        "enable_fingerprint_vault",
+        "Enable or disable fingerprint access to the DIAD vault",
+        json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}),
+        |p: serde_json::Value| enable_fingerprint_vault(p["enabled"].as_bool().unwrap_or(true))
+    );
 
     // ---- 3. Webcam & audio ----
-    reg!(registry, "list_cameras", "List webcams (v4l2 devices)", json!({}), |_| list_cameras());
-    reg!(registry, "get_camera_frame", "Capture a single camera frame to a temp PNG", json!({}), |_| get_camera_frame());
-    reg!(registry, "set_camera_settings", "Set camera brightness/contrast", json!({"type":"object","properties":{"brightness":{"type":"integer"},"contrast":{"type":"integer"}}}), |p: serde_json::Value| set_camera_settings(p["brightness"].as_i64(), p["contrast"].as_i64()));
-    reg!(registry, "enable_camera_privacy_shutter", "Power off (true) or on (false) the webcam hardware", json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}), |p: serde_json::Value| enable_camera_privacy_shutter(p["enabled"].as_bool().unwrap_or(true)));
-    reg!(registry, "list_audio_devices", "List audio sinks and sources", json!({}), |_| list_audio_devices());
-    reg!(registry, "set_default_audio", "Set the default audio output device", json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}), |p: serde_json::Value| set_default_audio(p["device"].as_str().unwrap_or("")));
-    reg!(registry, "get_microphone_level", "Report the current microphone level", json!({}), |_| get_microphone_level());
-    reg!(registry, "set_audio_volume", "Set the microphone volume (0-100)", json!({"type":"object","properties":{"percent":{"type":"integer"}},"required":["percent"]}), |p: serde_json::Value| set_audio_volume(p["percent"].as_u64().unwrap_or(50) as u8));
-    reg!(registry, "enable_noise_gate", "Enable or disable the microphone noise gate", json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}), |p: serde_json::Value| enable_noise_gate(p["enabled"].as_bool().unwrap_or(true)));
-    reg!(registry, "enable_echo_cancellation", "Enable or disable echo cancellation", json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}), |p: serde_json::Value| enable_echo_cancellation(p["enabled"].as_bool().unwrap_or(true)));
-    reg!(registry, "set_audio_profile", "Select an audio profile: voice, music, gaming, balanced", json!({"type":"object","properties":{"profile":{"type":"string"}},"required":["profile"]}), |p: serde_json::Value| set_audio_profile(p["profile"].as_str().unwrap_or("balanced")));
+    reg!(
+        registry,
+        "list_cameras",
+        "List webcams (v4l2 devices)",
+        json!({}),
+        |_| list_cameras()
+    );
+    reg!(
+        registry,
+        "get_camera_frame",
+        "Capture a single camera frame to a temp PNG",
+        json!({}),
+        |_| get_camera_frame()
+    );
+    reg!(
+        registry,
+        "set_camera_settings",
+        "Set camera brightness/contrast",
+        json!({"type":"object","properties":{"brightness":{"type":"integer"},"contrast":{"type":"integer"}}}),
+        |p: serde_json::Value| set_camera_settings(
+            p["brightness"].as_i64(),
+            p["contrast"].as_i64()
+        )
+    );
+    reg!(
+        registry,
+        "enable_camera_privacy_shutter",
+        "Power off (true) or on (false) the webcam hardware",
+        json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}),
+        |p: serde_json::Value| enable_camera_privacy_shutter(
+            p["enabled"].as_bool().unwrap_or(true)
+        )
+    );
+    reg!(
+        registry,
+        "list_audio_devices",
+        "List audio sinks and sources",
+        json!({}),
+        |_| list_audio_devices()
+    );
+    reg!(
+        registry,
+        "set_default_audio",
+        "Set the default audio output device",
+        json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}),
+        |p: serde_json::Value| set_default_audio(p["device"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "get_microphone_level",
+        "Report the current microphone level",
+        json!({}),
+        |_| get_microphone_level()
+    );
+    reg!(
+        registry,
+        "set_audio_volume",
+        "Set the microphone volume (0-100)",
+        json!({"type":"object","properties":{"percent":{"type":"integer"}},"required":["percent"]}),
+        |p: serde_json::Value| set_audio_volume(p["percent"].as_u64().unwrap_or(50) as u8)
+    );
+    reg!(
+        registry,
+        "enable_noise_gate",
+        "Enable or disable the microphone noise gate",
+        json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}),
+        |p: serde_json::Value| enable_noise_gate(p["enabled"].as_bool().unwrap_or(true))
+    );
+    reg!(
+        registry,
+        "enable_echo_cancellation",
+        "Enable or disable echo cancellation",
+        json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}),
+        |p: serde_json::Value| enable_echo_cancellation(p["enabled"].as_bool().unwrap_or(true))
+    );
+    reg!(
+        registry,
+        "set_audio_profile",
+        "Select an audio profile: voice, music, gaming, balanced",
+        json!({"type":"object","properties":{"profile":{"type":"string"}},"required":["profile"]}),
+        |p: serde_json::Value| set_audio_profile(p["profile"].as_str().unwrap_or("balanced"))
+    );
 
     // ---- 4. Bluetooth (advanced) ----
-    reg!(registry, "bluetooth_scan", "Scan for nearby Bluetooth devices", json!({}), |_| bluetooth_scan());
-    reg!(registry, "bluetooth_pair", "Pair with a Bluetooth device by MAC", json!({"type":"object","properties":{"mac":{"type":"string"}},"required":["mac"]}), |p: serde_json::Value| bluetooth_pair(p["mac"].as_str().unwrap_or("")));
-    reg!(registry, "bluetooth_connect", "Connect to a paired Bluetooth device", json!({"type":"object","properties":{"mac":{"type":"string"}},"required":["mac"]}), |p: serde_json::Value| bluetooth_connect(p["mac"].as_str().unwrap_or("")));
-    reg!(registry, "bluetooth_disconnect", "Disconnect a Bluetooth device", json!({"type":"object","properties":{"mac":{"type":"string"}},"required":["mac"]}), |p: serde_json::Value| bluetooth_disconnect(p["mac"].as_str().unwrap_or("")));
-    reg!(registry, "bluetooth_forget", "Forget (remove) a Bluetooth device", json!({"type":"object","properties":{"mac":{"type":"string"}},"required":["mac"]}), |p: serde_json::Value| bluetooth_forget(p["mac"].as_str().unwrap_or("")));
-    reg!(registry, "bluetooth_connect_audio", "Connect a Bluetooth audio device (A2DP)", json!({"type":"object","properties":{"mac":{"type":"string"}},"required":["mac"]}), |p: serde_json::Value| bluetooth_connect_audio(p["mac"].as_str().unwrap_or("")));
-    reg!(registry, "bluetooth_file_transfer", "Send a file over Bluetooth (obex)", json!({"type":"object","properties":{"mac":{"type":"string"},"file":{"type":"string"}},"required":["mac","file"]}), |p: serde_json::Value| bluetooth_file_transfer(p["mac"].as_str().unwrap_or(""), p["file"].as_str().unwrap_or("")));
-    reg!(registry, "bluetooth_get_battery", "Read a Bluetooth device's battery level", json!({"type":"object","properties":{"mac":{"type":"string"}},"required":["mac"]}), |p: serde_json::Value| bluetooth_get_battery(p["mac"].as_str().unwrap_or("")));
-    reg!(registry, "bluetooth_set_visibility", "Make the adapter discoverable or hidden", json!({"type":"object","properties":{"visible":{"type":"boolean"}},"required":["visible"]}), |p: serde_json::Value| bluetooth_set_visibility(p["visible"].as_bool().unwrap_or(true)));
-    reg!(registry, "bluetooth_auto_connect", "Set auto-connect (trust) for a device", json!({"type":"object","properties":{"mac":{"type":"string"},"enabled":{"type":"boolean"}},"required":["mac","enabled"]}), |p: serde_json::Value| bluetooth_auto_connect(p["mac"].as_str().unwrap_or(""), p["enabled"].as_bool().unwrap_or(true)));
-    reg!(registry, "bluetooth_get_codec", "Query the audio codec of a connected device", json!({"type":"object","properties":{"mac":{"type":"string"}},"required":["mac"]}), |p: serde_json::Value| bluetooth_get_codec(p["mac"].as_str().unwrap_or("")));
-    reg!(registry, "bluetooth_set_codec", "Set the audio codec: aac, sbc, aptx, aptx-hd, ldac", json!({"type":"object","properties":{"mac":{"type":"string"},"codec":{"type":"string"}},"required":["mac","codec"]}), |p: serde_json::Value| bluetooth_set_codec(p["mac"].as_str().unwrap_or(""), p["codec"].as_str().unwrap_or("")));
+    reg!(
+        registry,
+        "bluetooth_scan",
+        "Scan for nearby Bluetooth devices",
+        json!({}),
+        |_| bluetooth_scan()
+    );
+    reg!(
+        registry,
+        "bluetooth_pair",
+        "Pair with a Bluetooth device by MAC",
+        json!({"type":"object","properties":{"mac":{"type":"string"}},"required":["mac"]}),
+        |p: serde_json::Value| bluetooth_pair(p["mac"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "bluetooth_connect",
+        "Connect to a paired Bluetooth device",
+        json!({"type":"object","properties":{"mac":{"type":"string"}},"required":["mac"]}),
+        |p: serde_json::Value| bluetooth_connect(p["mac"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "bluetooth_disconnect",
+        "Disconnect a Bluetooth device",
+        json!({"type":"object","properties":{"mac":{"type":"string"}},"required":["mac"]}),
+        |p: serde_json::Value| bluetooth_disconnect(p["mac"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "bluetooth_forget",
+        "Forget (remove) a Bluetooth device",
+        json!({"type":"object","properties":{"mac":{"type":"string"}},"required":["mac"]}),
+        |p: serde_json::Value| bluetooth_forget(p["mac"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "bluetooth_connect_audio",
+        "Connect a Bluetooth audio device (A2DP)",
+        json!({"type":"object","properties":{"mac":{"type":"string"}},"required":["mac"]}),
+        |p: serde_json::Value| bluetooth_connect_audio(p["mac"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "bluetooth_file_transfer",
+        "Send a file over Bluetooth (obex)",
+        json!({"type":"object","properties":{"mac":{"type":"string"},"file":{"type":"string"}},"required":["mac","file"]}),
+        |p: serde_json::Value| bluetooth_file_transfer(
+            p["mac"].as_str().unwrap_or(""),
+            p["file"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "bluetooth_get_battery",
+        "Read a Bluetooth device's battery level",
+        json!({"type":"object","properties":{"mac":{"type":"string"}},"required":["mac"]}),
+        |p: serde_json::Value| bluetooth_get_battery(p["mac"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "bluetooth_set_visibility",
+        "Make the adapter discoverable or hidden",
+        json!({"type":"object","properties":{"visible":{"type":"boolean"}},"required":["visible"]}),
+        |p: serde_json::Value| bluetooth_set_visibility(p["visible"].as_bool().unwrap_or(true))
+    );
+    reg!(
+        registry,
+        "bluetooth_auto_connect",
+        "Set auto-connect (trust) for a device",
+        json!({"type":"object","properties":{"mac":{"type":"string"},"enabled":{"type":"boolean"}},"required":["mac","enabled"]}),
+        |p: serde_json::Value| bluetooth_auto_connect(
+            p["mac"].as_str().unwrap_or(""),
+            p["enabled"].as_bool().unwrap_or(true)
+        )
+    );
+    reg!(
+        registry,
+        "bluetooth_get_codec",
+        "Query the audio codec of a connected device",
+        json!({"type":"object","properties":{"mac":{"type":"string"}},"required":["mac"]}),
+        |p: serde_json::Value| bluetooth_get_codec(p["mac"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "bluetooth_set_codec",
+        "Set the audio codec: aac, sbc, aptx, aptx-hd, ldac",
+        json!({"type":"object","properties":{"mac":{"type":"string"},"codec":{"type":"string"}},"required":["mac","codec"]}),
+        |p: serde_json::Value| bluetooth_set_codec(
+            p["mac"].as_str().unwrap_or(""),
+            p["codec"].as_str().unwrap_or("")
+        )
+    );
 
     // ---- 5. Monitors & docks ----
-    reg!(registry, "detect_displays", "Detect all display outputs", json!({}), |_| detect_displays());
-    reg!(registry, "auto_configure_displays", "Auto-configure connected displays", json!({}), |_| auto_configure_displays());
-    reg!(registry, "set_display_mode", "Set display mode: mirror, extend, internal-only", json!({"type":"object","properties":{"mode":{"type":"string"}},"required":["mode"]}), |p: serde_json::Value| set_display_mode(p["mode"].as_str().unwrap_or("")));
-    reg!(registry, "set_display_resolution", "Set display resolution", json!({"type":"object","properties":{"output":{"type":"string"},"width":{"type":"integer"},"height":{"type":"integer"}},"required":["output","width","height"]}), |p: serde_json::Value| set_display_resolution(p["output"].as_str().unwrap_or(""), p["width"].as_u64().unwrap_or(1920) as u32, p["height"].as_u64().unwrap_or(1080) as u32));
-    reg!(registry, "set_display_refresh_rate", "Set display refresh rate", json!({"type":"object","properties":{"output":{"type":"string"},"hz":{"type":"integer"}},"required":["output","hz"]}), |p: serde_json::Value| set_display_refresh_rate(p["output"].as_str().unwrap_or(""), p["hz"].as_u64().unwrap_or(60) as u32));
-    reg!(registry, "set_display_scale", "Set display scale factor", json!({"type":"object","properties":{"output":{"type":"string"},"factor":{"type":"number"}},"required":["output","factor"]}), |p: serde_json::Value| set_display_scale(p["output"].as_str().unwrap_or(""), p["factor"].as_f64().unwrap_or(1.0)));
-    reg!(registry, "set_display_position", "Set display position on the virtual desktop", json!({"type":"object","properties":{"output":{"type":"string"},"x":{"type":"integer"},"y":{"type":"integer"}},"required":["output","x","y"]}), |p: serde_json::Value| set_display_position(p["output"].as_str().unwrap_or(""), p["x"].as_i64().unwrap_or(0) as i32, p["y"].as_i64().unwrap_or(0) as i32));
-    reg!(registry, "set_display_rotation", "Rotate a display: normal, left, right, inverted", json!({"type":"object","properties":{"output":{"type":"string"},"rotation":{"type":"string"}},"required":["output","rotation"]}), |p: serde_json::Value| set_display_rotation(p["output"].as_str().unwrap_or(""), p["rotation"].as_str().unwrap_or("normal")));
-    reg!(registry, "set_color_profile", "Assign an ICC color profile to a display", json!({"type":"object","properties":{"output":{"type":"string"},"profile":{"type":"string"}},"required":["output","profile"]}), |p: serde_json::Value| set_color_profile(p["output"].as_str().unwrap_or(""), p["profile"].as_str().unwrap_or("")));
-    reg!(registry, "set_display_brightness", "Set display brightness (0-100)", json!({"type":"object","properties":{"percent":{"type":"integer"}},"required":["percent"]}), |p: serde_json::Value| set_display_brightness(p["percent"].as_u64().unwrap_or(50) as u8));
-    reg!(registry, "enable_hdr", "Toggle HDR on a display", json!({"type":"object","properties":{"output":{"type":"string"},"enabled":{"type":"boolean"}},"required":["output","enabled"]}), |p: serde_json::Value| enable_hdr(p["output"].as_str().unwrap_or(""), p["enabled"].as_bool().unwrap_or(true)));
-    reg!(registry, "get_display_info", "Detailed info for one display output", json!({"type":"object","properties":{"output":{"type":"string"}},"required":["output"]}), |p: serde_json::Value| get_display_info(p["output"].as_str().unwrap_or("")));
-    reg!(registry, "save_display_profile", "Save the current display arrangement as a profile", json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}), |p: serde_json::Value| save_display_profile(p["name"].as_str().unwrap_or("")));
-    reg!(registry, "load_display_profile", "Load a saved display profile", json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}), |p: serde_json::Value| load_display_profile(p["name"].as_str().unwrap_or("")));
+    reg!(
+        registry,
+        "detect_displays",
+        "Detect all display outputs",
+        json!({}),
+        |_| detect_displays()
+    );
+    reg!(
+        registry,
+        "auto_configure_displays",
+        "Auto-configure connected displays",
+        json!({}),
+        |_| auto_configure_displays()
+    );
+    reg!(
+        registry,
+        "set_display_mode",
+        "Set display mode: mirror, extend, internal-only",
+        json!({"type":"object","properties":{"mode":{"type":"string"}},"required":["mode"]}),
+        |p: serde_json::Value| set_display_mode(p["mode"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "set_display_resolution",
+        "Set display resolution",
+        json!({"type":"object","properties":{"output":{"type":"string"},"width":{"type":"integer"},"height":{"type":"integer"}},"required":["output","width","height"]}),
+        |p: serde_json::Value| set_display_resolution(
+            p["output"].as_str().unwrap_or(""),
+            p["width"].as_u64().unwrap_or(1920) as u32,
+            p["height"].as_u64().unwrap_or(1080) as u32
+        )
+    );
+    reg!(
+        registry,
+        "set_display_refresh_rate",
+        "Set display refresh rate",
+        json!({"type":"object","properties":{"output":{"type":"string"},"hz":{"type":"integer"}},"required":["output","hz"]}),
+        |p: serde_json::Value| set_display_refresh_rate(
+            p["output"].as_str().unwrap_or(""),
+            p["hz"].as_u64().unwrap_or(60) as u32
+        )
+    );
+    reg!(
+        registry,
+        "set_display_scale",
+        "Set display scale factor",
+        json!({"type":"object","properties":{"output":{"type":"string"},"factor":{"type":"number"}},"required":["output","factor"]}),
+        |p: serde_json::Value| set_display_scale(
+            p["output"].as_str().unwrap_or(""),
+            p["factor"].as_f64().unwrap_or(1.0)
+        )
+    );
+    reg!(
+        registry,
+        "set_display_position",
+        "Set display position on the virtual desktop",
+        json!({"type":"object","properties":{"output":{"type":"string"},"x":{"type":"integer"},"y":{"type":"integer"}},"required":["output","x","y"]}),
+        |p: serde_json::Value| set_display_position(
+            p["output"].as_str().unwrap_or(""),
+            p["x"].as_i64().unwrap_or(0) as i32,
+            p["y"].as_i64().unwrap_or(0) as i32
+        )
+    );
+    reg!(
+        registry,
+        "set_display_rotation",
+        "Rotate a display: normal, left, right, inverted",
+        json!({"type":"object","properties":{"output":{"type":"string"},"rotation":{"type":"string"}},"required":["output","rotation"]}),
+        |p: serde_json::Value| set_display_rotation(
+            p["output"].as_str().unwrap_or(""),
+            p["rotation"].as_str().unwrap_or("normal")
+        )
+    );
+    reg!(
+        registry,
+        "set_color_profile",
+        "Assign an ICC color profile to a display",
+        json!({"type":"object","properties":{"output":{"type":"string"},"profile":{"type":"string"}},"required":["output","profile"]}),
+        |p: serde_json::Value| set_color_profile(
+            p["output"].as_str().unwrap_or(""),
+            p["profile"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "set_display_brightness",
+        "Set display brightness (0-100)",
+        json!({"type":"object","properties":{"percent":{"type":"integer"}},"required":["percent"]}),
+        |p: serde_json::Value| set_display_brightness(p["percent"].as_u64().unwrap_or(50) as u8)
+    );
+    reg!(
+        registry,
+        "enable_hdr",
+        "Toggle HDR on a display",
+        json!({"type":"object","properties":{"output":{"type":"string"},"enabled":{"type":"boolean"}},"required":["output","enabled"]}),
+        |p: serde_json::Value| enable_hdr(
+            p["output"].as_str().unwrap_or(""),
+            p["enabled"].as_bool().unwrap_or(true)
+        )
+    );
+    reg!(
+        registry,
+        "get_display_info",
+        "Detailed info for one display output",
+        json!({"type":"object","properties":{"output":{"type":"string"}},"required":["output"]}),
+        |p: serde_json::Value| get_display_info(p["output"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "save_display_profile",
+        "Save the current display arrangement as a profile",
+        json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}),
+        |p: serde_json::Value| save_display_profile(p["name"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "load_display_profile",
+        "Load a saved display profile",
+        json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}),
+        |p: serde_json::Value| load_display_profile(p["name"].as_str().unwrap_or(""))
+    );
 
     // ---- 6. Keyboard & mouse ----
-    reg!(registry, "detect_input_devices", "List keyboards, mice and touchpads", json!({}), |_| detect_input_devices());
-    reg!(registry, "set_keyboard_layout", "Set the keyboard layout (us, de, fr, ...)", json!({"type":"object","properties":{"layout":{"type":"string"},"variant":{"type":"string"}},"required":["layout"]}), |p: serde_json::Value| set_keyboard_layout(p["layout"].as_str().unwrap_or("us"), p["variant"].as_str()));
-    reg!(registry, "set_keyboard_options", "Set xkb keyboard options (comma-separated)", json!({"type":"object","properties":{"options":{"type":"string"}},"required":["options"]}), |p: serde_json::Value| set_keyboard_options(p["options"].as_str().unwrap_or("")));
-    reg!(registry, "set_key_repeat", "Set key repeat delay (ms) and rate (Hz)", json!({"type":"object","properties":{"delay_ms":{"type":"integer"},"rate_hz":{"type":"integer"}},"required":["delay_ms","rate_hz"]}), |p: serde_json::Value| set_key_repeat(p["delay_ms"].as_u64().unwrap_or(250) as u32, p["rate_hz"].as_u64().unwrap_or(30) as u32));
-    reg!(registry, "configure_touchpad", "Configure touchpad scroll/tap/speed", json!({"type":"object","properties":{"natural_scroll":{"type":"boolean"},"tap_to_click":{"type":"boolean"},"speed":{"type":"number"}},"required":["natural_scroll","tap_to_click","speed"]}), |p: serde_json::Value| configure_touchpad(p["natural_scroll"].as_bool().unwrap_or(true), p["tap_to_click"].as_bool().unwrap_or(true), p["speed"].as_f64().unwrap_or(0.0)));
-    reg!(registry, "set_mouse_acceleration", "Set mouse acceleration factor (1.0 = none)", json!({"type":"object","properties":{"factor":{"type":"number"}},"required":["factor"]}), |p: serde_json::Value| set_mouse_acceleration(p["factor"].as_f64().unwrap_or(1.0)));
-    reg!(registry, "set_mouse_speed", "Set pointer speed multiplier", json!({"type":"object","properties":{"speed":{"type":"number"}},"required":["speed"]}), |p: serde_json::Value| set_mouse_speed(p["speed"].as_f64().unwrap_or(1.0)));
-    reg!(registry, "remap_key", "Remap a key (from -> to)", json!({"type":"object","properties":{"from":{"type":"string"},"to":{"type":"string"}},"required":["from","to"]}), |p: serde_json::Value| remap_key(p["from"].as_str().unwrap_or(""), p["to"].as_str().unwrap_or("")));
-    reg!(registry, "create_macro", "Create a key macro", json!({"type":"object","properties":{"name":{"type":"string"},"keys":{"type":"string"}},"required":["name","keys"]}), |p: serde_json::Value| create_macro(p["name"].as_str().unwrap_or(""), p["keys"].as_str().unwrap_or("")));
-    reg!(registry, "list_macros", "List saved key macros", json!({}), |_| list_macros());
-    reg!(registry, "delete_macro", "Delete a key macro", json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}), |p: serde_json::Value| delete_macro(p["name"].as_str().unwrap_or("")));
-    reg!(registry, "enable_sticky_keys", "Enable or disable sticky keys", json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}), |p: serde_json::Value| enable_sticky_keys(p["enabled"].as_bool().unwrap_or(true)));
-    reg!(registry, "enable_slow_keys", "Enable or disable slow keys", json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}), |p: serde_json::Value| enable_slow_keys(p["enabled"].as_bool().unwrap_or(true)));
-    reg!(registry, "enable_bounce_keys", "Enable or disable bounce keys", json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}), |p: serde_json::Value| enable_bounce_keys(p["enabled"].as_bool().unwrap_or(true)));
+    reg!(
+        registry,
+        "detect_input_devices",
+        "List keyboards, mice and touchpads",
+        json!({}),
+        |_| detect_input_devices()
+    );
+    reg!(
+        registry,
+        "set_keyboard_layout",
+        "Set the keyboard layout (us, de, fr, ...)",
+        json!({"type":"object","properties":{"layout":{"type":"string"},"variant":{"type":"string"}},"required":["layout"]}),
+        |p: serde_json::Value| set_keyboard_layout(
+            p["layout"].as_str().unwrap_or("us"),
+            p["variant"].as_str()
+        )
+    );
+    reg!(
+        registry,
+        "set_keyboard_options",
+        "Set xkb keyboard options (comma-separated)",
+        json!({"type":"object","properties":{"options":{"type":"string"}},"required":["options"]}),
+        |p: serde_json::Value| set_keyboard_options(p["options"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "set_key_repeat",
+        "Set key repeat delay (ms) and rate (Hz)",
+        json!({"type":"object","properties":{"delay_ms":{"type":"integer"},"rate_hz":{"type":"integer"}},"required":["delay_ms","rate_hz"]}),
+        |p: serde_json::Value| set_key_repeat(
+            p["delay_ms"].as_u64().unwrap_or(250) as u32,
+            p["rate_hz"].as_u64().unwrap_or(30) as u32
+        )
+    );
+    reg!(
+        registry,
+        "configure_touchpad",
+        "Configure touchpad scroll/tap/speed",
+        json!({"type":"object","properties":{"natural_scroll":{"type":"boolean"},"tap_to_click":{"type":"boolean"},"speed":{"type":"number"}},"required":["natural_scroll","tap_to_click","speed"]}),
+        |p: serde_json::Value| configure_touchpad(
+            p["natural_scroll"].as_bool().unwrap_or(true),
+            p["tap_to_click"].as_bool().unwrap_or(true),
+            p["speed"].as_f64().unwrap_or(0.0)
+        )
+    );
+    reg!(
+        registry,
+        "set_mouse_acceleration",
+        "Set mouse acceleration factor (1.0 = none)",
+        json!({"type":"object","properties":{"factor":{"type":"number"}},"required":["factor"]}),
+        |p: serde_json::Value| set_mouse_acceleration(p["factor"].as_f64().unwrap_or(1.0))
+    );
+    reg!(
+        registry,
+        "set_mouse_speed",
+        "Set pointer speed multiplier",
+        json!({"type":"object","properties":{"speed":{"type":"number"}},"required":["speed"]}),
+        |p: serde_json::Value| set_mouse_speed(p["speed"].as_f64().unwrap_or(1.0))
+    );
+    reg!(
+        registry,
+        "remap_key",
+        "Remap a key (from -> to)",
+        json!({"type":"object","properties":{"from":{"type":"string"},"to":{"type":"string"}},"required":["from","to"]}),
+        |p: serde_json::Value| remap_key(
+            p["from"].as_str().unwrap_or(""),
+            p["to"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "create_macro",
+        "Create a key macro",
+        json!({"type":"object","properties":{"name":{"type":"string"},"keys":{"type":"string"}},"required":["name","keys"]}),
+        |p: serde_json::Value| create_macro(
+            p["name"].as_str().unwrap_or(""),
+            p["keys"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "list_macros",
+        "List saved key macros",
+        json!({}),
+        |_| list_macros()
+    );
+    reg!(
+        registry,
+        "delete_macro",
+        "Delete a key macro",
+        json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}),
+        |p: serde_json::Value| delete_macro(p["name"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "enable_sticky_keys",
+        "Enable or disable sticky keys",
+        json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}),
+        |p: serde_json::Value| enable_sticky_keys(p["enabled"].as_bool().unwrap_or(true))
+    );
+    reg!(
+        registry,
+        "enable_slow_keys",
+        "Enable or disable slow keys",
+        json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}),
+        |p: serde_json::Value| enable_slow_keys(p["enabled"].as_bool().unwrap_or(true))
+    );
+    reg!(
+        registry,
+        "enable_bounce_keys",
+        "Enable or disable bounce keys",
+        json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}),
+        |p: serde_json::Value| enable_bounce_keys(p["enabled"].as_bool().unwrap_or(true))
+    );
 
     // ---- 7. Power & thermal ----
-    reg!(registry, "get_battery_info", "Detailed battery info via upower", json!({}), |_| get_battery_info());
-    reg!(registry, "get_battery_health", "Battery health (design vs current capacity)", json!({}), |_| get_battery_health());
-    reg!(registry, "set_power_mode", "Set power mode: performance, balanced, power-saver", json!({"type":"object","properties":{"mode":{"type":"string"}},"required":["mode"]}), |p: serde_json::Value| set_power_mode(p["mode"].as_str().unwrap_or("balanced")));
-    reg!(registry, "get_thermal_status", "CPU/GPU thermal zone temperatures", json!({}), |_| get_thermal_status());
-    reg!(registry, "set_fan_curve", "Set the fan curve level (0-7)", json!({"type":"object","properties":{"level":{"type":"integer"}},"required":["level"]}), |p: serde_json::Value| set_fan_curve(p["level"].as_u64().unwrap_or(4) as u8));
-    reg!(registry, "get_power_consumption", "Instantaneous power draw", json!({}), |_| get_power_consumption());
-    reg!(registry, "estimate_battery_life", "Estimate battery life remaining", json!({}), |_| estimate_battery_life());
-    reg!(registry, "set_cpu_governor", "Set the CPU governor (performance, powersave, schedutil, ondemand)", json!({"type":"object","properties":{"governor":{"type":"string"}},"required":["governor"]}), |p: serde_json::Value| set_cpu_governor(p["governor"].as_str().unwrap_or("")));
-    reg!(registry, "set_cpu_max_freq", "Clamp the max CPU frequency (kHz)", json!({"type":"object","properties":{"khz":{"type":"integer"}},"required":["khz"]}), |p: serde_json::Value| set_cpu_max_freq(p["khz"].as_u64().unwrap_or(0)));
-    reg!(registry, "enable_turbo_boost", "Enable or disable CPU turbo boost", json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}), |p: serde_json::Value| enable_turbo_boost(p["enabled"].as_bool().unwrap_or(true)));
-    reg!(registry, "get_power_history", "Recent power events (upower monitor)", json!({}), |_| get_power_history());
+    reg!(
+        registry,
+        "get_battery_info",
+        "Detailed battery info via upower",
+        json!({}),
+        |_| get_battery_info()
+    );
+    reg!(
+        registry,
+        "get_battery_health",
+        "Battery health (design vs current capacity)",
+        json!({}),
+        |_| get_battery_health()
+    );
+    reg!(
+        registry,
+        "set_power_mode",
+        "Set power mode: performance, balanced, power-saver",
+        json!({"type":"object","properties":{"mode":{"type":"string"}},"required":["mode"]}),
+        |p: serde_json::Value| set_power_mode(p["mode"].as_str().unwrap_or("balanced"))
+    );
+    reg!(
+        registry,
+        "get_thermal_status",
+        "CPU/GPU thermal zone temperatures",
+        json!({}),
+        |_| get_thermal_status()
+    );
+    reg!(
+        registry,
+        "set_fan_curve",
+        "Set the fan curve level (0-7)",
+        json!({"type":"object","properties":{"level":{"type":"integer"}},"required":["level"]}),
+        |p: serde_json::Value| set_fan_curve(p["level"].as_u64().unwrap_or(4) as u8)
+    );
+    reg!(
+        registry,
+        "get_power_consumption",
+        "Instantaneous power draw",
+        json!({}),
+        |_| get_power_consumption()
+    );
+    reg!(
+        registry,
+        "estimate_battery_life",
+        "Estimate battery life remaining",
+        json!({}),
+        |_| estimate_battery_life()
+    );
+    reg!(
+        registry,
+        "set_cpu_governor",
+        "Set the CPU governor (performance, powersave, schedutil, ondemand)",
+        json!({"type":"object","properties":{"governor":{"type":"string"}},"required":["governor"]}),
+        |p: serde_json::Value| set_cpu_governor(p["governor"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "set_cpu_max_freq",
+        "Clamp the max CPU frequency (kHz)",
+        json!({"type":"object","properties":{"khz":{"type":"integer"}},"required":["khz"]}),
+        |p: serde_json::Value| set_cpu_max_freq(p["khz"].as_u64().unwrap_or(0))
+    );
+    reg!(
+        registry,
+        "enable_turbo_boost",
+        "Enable or disable CPU turbo boost",
+        json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}),
+        |p: serde_json::Value| enable_turbo_boost(p["enabled"].as_bool().unwrap_or(true))
+    );
+    reg!(
+        registry,
+        "get_power_history",
+        "Recent power events (upower monitor)",
+        json!({}),
+        |_| get_power_history()
+    );
 
     // ---- 8. Storage & external devices ----
-    reg!(registry, "list_storage_devices", "List block devices with sizes and mount points", json!({}), |_| list_storage_devices());
-    reg!(registry, "get_disk_health", "SMART health report for a device", json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}), |p: serde_json::Value| get_disk_health(p["device"].as_str().unwrap_or("")));
-    reg!(registry, "mount_device", "Mount a device at a directory", json!({"type":"object","properties":{"device":{"type":"string"},"at":{"type":"string"}},"required":["device","at"]}), |p: serde_json::Value| mount_device(p["device"].as_str().unwrap_or(""), p["at"].as_str().unwrap_or("")));
-    reg!(registry, "unmount_device", "Unmount a device", json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}), |p: serde_json::Value| unmount_device(p["device"].as_str().unwrap_or("")));
-    reg!(registry, "eject_device", "Eject removable media (requires confirmation)", json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}), |p: serde_json::Value| eject_device(p["device"].as_str().unwrap_or("")));
-    reg!(registry, "format_device", "Format a device (DESTRUCTIVE, requires confirmation)", json!({"type":"object","properties":{"device":{"type":"string"},"fstype":{"type":"string"}},"required":["device","fstype"]}), |p: serde_json::Value| format_device(p["device"].as_str().unwrap_or(""), p["fstype"].as_str().unwrap_or("ext4")));
-    reg!(registry, "check_filesystem", "Check a filesystem (fsck, non-destructive)", json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}), |p: serde_json::Value| check_filesystem(p["device"].as_str().unwrap_or("")));
-    reg!(registry, "resize_partition", "Grow a partition to the end of the device (requires confirmation)", json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}), |p: serde_json::Value| resize_partition(p["device"].as_str().unwrap_or("")));
-    reg!(registry, "clone_disk", "Clone a block device with dd (DESTRUCTIVE, requires confirmation)", json!({"type":"object","properties":{"src":{"type":"string"},"dst":{"type":"string"}},"required":["src","dst"]}), |p: serde_json::Value| clone_disk(p["src"].as_str().unwrap_or(""), p["dst"].as_str().unwrap_or("")));
-    reg!(registry, "benchmark_disk", "Benchmark a device's read throughput", json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}), |p: serde_json::Value| benchmark_disk(p["device"].as_str().unwrap_or("")));
-    reg!(registry, "enable_trim", "Enable or disable periodic SSD TRIM", json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}), |p: serde_json::Value| enable_trim(p["enabled"].as_bool().unwrap_or(true)));
-    reg!(registry, "get_disk_usage", "Disk usage of a directory", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| get_disk_usage(p["path"].as_str().unwrap_or("/")));
+    reg!(
+        registry,
+        "list_storage_devices",
+        "List block devices with sizes and mount points",
+        json!({}),
+        |_| list_storage_devices()
+    );
+    reg!(
+        registry,
+        "get_disk_health",
+        "SMART health report for a device",
+        json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}),
+        |p: serde_json::Value| get_disk_health(p["device"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "mount_device",
+        "Mount a device at a directory",
+        json!({"type":"object","properties":{"device":{"type":"string"},"at":{"type":"string"}},"required":["device","at"]}),
+        |p: serde_json::Value| mount_device(
+            p["device"].as_str().unwrap_or(""),
+            p["at"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "unmount_device",
+        "Unmount a device",
+        json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}),
+        |p: serde_json::Value| unmount_device(p["device"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "eject_device",
+        "Eject removable media (requires confirmation)",
+        json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}),
+        |p: serde_json::Value| eject_device(p["device"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "format_device",
+        "Format a device (DESTRUCTIVE, requires confirmation)",
+        json!({"type":"object","properties":{"device":{"type":"string"},"fstype":{"type":"string"}},"required":["device","fstype"]}),
+        |p: serde_json::Value| format_device(
+            p["device"].as_str().unwrap_or(""),
+            p["fstype"].as_str().unwrap_or("ext4")
+        )
+    );
+    reg!(
+        registry,
+        "check_filesystem",
+        "Check a filesystem (fsck, non-destructive)",
+        json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}),
+        |p: serde_json::Value| check_filesystem(p["device"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "resize_partition",
+        "Grow a partition to the end of the device (requires confirmation)",
+        json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}),
+        |p: serde_json::Value| resize_partition(p["device"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "clone_disk",
+        "Clone a block device with dd (DESTRUCTIVE, requires confirmation)",
+        json!({"type":"object","properties":{"src":{"type":"string"},"dst":{"type":"string"}},"required":["src","dst"]}),
+        |p: serde_json::Value| clone_disk(
+            p["src"].as_str().unwrap_or(""),
+            p["dst"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "benchmark_disk",
+        "Benchmark a device's read throughput",
+        json!({"type":"object","properties":{"device":{"type":"string"}},"required":["device"]}),
+        |p: serde_json::Value| benchmark_disk(p["device"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "enable_trim",
+        "Enable or disable periodic SSD TRIM",
+        json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}),
+        |p: serde_json::Value| enable_trim(p["enabled"].as_bool().unwrap_or(true))
+    );
+    reg!(
+        registry,
+        "get_disk_usage",
+        "Disk usage of a directory",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| get_disk_usage(p["path"].as_str().unwrap_or("/"))
+    );
 
     // ---- 9. Printing & scanning ----
-    reg!(registry, "detect_printers", "List CUPS printers", json!({}), |_| detect_printers());
-    reg!(registry, "add_printer", "Add a printer (driverless IPP)", json!({"type":"object","properties":{"name":{"type":"string"},"uri":{"type":"string"}},"required":["name","uri"]}), |p: serde_json::Value| add_printer(p["name"].as_str().unwrap_or(""), p["uri"].as_str().unwrap_or("")));
-    reg!(registry, "remove_printer", "Remove a printer (requires confirmation)", json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}), |p: serde_json::Value| remove_printer(p["name"].as_str().unwrap_or("")));
-    reg!(registry, "set_default_printer", "Set the default printer", json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}), |p: serde_json::Value| set_default_printer(p["name"].as_str().unwrap_or("")));
-    reg!(registry, "print_file", "Print a file to the default (or named) printer", json!({"type":"object","properties":{"path":{"type":"string"},"printer":{"type":"string"}}}), |p: serde_json::Value| print_file(p["path"].as_str().unwrap_or(""), p["printer"].as_str()));
-    reg!(registry, "get_print_queue", "Current print queue", json!({}), |_| get_print_queue());
-    reg!(registry, "cancel_print_job", "Cancel a print job (id or 'all')", json!({"type":"object","properties":{"job":{"type":"string"}},"required":["job"]}), |p: serde_json::Value| cancel_print_job(p["job"].as_str().unwrap_or("")));
-    reg!(registry, "detect_scanners", "Detect scanners via SANE", json!({}), |_| detect_scanners());
-    reg!(registry, "scan_document", "Scan a document (png, jpeg, tiff, pnm)", json!({"type":"object","properties":{"format":{"type":"string"}},"required":["format"]}), |p: serde_json::Value| scan_document(p["format"].as_str().unwrap_or("png")));
-    reg!(registry, "scan_to_pdf", "Scan a document to PDF", json!({}), |_| scan_to_pdf());
-    reg!(registry, "preview_scan", "Fast low-resolution scan preview", json!({}), |_| preview_scan());
+    reg!(
+        registry,
+        "detect_printers",
+        "List CUPS printers",
+        json!({}),
+        |_| detect_printers()
+    );
+    reg!(
+        registry,
+        "add_printer",
+        "Add a printer (driverless IPP)",
+        json!({"type":"object","properties":{"name":{"type":"string"},"uri":{"type":"string"}},"required":["name","uri"]}),
+        |p: serde_json::Value| add_printer(
+            p["name"].as_str().unwrap_or(""),
+            p["uri"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "remove_printer",
+        "Remove a printer (requires confirmation)",
+        json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}),
+        |p: serde_json::Value| remove_printer(p["name"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "set_default_printer",
+        "Set the default printer",
+        json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}),
+        |p: serde_json::Value| set_default_printer(p["name"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "print_file",
+        "Print a file to the default (or named) printer",
+        json!({"type":"object","properties":{"path":{"type":"string"},"printer":{"type":"string"}}}),
+        |p: serde_json::Value| print_file(p["path"].as_str().unwrap_or(""), p["printer"].as_str())
+    );
+    reg!(
+        registry,
+        "get_print_queue",
+        "Current print queue",
+        json!({}),
+        |_| get_print_queue()
+    );
+    reg!(
+        registry,
+        "cancel_print_job",
+        "Cancel a print job (id or 'all')",
+        json!({"type":"object","properties":{"job":{"type":"string"}},"required":["job"]}),
+        |p: serde_json::Value| cancel_print_job(p["job"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "detect_scanners",
+        "Detect scanners via SANE",
+        json!({}),
+        |_| detect_scanners()
+    );
+    reg!(
+        registry,
+        "scan_document",
+        "Scan a document (png, jpeg, tiff, pnm)",
+        json!({"type":"object","properties":{"format":{"type":"string"}},"required":["format"]}),
+        |p: serde_json::Value| scan_document(p["format"].as_str().unwrap_or("png"))
+    );
+    reg!(
+        registry,
+        "scan_to_pdf",
+        "Scan a document to PDF",
+        json!({}),
+        |_| scan_to_pdf()
+    );
+    reg!(
+        registry,
+        "preview_scan",
+        "Fast low-resolution scan preview",
+        json!({}),
+        |_| preview_scan()
+    );
 
     // ---- 10. Networking (advanced) ----
-    reg!(registry, "set_static_ip", "Configure a static IP on an interface", json!({"type":"object","properties":{"interface":{"type":"string"},"ip":{"type":"string"},"gateway":{"type":"string"},"dns":{"type":"string"}},"required":["interface","ip","gateway","dns"]}), |p: serde_json::Value| set_static_ip(p["interface"].as_str().unwrap_or(""), p["ip"].as_str().unwrap_or(""), p["gateway"].as_str().unwrap_or(""), p["dns"].as_str().unwrap_or("")));
-    reg!(registry, "set_dhcp", "Switch an interface to DHCP", json!({"type":"object","properties":{"interface":{"type":"string"}},"required":["interface"]}), |p: serde_json::Value| set_dhcp(p["interface"].as_str().unwrap_or("")));
-    reg!(registry, "create_vpn", "Import a WireGuard VPN config", json!({"type":"object","properties":{"name":{"type":"string"},"config":{"type":"string"}},"required":["name","config"]}), |p: serde_json::Value| create_vpn(p["name"].as_str().unwrap_or(""), p["config"].as_str().unwrap_or("")));
-    reg!(registry, "connect_vpn", "Connect a VPN", json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}), |p: serde_json::Value| connect_vpn(p["name"].as_str().unwrap_or("")));
-    reg!(registry, "disconnect_vpn", "Disconnect a VPN", json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}), |p: serde_json::Value| disconnect_vpn(p["name"].as_str().unwrap_or("")));
-    reg!(registry, "get_wifi_channels", "List Wi-Fi channels available", json!({}), |_| get_wifi_channels());
-    reg!(registry, "set_wifi_channel", "Pin the Wi-Fi channel", json!({"type":"object","properties":{"channel":{"type":"integer"}},"required":["channel"]}), |p: serde_json::Value| set_wifi_channel(p["channel"].as_u64().unwrap_or(0) as u8));
-    reg!(registry, "create_hotspot", "Create or stop a mobile hotspot", json!({"type":"object","properties":{"ssid":{"type":"string"},"password":{"type":"string"},"enabled":{"type":"boolean"}},"required":["ssid","password","enabled"]}), |p: serde_json::Value| create_hotspot(p["ssid"].as_str().unwrap_or(""), p["password"].as_str().unwrap_or(""), p["enabled"].as_bool().unwrap_or(true)));
-    reg!(registry, "get_network_speed_test", "Run a network speed test", json!({}), |_| get_network_speed_test());
-    reg!(registry, "trace_route", "Trace the route to a host", json!({"type":"object","properties":{"host":{"type":"string"}},"required":["host"]}), |p: serde_json::Value| trace_route(p["host"].as_str().unwrap_or("")));
-    reg!(registry, "dns_lookup", "Resolve a hostname to an address", json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}), |p: serde_json::Value| dns_lookup(p["name"].as_str().unwrap_or("")));
-    reg!(registry, "reverse_dns", "Reverse DNS lookup for an IP", json!({"type":"object","properties":{"ip":{"type":"string"}},"required":["ip"]}), |p: serde_json::Value| reverse_dns(p["ip"].as_str().unwrap_or("")));
-    reg!(registry, "port_scan", "Scan open ports on a host", json!({"type":"object","properties":{"host":{"type":"string"},"ports":{"type":"string"}},"required":["host","ports"]}), |p: serde_json::Value| port_scan(p["host"].as_str().unwrap_or(""), p["ports"].as_str().unwrap_or("80")));
-    reg!(registry, "capture_packets", "Capture packets on an interface (bounded)", json!({"type":"object","properties":{"interface":{"type":"string"},"count":{"type":"integer"}},"required":["interface","count"]}), |p: serde_json::Value| capture_packets(p["interface"].as_str().unwrap_or(""), p["count"].as_u64().unwrap_or(10) as u32));
-    reg!(registry, "analyze_traffic", "Analyze live network traffic (nload)", json!({}), |_| analyze_traffic());
+    reg!(
+        registry,
+        "set_static_ip",
+        "Configure a static IP on an interface",
+        json!({"type":"object","properties":{"interface":{"type":"string"},"ip":{"type":"string"},"gateway":{"type":"string"},"dns":{"type":"string"}},"required":["interface","ip","gateway","dns"]}),
+        |p: serde_json::Value| set_static_ip(
+            p["interface"].as_str().unwrap_or(""),
+            p["ip"].as_str().unwrap_or(""),
+            p["gateway"].as_str().unwrap_or(""),
+            p["dns"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "set_dhcp",
+        "Switch an interface to DHCP",
+        json!({"type":"object","properties":{"interface":{"type":"string"}},"required":["interface"]}),
+        |p: serde_json::Value| set_dhcp(p["interface"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "create_vpn",
+        "Import a WireGuard VPN config",
+        json!({"type":"object","properties":{"name":{"type":"string"},"config":{"type":"string"}},"required":["name","config"]}),
+        |p: serde_json::Value| create_vpn(
+            p["name"].as_str().unwrap_or(""),
+            p["config"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "connect_vpn",
+        "Connect a VPN",
+        json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}),
+        |p: serde_json::Value| connect_vpn(p["name"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "disconnect_vpn",
+        "Disconnect a VPN",
+        json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}),
+        |p: serde_json::Value| disconnect_vpn(p["name"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "get_wifi_channels",
+        "List Wi-Fi channels available",
+        json!({}),
+        |_| get_wifi_channels()
+    );
+    reg!(
+        registry,
+        "set_wifi_channel",
+        "Pin the Wi-Fi channel",
+        json!({"type":"object","properties":{"channel":{"type":"integer"}},"required":["channel"]}),
+        |p: serde_json::Value| set_wifi_channel(p["channel"].as_u64().unwrap_or(0) as u8)
+    );
+    reg!(
+        registry,
+        "create_hotspot",
+        "Create or stop a mobile hotspot",
+        json!({"type":"object","properties":{"ssid":{"type":"string"},"password":{"type":"string"},"enabled":{"type":"boolean"}},"required":["ssid","password","enabled"]}),
+        |p: serde_json::Value| create_hotspot(
+            p["ssid"].as_str().unwrap_or(""),
+            p["password"].as_str().unwrap_or(""),
+            p["enabled"].as_bool().unwrap_or(true)
+        )
+    );
+    reg!(
+        registry,
+        "get_network_speed_test",
+        "Run a network speed test",
+        json!({}),
+        |_| get_network_speed_test()
+    );
+    reg!(
+        registry,
+        "trace_route",
+        "Trace the route to a host",
+        json!({"type":"object","properties":{"host":{"type":"string"}},"required":["host"]}),
+        |p: serde_json::Value| trace_route(p["host"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "dns_lookup",
+        "Resolve a hostname to an address",
+        json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}),
+        |p: serde_json::Value| dns_lookup(p["name"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "reverse_dns",
+        "Reverse DNS lookup for an IP",
+        json!({"type":"object","properties":{"ip":{"type":"string"}},"required":["ip"]}),
+        |p: serde_json::Value| reverse_dns(p["ip"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "port_scan",
+        "Scan open ports on a host",
+        json!({"type":"object","properties":{"host":{"type":"string"},"ports":{"type":"string"}},"required":["host","ports"]}),
+        |p: serde_json::Value| port_scan(
+            p["host"].as_str().unwrap_or(""),
+            p["ports"].as_str().unwrap_or("80")
+        )
+    );
+    reg!(
+        registry,
+        "capture_packets",
+        "Capture packets on an interface (bounded)",
+        json!({"type":"object","properties":{"interface":{"type":"string"},"count":{"type":"integer"}},"required":["interface","count"]}),
+        |p: serde_json::Value| capture_packets(
+            p["interface"].as_str().unwrap_or(""),
+            p["count"].as_u64().unwrap_or(10) as u32
+        )
+    );
+    reg!(
+        registry,
+        "analyze_traffic",
+        "Analyze live network traffic (nload)",
+        json!({}),
+        |_| analyze_traffic()
+    );
 
     // ---- 11. GPU & acceleration ----
-    reg!(registry, "detect_gpus", "Detect GPUs and active drivers", json!({}), |_| detect_gpus());
-    reg!(registry, "get_gpu_utilization", "GPU utilization and memory usage", json!({}), |_| get_gpu_utilization());
-    reg!(registry, "set_gpu_power_mode", "Set GPU power mode: auto, max, adaptive, low", json!({"type":"object","properties":{"mode":{"type":"string"}},"required":["mode"]}), |p: serde_json::Value| set_gpu_power_mode(p["mode"].as_str().unwrap_or("auto")));
-    reg!(registry, "enable_hardware_acceleration", "Enable or disable VA-API hardware acceleration", json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}), |p: serde_json::Value| enable_hardware_acceleration(p["enabled"].as_bool().unwrap_or(true)));
-    reg!(registry, "get_cuda_info", "CUDA toolkit and driver info", json!({}), |_| get_cuda_info());
-    reg!(registry, "get_opencl_info", "OpenCL platforms", json!({}), |_| get_opencl_info());
-    reg!(registry, "set_gpu_fan_curve", "Set GPU fan speed (0-100%)", json!({"type":"object","properties":{"percent":{"type":"integer"}},"required":["percent"]}), |p: serde_json::Value| set_gpu_fan_curve(p["percent"].as_u64().unwrap_or(50) as u8));
-    reg!(registry, "get_gpu_processes", "Processes currently using the GPU", json!({}), |_| get_gpu_processes());
-    reg!(registry, "kill_gpu_process", "Kill a GPU process (requires confirmation)", json!({"type":"object","properties":{"pid":{"type":"integer"}},"required":["pid"]}), |p: serde_json::Value| kill_gpu_process(p["pid"].as_u64().unwrap_or(0)));
+    reg!(
+        registry,
+        "detect_gpus",
+        "Detect GPUs and active drivers",
+        json!({}),
+        |_| detect_gpus()
+    );
+    reg!(
+        registry,
+        "get_gpu_utilization",
+        "GPU utilization and memory usage",
+        json!({}),
+        |_| get_gpu_utilization()
+    );
+    reg!(
+        registry,
+        "set_gpu_power_mode",
+        "Set GPU power mode: auto, max, adaptive, low",
+        json!({"type":"object","properties":{"mode":{"type":"string"}},"required":["mode"]}),
+        |p: serde_json::Value| set_gpu_power_mode(p["mode"].as_str().unwrap_or("auto"))
+    );
+    reg!(
+        registry,
+        "enable_hardware_acceleration",
+        "Enable or disable VA-API hardware acceleration",
+        json!({"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}),
+        |p: serde_json::Value| enable_hardware_acceleration(p["enabled"].as_bool().unwrap_or(true))
+    );
+    reg!(
+        registry,
+        "get_cuda_info",
+        "CUDA toolkit and driver info",
+        json!({}),
+        |_| get_cuda_info()
+    );
+    reg!(
+        registry,
+        "get_opencl_info",
+        "OpenCL platforms",
+        json!({}),
+        |_| get_opencl_info()
+    );
+    reg!(
+        registry,
+        "set_gpu_fan_curve",
+        "Set GPU fan speed (0-100%)",
+        json!({"type":"object","properties":{"percent":{"type":"integer"}},"required":["percent"]}),
+        |p: serde_json::Value| set_gpu_fan_curve(p["percent"].as_u64().unwrap_or(50) as u8)
+    );
+    reg!(
+        registry,
+        "get_gpu_processes",
+        "Processes currently using the GPU",
+        json!({}),
+        |_| get_gpu_processes()
+    );
+    reg!(
+        registry,
+        "kill_gpu_process",
+        "Kill a GPU process (requires confirmation)",
+        json!({"type":"object","properties":{"pid":{"type":"integer"}},"required":["pid"]}),
+        |p: serde_json::Value| kill_gpu_process(p["pid"].as_u64().unwrap_or(0))
+    );
 }
 
 // ===========================================================================
@@ -2023,8 +3032,16 @@ mod tests {
 
     #[test]
     fn test_bluetooth_codec_allowlist() {
-        assert!(bluetooth_set_codec("AA:BB:CC:DD:EE:FF", "aptx").unwrap().success);
-        assert!(!bluetooth_set_codec("AA:BB:CC:DD:EE:FF", "wma").unwrap().success);
+        assert!(
+            bluetooth_set_codec("AA:BB:CC:DD:EE:FF", "aptx")
+                .unwrap()
+                .success
+        );
+        assert!(
+            !bluetooth_set_codec("AA:BB:CC:DD:EE:FF", "wma")
+                .unwrap()
+                .success
+        );
     }
 
     // ---- 5. Monitors ----
@@ -2052,7 +3069,12 @@ mod tests {
         // serializes on HOME_LOCK and restores HOME on drop.
         let home = TestHome::new();
         std::fs::create_dir_all(home.path().join(".diad").join("display-profiles")).unwrap();
-        std::fs::write(home.path().join(".diad/display-profiles/test-profiles.conf"), "eDP-1 1920x1080@60\n").unwrap();
+        std::fs::write(
+            home.path()
+                .join(".diad/display-profiles/test-profiles.conf"),
+            "eDP-1 1920x1080@60\n",
+        )
+        .unwrap();
         let loaded = load_display_profile("test-profiles").unwrap();
         assert!(loaded.success, "load failed: {:?}", loaded.error);
         assert!(loaded.output.contains("eDP-1"));
@@ -2090,11 +3112,19 @@ mod tests {
         let created = create_macro("build", "ctrl+s").unwrap();
         assert!(created.success, "create failed: {:?}", created.error);
         let listed = list_macros().unwrap();
-        assert!(listed.output.contains("build.keys"), "list: {}", listed.output);
+        assert!(
+            listed.output.contains("build.keys"),
+            "list: {}",
+            listed.output
+        );
         let deleted = delete_macro("build").unwrap();
         assert!(deleted.success);
         let listed2 = list_macros().unwrap();
-        assert!(!listed2.output.contains("build"), "delete failed: {}", listed2.output);
+        assert!(
+            !listed2.output.contains("build"),
+            "delete failed: {}",
+            listed2.output
+        );
     }
 
     #[test]
@@ -2222,7 +3252,11 @@ mod tests {
     // ---- 10. Networking ----
     #[test]
     fn test_static_ip_validation() {
-        assert!(!set_static_ip("wlan0; rm", "192.168.1.5/24", "192.168.1.1", "8.8.8.8").unwrap().success);
+        assert!(
+            !set_static_ip("wlan0; rm", "192.168.1.5/24", "192.168.1.1", "8.8.8.8")
+                .unwrap()
+                .success
+        );
         let r = set_static_ip("eth0", "192.168.1.5/24", "192.168.1.1", "8.8.8.8").unwrap();
         assert!(r.success || r.error.is_some());
     }

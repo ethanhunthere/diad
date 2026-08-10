@@ -162,11 +162,7 @@ impl LlmProvider for GeminiProvider {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            return Err(anyhow::anyhow!(
-                "Gemini API error ({}): {}",
-                status,
-                body
-            ));
+            return Err(anyhow::anyhow!("Gemini API error ({}): {}", status, body));
         }
 
         let stream = response.bytes_stream();
@@ -186,7 +182,8 @@ impl LlmProvider for GeminiProvider {
 
 impl GeminiProvider {
     fn build_contents(messages: &[Message]) -> (Option<GeminiContent>, Vec<GeminiContent>) {
-        let system_messages: Vec<&Message> = messages.iter().filter(|m| m.role == "system").collect();
+        let system_messages: Vec<&Message> =
+            messages.iter().filter(|m| m.role == "system").collect();
         let system_instruction = if system_messages.is_empty() {
             None
         } else {

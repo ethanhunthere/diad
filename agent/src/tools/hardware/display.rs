@@ -84,7 +84,15 @@ pub fn mirror_outputs(primary: &str, secondary: &str) -> anyhow::Result<ToolResu
             "mirror_outputs: invalid output name(s) '{primary}' / '{secondary}'"
         )));
     }
-    exec::run(&["swaymsg", "output", secondary, "transform", "scale", "-1", "-1"])
+    exec::run(&[
+        "swaymsg",
+        "output",
+        secondary,
+        "transform",
+        "scale",
+        "-1",
+        "-1",
+    ])
 }
 
 #[cfg(test)]

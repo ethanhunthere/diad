@@ -126,13 +126,7 @@ pub fn apply_agent_updates() -> anyhow::Result<ToolResult> {
     // Fetch the expected digest. The sidecar lives next to the asset and is
     // served over the same TLS channel; HTTPS is the trust anchor for both.
     let checksum_url = format!("{url}.sha256");
-    let fetch_checksum = exec::run_privileged(&[
-        "wget",
-        "-q",
-        "-O",
-        CHECKSUM,
-        &checksum_url,
-    ])?;
+    let fetch_checksum = exec::run_privileged(&["wget", "-q", "-O", CHECKSUM, &checksum_url])?;
     if !fetch_checksum.success {
         let _ = exec::run_privileged(&["rm", "-f", BIN]);
         return Ok(ToolResult::err(format!(
@@ -149,7 +143,9 @@ pub fn apply_agent_updates() -> anyhow::Result<ToolResult> {
         .split_whitespace()
         .next()
         .map(|tok| tok.trim())
-        .filter(|tok| !tok.is_empty() && tok.len() == 64 && tok.bytes().all(|b| b.is_ascii_hexdigit()))
+        .filter(|tok| {
+            !tok.is_empty() && tok.len() == 64 && tok.bytes().all(|b| b.is_ascii_hexdigit())
+        })
         .ok_or_else(|| {
             anyhow::anyhow!(
                 "apply_agent_updates: checksum file has no valid SHA-256 digest: {expected}"
@@ -172,7 +168,10 @@ pub fn apply_agent_updates() -> anyhow::Result<ToolResult> {
         .map(str::trim)
         .filter(|tok| tok.len() == 64 && tok.bytes().all(|b| b.is_ascii_hexdigit()))
         .ok_or_else(|| {
-            anyhow::anyhow!("apply_agent_updates: cannot parse sha256sum output: {}", sum.output)
+            anyhow::anyhow!(
+                "apply_agent_updates: cannot parse sha256sum output: {}",
+                sum.output
+            )
         })?;
 
     // Constant-time-ish comparison: never install on mismatch.

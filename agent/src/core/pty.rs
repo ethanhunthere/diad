@@ -80,13 +80,12 @@ impl PtySession {
 
     /// Resize the PTY.
     pub fn resize(&mut self, cols: u16, rows: u16) -> anyhow::Result<()> {
-        self.master
-            .resize(PtySize {
-                rows,
-                cols,
-                pixel_width: 0,
-                pixel_height: 0,
-            })?;
+        self.master.resize(PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        })?;
         Ok(())
     }
 }

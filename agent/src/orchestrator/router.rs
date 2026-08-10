@@ -61,8 +61,15 @@ impl IntentRouter {
 
         // Check for edit commands
         let edit_keywords = [
-            "edit", "create file", "write file", "modify", "update file",
-            "new file", "open file", "change file", "rewrite",
+            "edit",
+            "create file",
+            "write file",
+            "modify",
+            "update file",
+            "new file",
+            "open file",
+            "change file",
+            "rewrite",
         ];
         if edit_keywords.iter().any(|kw| lower.contains(kw)) {
             return Intent::EditCommand;
@@ -70,8 +77,16 @@ impl IntentRouter {
 
         // Check for system queries
         let system_keywords = [
-            "status", "diagnostics", "system info", "cpu usage", "memory",
-            "disk space", "uptime", "processes", "services", "logs",
+            "status",
+            "diagnostics",
+            "system info",
+            "cpu usage",
+            "memory",
+            "disk space",
+            "uptime",
+            "processes",
+            "services",
+            "logs",
         ];
         if system_keywords.iter().any(|kw| lower.contains(kw)) {
             return Intent::SystemQuery;
@@ -79,9 +94,8 @@ impl IntentRouter {
 
         // Check for direct tool calls
         let tool_keywords = [
-            "list", "read", "write", "create", "delete", "move", "copy",
-            "install", "remove", "download", "run", "execute", "search",
-            "find", "show", "get",
+            "list", "read", "write", "create", "delete", "move", "copy", "install", "remove",
+            "download", "run", "execute", "search", "find", "show", "get",
         ];
         if tool_keywords.iter().any(|kw| lower.starts_with(kw)) {
             return Intent::ToolCall;
@@ -114,19 +128,16 @@ impl IntentRouter {
         static POWER_RE: OnceLock<Regex> = OnceLock::new();
 
         let help_re = HELP_RE.get_or_init(|| Regex::new(r"^/help$").expect("valid help regex"));
-        let tools_re =
-            TOOLS_RE.get_or_init(|| Regex::new(r"^/tools$").expect("valid tools regex"));
+        let tools_re = TOOLS_RE.get_or_init(|| Regex::new(r"^/tools$").expect("valid tools regex"));
         let version_re =
             VERSION_RE.get_or_init(|| Regex::new(r"^/version$").expect("valid version regex"));
         let wifi_re = WIFI_RE.get_or_init(|| {
             Regex::new(r"wifi|connect.*network|internet").expect("valid wifi regex")
         });
-        let volume_re = VOLUME_RE.get_or_init(|| {
-            Regex::new(r"volume[^\d]*(\d+)").expect("valid volume regex")
-        });
-        let brightness_re = BRIGHTNESS_RE.get_or_init(|| {
-            Regex::new(r"brightness[^\d]*(\d+)").expect("valid brightness regex")
-        });
+        let volume_re =
+            VOLUME_RE.get_or_init(|| Regex::new(r"volume[^\d]*(\d+)").expect("valid volume regex"));
+        let brightness_re = BRIGHTNESS_RE
+            .get_or_init(|| Regex::new(r"brightness[^\d]*(\d+)").expect("valid brightness regex"));
         let power_re = POWER_RE.get_or_init(|| {
             Regex::new(r"\b(reboot|shutdown|suspend)\b").expect("valid power regex")
         });
@@ -287,10 +298,7 @@ mod tests {
             IntentRouter::classify_offline("volume 100"),
             Some(OfflineIntent::SetVolume(100))
         );
-        assert_eq!(
-            IntentRouter::classify_offline("turn the volume up"),
-            None
-        );
+        assert_eq!(IntentRouter::classify_offline("turn the volume up"), None);
     }
 
     #[test]
@@ -336,21 +344,12 @@ mod tests {
             Some(OfflineIntent::Version)
         );
         // Not a slash command — falls through to other patterns.
-        assert_eq!(
-            IntentRouter::classify_offline("help me"),
-            None
-        );
+        assert_eq!(IntentRouter::classify_offline("help me"), None);
     }
 
     #[test]
     fn test_classify_offline_none() {
-        assert_eq!(
-            IntentRouter::classify_offline("tell me a joke"),
-            None
-        );
-        assert_eq!(
-            IntentRouter::classify_offline("what is 2 + 2"),
-            None
-        );
+        assert_eq!(IntentRouter::classify_offline("tell me a joke"), None);
+        assert_eq!(IntentRouter::classify_offline("what is 2 + 2"), None);
     }
 }

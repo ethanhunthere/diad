@@ -45,7 +45,10 @@ fn summarize_upower(raw: &str) -> String {
         }
     }
 
-    let mut out = format!("state: {}", if state.is_empty() { "unknown" } else { &state });
+    let mut out = format!(
+        "state: {}",
+        if state.is_empty() { "unknown" } else { &state }
+    );
     if !percentage.is_empty() {
         out.push_str(&format!("\npercentage: {percentage}"));
     }

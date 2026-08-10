@@ -126,18 +126,16 @@ impl Vault {
     /// Returns `None` if no token is stored for the given provider.
     pub fn get_token(&self, provider: &str) -> Option<String> {
         match &self.backend {
-            VaultBackend::Keyring => {
-                match self.keyring_entry(provider).get_password() {
-                    Ok(token) => {
-                        tracing::debug!("Token retrieved for provider: {provider}");
-                        Some(token)
-                    }
-                    Err(e) => {
-                        tracing::debug!("No token found for {provider}: {e}");
-                        None
-                    }
+            VaultBackend::Keyring => match self.keyring_entry(provider).get_password() {
+                Ok(token) => {
+                    tracing::debug!("Token retrieved for provider: {provider}");
+                    Some(token)
                 }
-            }
+                Err(e) => {
+                    tracing::debug!("No token found for {provider}: {e}");
+                    None
+                }
+            },
             VaultBackend::Memory(store) => match store.lock() {
                 Ok(guard) => guard.get(provider).cloned(),
                 Err(_) => None,
@@ -194,7 +192,9 @@ mod tests {
         let vault = Vault::new().expect("vault must construct even without a keyring");
         vault.store_token("gemini", "sk-test").unwrap();
         assert_eq!(vault.get_token("gemini").as_deref(), Some("sk-test"));
-        assert!(vault.list_connected_providers().contains(&"gemini".to_string()));
+        assert!(vault
+            .list_connected_providers()
+            .contains(&"gemini".to_string()));
         vault.delete_token("gemini").unwrap();
         assert_eq!(vault.get_token("gemini"), None);
     }

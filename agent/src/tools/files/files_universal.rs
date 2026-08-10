@@ -49,9 +49,17 @@ fn run(args: &[&str]) -> anyhow::Result<ToolResult> {
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
     if output.status.success() {
-        Ok(ToolResult::ok(if stdout.is_empty() { stderr } else { stdout }))
+        Ok(ToolResult::ok(if stdout.is_empty() {
+            stderr
+        } else {
+            stdout
+        }))
     } else {
-        Ok(ToolResult::err(if stderr.is_empty() { stdout } else { stderr }))
+        Ok(ToolResult::err(if stderr.is_empty() {
+            stdout
+        } else {
+            stderr
+        }))
     }
 }
 
@@ -127,9 +135,17 @@ fn run_timeout(args: &[&str], secs: u64) -> anyhow::Result<ToolResult> {
     let stdout = stdout.trim().to_string();
     let stderr = stderr.trim().to_string();
     if status.success() {
-        Ok(ToolResult::ok(if stdout.is_empty() { stderr } else { stdout }))
+        Ok(ToolResult::ok(if stdout.is_empty() {
+            stderr
+        } else {
+            stdout
+        }))
     } else {
-        Ok(ToolResult::err(if stderr.is_empty() { stdout } else { stderr }))
+        Ok(ToolResult::err(if stderr.is_empty() {
+            stdout
+        } else {
+            stderr
+        }))
     }
 }
 
@@ -167,8 +183,9 @@ fn run_timeout_null(args: &[&str], secs: u64) -> anyhow::Result<ToolResult> {
 fn valid_value(v: &str) -> bool {
     !v.is_empty()
         && !v.starts_with('-')
-        && v.chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.' | ':' | '@' | '/' | '+' | '='))
+        && v.chars().all(|c| {
+            c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.' | ':' | '@' | '/' | '+' | '=')
+        })
 }
 
 /// Validate an absolute path-like value. Blocks `..`, `~` expansion, quotes,
@@ -260,17 +277,26 @@ fn sha256_of(path: &str) -> anyhow::Result<ToolResult> {
 /// Map a file extension (lowercase, no dot) to a human category.
 fn category_for_ext(ext: &str) -> &'static str {
     match ext {
-        "txt" | "md" | "rst" | "log" | "tsv" | "json" | "xml" | "yaml" | "yml" | "toml" | "ini" | "conf" | "cfg" => "text",
-        "png" | "jpg" | "jpeg" | "gif" | "bmp" | "webp" | "svg" | "tiff" | "tif" | "ico" | "heic" | "avif" => "image",
+        "txt" | "md" | "rst" | "log" | "tsv" | "json" | "xml" | "yaml" | "yml" | "toml" | "ini"
+        | "conf" | "cfg" => "text",
+        "png" | "jpg" | "jpeg" | "gif" | "bmp" | "webp" | "svg" | "tiff" | "tif" | "ico"
+        | "heic" | "avif" => "image",
         "mp3" | "wav" | "flac" | "ogg" | "opus" | "aac" | "m4a" | "wma" | "mid" | "midi" => "audio",
         "mp4" | "mkv" | "avi" | "mov" | "webm" | "flv" | "wmv" | "m4v" | "mpg" | "mpeg" => "video",
         "pdf" => "pdf",
         "doc" | "docx" | "odt" | "rtf" => "document",
         "xls" | "xlsx" | "ods" | "csv" | "numbers" => "spreadsheet",
         "ppt" | "pptx" | "odp" => "presentation",
-        "zip" | "tar" | "gz" | "bz2" | "xz" | "7z" | "rar" | "tgz" | "tbz2" | "txz" | "zst" | "lz4" => "archive",
-        "rs" | "py" | "js" | "ts" | "tsx" | "jsx" | "go" | "c" | "h" | "cpp" | "hpp" | "java" | "kt" | "swift" | "rb" | "php" | "sh" | "bash" | "zsh" | "fish" | "sql" | "html" | "css" | "scss" | "vue" | "svelte" | "lua" | "r" | "m" | "ex" | "exs" | "erl" | "hs" | "clj" | "scala" | "zig" | "nim" | "dart" | "asm" | "s" | "pl" | "pm" | "tcl" | "vb" | "cs" | "fs" | "ml" | "cmake" | "makefile" | "dockerfile" => "code",
-        "deb" | "rpm" | "apk" | "exe" | "msi" | "AppImage" | "flatpak" | "snap" | "pkg" | "dmg" => "installer",
+        "zip" | "tar" | "gz" | "bz2" | "xz" | "7z" | "rar" | "tgz" | "tbz2" | "txz" | "zst"
+        | "lz4" => "archive",
+        "rs" | "py" | "js" | "ts" | "tsx" | "jsx" | "go" | "c" | "h" | "cpp" | "hpp" | "java"
+        | "kt" | "swift" | "rb" | "php" | "sh" | "bash" | "zsh" | "fish" | "sql" | "html"
+        | "css" | "scss" | "vue" | "svelte" | "lua" | "r" | "m" | "ex" | "exs" | "erl" | "hs"
+        | "clj" | "scala" | "zig" | "nim" | "dart" | "asm" | "s" | "pl" | "pm" | "tcl" | "vb"
+        | "cs" | "fs" | "ml" | "cmake" | "makefile" | "dockerfile" => "code",
+        "deb" | "rpm" | "apk" | "exe" | "msi" | "AppImage" | "flatpak" | "snap" | "pkg" | "dmg" => {
+            "installer"
+        }
         "iso" | "img" | "vhd" | "vmdk" | "qcow2" => "disk-image",
         "ttf" | "otf" | "woff" | "woff2" | "eot" => "font",
         "epub" | "mobi" | "azw3" => "ebook",
@@ -320,7 +346,9 @@ pub fn get_file_type(path: &str) -> anyhow::Result<ToolResult> {
     let mut mime = format!("application/{ext}");
     // Enrich with the real mime when the extension is unknown or absent.
     if category == "other" || ext.is_empty() {
-        let file_out = Command::new("file").args(["--mime-type", "-b", path]).output();
+        let file_out = Command::new("file")
+            .args(["--mime-type", "-b", path])
+            .output();
         if let Ok(o) = file_out {
             let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
             if !s.is_empty() {
@@ -335,7 +363,13 @@ pub fn get_file_type(path: &str) -> anyhow::Result<ToolResult> {
                     "video".to_string()
                 } else if mime.starts_with("application/pdf") {
                     "pdf".to_string()
-                } else if mime.contains("zip") || mime.contains("tar") || mime.contains("gzip") || mime.contains("bzip") || mime.contains("x-7z") || mime.contains("x-rar") {
+                } else if mime.contains("zip")
+                    || mime.contains("tar")
+                    || mime.contains("gzip")
+                    || mime.contains("bzip")
+                    || mime.contains("x-7z")
+                    || mime.contains("x-rar")
+                {
                     "archive".to_string()
                 } else {
                     category
@@ -371,7 +405,14 @@ pub fn get_file_metadata(path: &str) -> anyhow::Result<ToolResult> {
     let modified = md
         .modified()
         .ok()
-        .map(|t| format!("{}", t.duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)))
+        .map(|t| {
+            format!(
+                "{}",
+                t.duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0)
+            )
+        })
         .unwrap_or_else(|| "unknown".to_string());
     let perms = format!("{:o}", md.permissions().mode() & 0o7777);
     Ok(ToolResult::ok(format!(
@@ -407,10 +448,18 @@ pub fn get_file_info_deep(path: &str) -> anyhow::Result<ToolResult> {
         return Ok(ToolResult::err("invalid path"));
     }
     let meta = get_file_metadata(path)?;
-    let meta_out = if meta.success { meta.output.clone() } else { String::new() };
+    let meta_out = if meta.success {
+        meta.output.clone()
+    } else {
+        String::new()
+    };
     let hash = sha256_of(path)?;
     let hash_out = if hash.success {
-        hash.output.split_whitespace().next().unwrap_or("unknown").to_string()
+        hash.output
+            .split_whitespace()
+            .next()
+            .unwrap_or("unknown")
+            .to_string()
     } else {
         format!("(sha256 unavailable: {})", hash.error.unwrap_or_default())
     };
@@ -474,7 +523,9 @@ pub fn generate_video_thumbnail(path: &str, at_seconds: u64) -> anyhow::Result<T
         ])
         .output();
     match r {
-        Ok(o) if o.status.success() => Ok(ToolResult::ok(format!("video thumbnail written to {out}"))),
+        Ok(o) if o.status.success() => {
+            Ok(ToolResult::ok(format!("video thumbnail written to {out}")))
+        }
         Ok(_) => Ok(ToolResult::err("ffmpeg failed to extract the frame")),
         Err(e) => Ok(ToolResult::err(format!("ffmpeg not available: {e}"))),
     }
@@ -610,7 +661,9 @@ pub fn move_download(name: &str, destination: &str) -> anyhow::Result<ToolResult
     }
     let dest_dir = destination.trim_end_matches('/');
     if !Path::new(dest_dir).is_dir() {
-        return Ok(ToolResult::err(format!("destination is not a directory: {destination}")));
+        return Ok(ToolResult::err(format!(
+            "destination is not a directory: {destination}"
+        )));
     }
     let dest = format!("{dest_dir}/{name}");
     match std::fs::rename(&path, &dest) {
@@ -654,7 +707,11 @@ pub fn organize_downloads() -> anyhow::Result<ToolResult> {
             .extension()
             .map(|e| e.to_string_lossy().to_lowercase())
             .unwrap_or_default();
-        let category = if ext.is_empty() { "misc" } else { category_for_ext(&ext) };
+        let category = if ext.is_empty() {
+            "misc"
+        } else {
+            category_for_ext(&ext)
+        };
         let cat_dir = format!("{dir}/{category}");
         if let Err(e) = std::fs::create_dir_all(&cat_dir) {
             errors.push(format!("create {cat_dir}: {e}"));
@@ -683,7 +740,8 @@ pub fn get_download_stats() -> anyhow::Result<ToolResult> {
         Ok(e) => e,
         Err(e) => return Ok(ToolResult::err(format!("cannot read {dir}: {e}"))),
     };
-    let mut by_category: std::collections::BTreeMap<String, (u32, u64)> = std::collections::BTreeMap::new();
+    let mut by_category: std::collections::BTreeMap<String, (u32, u64)> =
+        std::collections::BTreeMap::new();
     for entry in entries.flatten() {
         if !entry.file_type().map(|t| t.is_file()).unwrap_or(false) {
             continue;
@@ -693,7 +751,12 @@ pub fn get_download_stats() -> anyhow::Result<ToolResult> {
             .extension()
             .map(|e| e.to_string_lossy().to_lowercase())
             .unwrap_or_default();
-        let category = if ext.is_empty() { "misc" } else { category_for_ext(&ext) }.to_string();
+        let category = if ext.is_empty() {
+            "misc"
+        } else {
+            category_for_ext(&ext)
+        }
+        .to_string();
         let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
         let e = by_category.entry(category).or_insert((0, 0));
         e.0 += 1;
@@ -731,13 +794,14 @@ pub fn clean_old_downloads(days: u64) -> anyhow::Result<ToolResult> {
             continue;
         }
         if let Ok(modified) = entry.metadata().and_then(|m| m.modified()) {
-            if modified < cutoff
-                && std::fs::remove_file(&path).is_ok() {
-                    removed += 1;
-                }
+            if modified < cutoff && std::fs::remove_file(&path).is_ok() {
+                removed += 1;
+            }
         }
     }
-    Ok(ToolResult::ok(format!("removed {removed} files older than {days} days")))
+    Ok(ToolResult::ok(format!(
+        "removed {removed} files older than {days} days"
+    )))
 }
 
 /// Find duplicate downloads by sha256.
@@ -756,7 +820,8 @@ pub fn find_duplicate_downloads() -> anyhow::Result<ToolResult> {
     if files.is_empty() {
         return Ok(ToolResult::ok("no files to compare"));
     }
-    let mut by_hash: std::collections::BTreeMap<String, Vec<String>> = std::collections::BTreeMap::new();
+    let mut by_hash: std::collections::BTreeMap<String, Vec<String>> =
+        std::collections::BTreeMap::new();
     for f in files {
         let h = sha256_of(&f)?;
         if h.success {
@@ -847,7 +912,10 @@ pub fn set_clipboard_text(text: &str) -> anyhow::Result<ToolResult> {
 
 /// Save the current clipboard image to a PNG file.
 pub fn get_clipboard_image() -> anyhow::Result<ToolResult> {
-    let out = format!("{}/diad-clipboard.png", std::env::temp_dir().to_string_lossy());
+    let out = format!(
+        "{}/diad-clipboard.png",
+        std::env::temp_dir().to_string_lossy()
+    );
     let mut child = match Command::new("wl-paste")
         .args(["--type", "image/png"])
         .stdout(std::process::Stdio::piped())
@@ -855,7 +923,9 @@ pub fn get_clipboard_image() -> anyhow::Result<ToolResult> {
     {
         Ok(c) => c,
         Err(_) => {
-            return Ok(ToolResult::err("wl-paste not available (install wl-clipboard)"))
+            return Ok(ToolResult::err(
+                "wl-paste not available (install wl-clipboard)",
+            ))
         }
     };
     let status = match wait_timeout(&mut child, 3, "wl-paste --type image/png") {
@@ -872,7 +942,10 @@ pub fn get_clipboard_image() -> anyhow::Result<ToolResult> {
     }
     if status.success() && !buf.is_empty() {
         let _ = std::fs::write(&out, &buf);
-        return Ok(ToolResult::ok(format!("clipboard image saved to {out} ({} bytes)", buf.len())));
+        return Ok(ToolResult::ok(format!(
+            "clipboard image saved to {out} ({} bytes)",
+            buf.len()
+        )));
     }
     Ok(ToolResult::err("clipboard contains no image"))
 }
@@ -890,7 +963,9 @@ pub fn set_clipboard_image(path: &str) -> anyhow::Result<ToolResult> {
     if wl.success {
         return Ok(wl);
     }
-    Ok(ToolResult::err("wl-copy not available (install wl-clipboard)"))
+    Ok(ToolResult::err(
+        "wl-copy not available (install wl-clipboard)",
+    ))
 }
 
 /// Clipboard history via `cliphist list`.
@@ -959,13 +1034,19 @@ pub fn airdrop_like(path: &str) -> anyhow::Result<ToolResult> {
     }
     let discover = run_timeout(&["kdeconnect-cli", "-l"], 5)?;
     if !discover.success {
-        return Ok(ToolResult::err("KDE Connect unavailable — install kdeconnect to use AirDrop-like sharing"));
+        return Ok(ToolResult::err(
+            "KDE Connect unavailable — install kdeconnect to use AirDrop-like sharing",
+        ));
     }
     // Parse device IDs from `kdeconnect-cli -l` output and share to each.
     let mut shared = 0u32;
     for line in discover.output.lines() {
         if let Some(idx) = line.find("id: ") {
-            let id = line[idx + 4..].split_whitespace().next().unwrap_or("").to_string();
+            let id = line[idx + 4..]
+                .split_whitespace()
+                .next()
+                .unwrap_or("")
+                .to_string();
             if valid_identifier(&id) && !id.is_empty() {
                 let r = run_timeout(&["kdeconnect-cli", "-d", &id, "--share", path], 5)?;
                 if r.success {
@@ -985,7 +1066,15 @@ pub fn airdrop_like(path: &str) -> anyhow::Result<ToolResult> {
 ///
 /// Options: `regex` (bool), `case_sensitive` (bool), `include_hidden` (bool),
 /// `max_results` (int), `file_types` (array of extensions).
-pub fn search_files(query: &str, path: &str, regex: bool, case_sensitive: bool, include_hidden: bool, max_results: u64, file_types: &[String]) -> anyhow::Result<ToolResult> {
+pub fn search_files(
+    query: &str,
+    path: &str,
+    regex: bool,
+    case_sensitive: bool,
+    include_hidden: bool,
+    max_results: u64,
+    file_types: &[String],
+) -> anyhow::Result<ToolResult> {
     let root = if path.is_empty() { "." } else { path };
     if !valid_path(root) && root != "." {
         return Ok(ToolResult::err("invalid search path"));
@@ -1005,7 +1094,9 @@ pub fn search_files(query: &str, path: &str, regex: bool, case_sensitive: bool, 
         Err(e) => return Ok(ToolResult::err(format!("find failed to launch: {e}"))),
     };
     if !out.status.success() {
-        return Ok(ToolResult::err(String::from_utf8_lossy(&out.stderr).trim().to_string()));
+        return Ok(ToolResult::err(
+            String::from_utf8_lossy(&out.stderr).trim().to_string(),
+        ));
     }
 
     // Compile the query matcher once.
@@ -1037,14 +1128,26 @@ pub fn search_files(query: &str, path: &str, regex: bool, case_sensitive: bool, 
                 .file_name()
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_default();
-            let hay = if case_sensitive { base.clone() } else { base.to_lowercase() };
+            let hay = if case_sensitive {
+                base.clone()
+            } else {
+                base.to_lowercase()
+            };
             if let Some(re) = &re {
-                let text = if case_sensitive { base } else { base.to_lowercase() };
+                let text = if case_sensitive {
+                    base
+                } else {
+                    base.to_lowercase()
+                };
                 re.is_match(&text)
             } else if glob {
                 glob_match(query, &hay)
             } else {
-                let needle = if case_sensitive { query.to_string() } else { query.to_lowercase() };
+                let needle = if case_sensitive {
+                    query.to_string()
+                } else {
+                    query.to_lowercase()
+                };
                 hay.contains(&needle)
             }
         })
@@ -1077,7 +1180,9 @@ fn glob_match(pattern: &str, text: &str) -> bool {
         }
     }
     rx.push('$');
-    regex::Regex::new(&rx).map(|r| r.is_match(text)).unwrap_or(false)
+    regex::Regex::new(&rx)
+        .map(|r| r.is_match(text))
+        .unwrap_or(false)
 }
 
 /// True when a path returned by `find` has a hidden path component BELOW the
@@ -1093,7 +1198,12 @@ fn is_hidden_below(root: &str, path: &str) -> bool {
 }
 
 /// Search file contents for a string (rg, with grep fallback).
-pub fn search_by_content(query: &str, path: &str, case_sensitive: bool, max_results: u64) -> anyhow::Result<ToolResult> {
+pub fn search_by_content(
+    query: &str,
+    path: &str,
+    case_sensitive: bool,
+    max_results: u64,
+) -> anyhow::Result<ToolResult> {
     let root = if path.is_empty() { "." } else { path };
     if !valid_path(root) && root != "." {
         return Ok(ToolResult::err("invalid search path"));
@@ -1128,7 +1238,9 @@ pub fn search_by_content(query: &str, path: &str, case_sensitive: bool, max_resu
         Err(e) => return Ok(ToolResult::err(format!("grep failed to launch: {e}"))),
     };
     if !out.status.success() && out.stdout.is_empty() {
-        return Ok(ToolResult::err(String::from_utf8_lossy(&out.stderr).trim().to_string()));
+        return Ok(ToolResult::err(
+            String::from_utf8_lossy(&out.stderr).trim().to_string(),
+        ));
     }
     let lines: Vec<String> = String::from_utf8_lossy(&out.stdout)
         .lines()
@@ -1143,7 +1255,12 @@ pub fn search_by_content(query: &str, path: &str, case_sensitive: bool, max_resu
 }
 
 /// Search file contents with a regex (rg -E, grep -E fallback).
-pub fn search_by_regex(pattern: &str, path: &str, case_sensitive: bool, max_results: u64) -> anyhow::Result<ToolResult> {
+pub fn search_by_regex(
+    pattern: &str,
+    path: &str,
+    case_sensitive: bool,
+    max_results: u64,
+) -> anyhow::Result<ToolResult> {
     let root = if path.is_empty() { "." } else { path };
     if !valid_path(root) && root != "." {
         return Ok(ToolResult::err("invalid search path"));
@@ -1177,7 +1294,9 @@ pub fn search_by_regex(pattern: &str, path: &str, case_sensitive: bool, max_resu
         Err(e) => return Ok(ToolResult::err(format!("grep failed to launch: {e}"))),
     };
     if !out.status.success() && out.stdout.is_empty() {
-        return Ok(ToolResult::err(String::from_utf8_lossy(&out.stderr).trim().to_string()));
+        return Ok(ToolResult::err(
+            String::from_utf8_lossy(&out.stderr).trim().to_string(),
+        ));
     }
     let lines: Vec<String> = String::from_utf8_lossy(&out.stdout)
         .lines()
@@ -1208,7 +1327,9 @@ fn read_tag_store() -> std::collections::BTreeMap<String, Vec<String>> {
         .unwrap_or_default()
 }
 
-fn write_tag_store(store: &std::collections::BTreeMap<String, Vec<String>>) -> anyhow::Result<ToolResult> {
+fn write_tag_store(
+    store: &std::collections::BTreeMap<String, Vec<String>>,
+) -> anyhow::Result<ToolResult> {
     let path = tag_store_path();
     if let Some(parent) = Path::new(&path).parent() {
         if !parent.as_os_str().is_empty() {
@@ -1297,7 +1418,9 @@ pub fn get_recent_files(path: &str, limit: u64) -> anyhow::Result<ToolResult> {
         Err(e) => return Ok(ToolResult::err(format!("find failed to launch: {e}"))),
     };
     if !out.status.success() {
-        return Ok(ToolResult::err(String::from_utf8_lossy(&out.stderr).trim().to_string()));
+        return Ok(ToolResult::err(
+            String::from_utf8_lossy(&out.stderr).trim().to_string(),
+        ));
     }
     let mut rows: Vec<(f64, String)> = String::from_utf8_lossy(&out.stdout)
         .lines()
@@ -1323,22 +1446,23 @@ pub fn get_duplicate_files(path: &str) -> anyhow::Result<ToolResult> {
     if !valid_path(root) && root != "." {
         return Ok(ToolResult::err("invalid search path"));
     }
-    let out = Command::new("find")
-        .args([root, "-type", "f"])
-        .output();
+    let out = Command::new("find").args([root, "-type", "f"]).output();
     let out = match out {
         Ok(o) => o,
         Err(e) => return Ok(ToolResult::err(format!("find failed to launch: {e}"))),
     };
     if !out.status.success() {
-        return Ok(ToolResult::err(String::from_utf8_lossy(&out.stderr).trim().to_string()));
+        return Ok(ToolResult::err(
+            String::from_utf8_lossy(&out.stderr).trim().to_string(),
+        ));
     }
     let files: Vec<String> = String::from_utf8_lossy(&out.stdout)
         .lines()
         .map(|l| l.to_string())
         .take(500)
         .collect();
-    let mut by_hash: std::collections::BTreeMap<String, Vec<String>> = std::collections::BTreeMap::new();
+    let mut by_hash: std::collections::BTreeMap<String, Vec<String>> =
+        std::collections::BTreeMap::new();
     for f in files {
         let h = sha256_of(&f)?;
         if h.success {
@@ -1378,7 +1502,9 @@ pub fn index_directory(path: &str) -> anyhow::Result<ToolResult> {
         Err(e) => return Ok(ToolResult::err(format!("find failed to launch: {e}"))),
     };
     if !out.status.success() {
-        return Ok(ToolResult::err(String::from_utf8_lossy(&out.stderr).trim().to_string()));
+        return Ok(ToolResult::err(
+            String::from_utf8_lossy(&out.stderr).trim().to_string(),
+        ));
     }
     let entries: Vec<serde_json::Value> = String::from_utf8_lossy(&out.stdout)
         .lines()
@@ -1391,7 +1517,10 @@ pub fn index_directory(path: &str) -> anyhow::Result<ToolResult> {
         })
         .collect();
     let json = serde_json::to_string_pretty(&entries).unwrap_or_else(|_| "[]".to_string());
-    Ok(ToolResult::ok(format!("{} files indexed:\n{json}", entries.len())))
+    Ok(ToolResult::ok(format!(
+        "{} files indexed:\n{json}",
+        entries.len()
+    )))
 }
 
 /// Build a nested JSON tree of a directory (bounded depth).
@@ -1491,18 +1620,35 @@ pub fn extract_archive(archive: &str, destination: &str) -> anyhow::Result<ToolR
     } else if lower.ends_with(".tar.xz") || lower.ends_with(".txz") {
         run(&["tar", "-xJf", archive, "-C", destination])
     } else if lower.ends_with(".tar.zst") || lower.ends_with(".tzst") {
-        run(&["tar", "--use-compress-program=zstd", "-xf", archive, "-C", destination])
+        run(&[
+            "tar",
+            "--use-compress-program=zstd",
+            "-xf",
+            archive,
+            "-C",
+            destination,
+        ])
     } else if lower.ends_with(".tar") {
         run(&["tar", "-xf", archive, "-C", destination])
     } else if lower.ends_with(".7z") {
-        run(&["7z", "x", "-y", format!("-o{destination}").as_str(), archive])
+        run(&[
+            "7z",
+            "x",
+            "-y",
+            format!("-o{destination}").as_str(),
+            archive,
+        ])
     } else if lower.ends_with(".rar") {
         run(&["unrar", "x", "-y", archive, &format!("{destination}/")])
     } else {
-        return Ok(ToolResult::err(format!("unsupported archive format: {archive}")));
+        return Ok(ToolResult::err(format!(
+            "unsupported archive format: {archive}"
+        )));
     }?;
     if r.success {
-        Ok(ToolResult::ok(format!("extracted {archive} into {destination}")))
+        Ok(ToolResult::ok(format!(
+            "extracted {archive} into {destination}"
+        )))
     } else {
         Ok(r)
     }
@@ -1539,7 +1685,9 @@ pub fn create_archive(source: &str, format: &str, output: &str) -> anyhow::Resul
         }
     }?;
     if r.success {
-        Ok(ToolResult::ok(format!("created {output} ({fmt}) from {name}")))
+        Ok(ToolResult::ok(format!(
+            "created {output} ({fmt}) from {name}"
+        )))
     } else {
         Ok(r)
     }
@@ -1560,16 +1708,28 @@ pub fn list_archive_contents(archive: &str) -> anyhow::Result<ToolResult> {
             full.push(archive);
             run(&full)
         }
-        None => Ok(ToolResult::err(format!("unsupported archive format: {archive}"))),
+        None => Ok(ToolResult::err(format!(
+            "unsupported archive format: {archive}"
+        ))),
     }
 }
 
 /// Extract a single member from an archive.
-pub fn extract_single_file(archive: &str, member: &str, destination: &str) -> anyhow::Result<ToolResult> {
+pub fn extract_single_file(
+    archive: &str,
+    member: &str,
+    destination: &str,
+) -> anyhow::Result<ToolResult> {
     if !valid_path(archive) || !valid_path(destination) {
         return Ok(ToolResult::err("invalid path"));
     }
-    if member.is_empty() || member.contains("..") || member.contains('$') || member.contains('`') || member.contains(';') || member.contains('|') {
+    if member.is_empty()
+        || member.contains("..")
+        || member.contains('$')
+        || member.contains('`')
+        || member.contains(';')
+        || member.contains('|')
+    {
         return Ok(ToolResult::err("invalid member name"));
     }
     if !Path::new(archive).exists() {
@@ -1581,15 +1741,33 @@ pub fn extract_single_file(archive: &str, member: &str, destination: &str) -> an
     let lower = archive.to_lowercase();
     let r = if lower.ends_with(".zip") {
         run(&["unzip", "-qq", "-o", archive, member, "-d", destination])
-    } else if lower.ends_with(".tar") || lower.ends_with(".tar.gz") || lower.ends_with(".tgz") || lower.ends_with(".tar.bz2") || lower.ends_with(".tbz2") || lower.ends_with(".tar.xz") || lower.ends_with(".txz") {
+    } else if lower.ends_with(".tar")
+        || lower.ends_with(".tar.gz")
+        || lower.ends_with(".tgz")
+        || lower.ends_with(".tar.bz2")
+        || lower.ends_with(".tbz2")
+        || lower.ends_with(".tar.xz")
+        || lower.ends_with(".txz")
+    {
         run(&["tar", "-xf", archive, "-C", destination, member])
     } else if lower.ends_with(".7z") {
-        run(&["7z", "x", "-y", format!("-o{destination}").as_str(), archive, member])
+        run(&[
+            "7z",
+            "x",
+            "-y",
+            format!("-o{destination}").as_str(),
+            archive,
+            member,
+        ])
     } else {
-        return Ok(ToolResult::err(format!("unsupported archive format: {archive}")));
+        return Ok(ToolResult::err(format!(
+            "unsupported archive format: {archive}"
+        )));
     }?;
     if r.success {
-        Ok(ToolResult::ok(format!("extracted {member} into {destination}")))
+        Ok(ToolResult::ok(format!(
+            "extracted {member} into {destination}"
+        )))
     } else {
         Ok(r)
     }
@@ -1606,14 +1784,24 @@ pub fn test_archive(archive: &str) -> anyhow::Result<ToolResult> {
     let lower = archive.to_lowercase();
     if lower.ends_with(".zip") {
         run(&["unzip", "-t", "-qq", archive])
-    } else if lower.ends_with(".tar") || lower.ends_with(".tar.gz") || lower.ends_with(".tgz") || lower.ends_with(".tar.bz2") || lower.ends_with(".tbz2") || lower.ends_with(".tar.xz") || lower.ends_with(".txz") || lower.ends_with(".tar.zst") {
+    } else if lower.ends_with(".tar")
+        || lower.ends_with(".tar.gz")
+        || lower.ends_with(".tgz")
+        || lower.ends_with(".tar.bz2")
+        || lower.ends_with(".tbz2")
+        || lower.ends_with(".tar.xz")
+        || lower.ends_with(".txz")
+        || lower.ends_with(".tar.zst")
+    {
         run(&["tar", "-tf", archive])
     } else if lower.ends_with(".7z") {
         run(&["7z", "t", archive])
     } else if lower.ends_with(".rar") {
         run(&["unrar", "t", archive])
     } else {
-        Ok(ToolResult::err(format!("unsupported archive format: {archive}")))
+        Ok(ToolResult::err(format!(
+            "unsupported archive format: {archive}"
+        )))
     }
 }
 
@@ -1651,7 +1839,9 @@ pub fn encrypt_archive(archive: &str, password: &str, output: &str) -> anyhow::R
         return Ok(ToolResult::err("invalid path"));
     }
     if password.is_empty() || password.len() < 4 || password.len() > 128 || password.contains(' ') {
-        return Ok(ToolResult::err("password must be 4-128 characters without spaces"));
+        return Ok(ToolResult::err(
+            "password must be 4-128 characters without spaces",
+        ));
     }
     if !Path::new(archive).exists() {
         return Ok(ToolResult::err(format!("archive not found: {archive}")));
@@ -1683,7 +1873,9 @@ pub fn merge_archive_parts(parts_dir: &str, output: &str) -> anyhow::Result<Tool
         return Ok(ToolResult::err("invalid path"));
     }
     if !Path::new(parts_dir).is_dir() {
-        return Ok(ToolResult::err(format!("parts directory not found: {parts_dir}")));
+        return Ok(ToolResult::err(format!(
+            "parts directory not found: {parts_dir}"
+        )));
     }
     let mut parts: Vec<std::path::PathBuf> = std::fs::read_dir(parts_dir)
         .map(|rd| rd.flatten().map(|e| e.path()).collect())
@@ -1697,14 +1889,27 @@ pub fn merge_archive_parts(parts_dir: &str, output: &str) -> anyhow::Result<Tool
     for part in parts {
         let mut src = match std::fs::File::open(&part) {
             Ok(f) => f,
-            Err(e) => return Ok(ToolResult::err(format!("cannot open {}: {e}", part.display()))),
+            Err(e) => {
+                return Ok(ToolResult::err(format!(
+                    "cannot open {}: {e}",
+                    part.display()
+                )))
+            }
         };
         match std::io::copy(&mut src, &mut sink) {
             Ok(n) => total += n,
-            Err(e) => return Ok(ToolResult::err(format!("merge failed at {}: {e}", part.display()))),
+            Err(e) => {
+                return Ok(ToolResult::err(format!(
+                    "merge failed at {}: {e}",
+                    part.display()
+                )))
+            }
         }
     }
-    Ok(ToolResult::ok(format!("merged {} parts into {output} ({total} bytes)", total)))
+    Ok(ToolResult::ok(format!(
+        "merged {} parts into {output} ({total} bytes)",
+        total
+    )))
 }
 
 // ===========================================================================
@@ -1721,79 +1926,459 @@ pub fn register_universal_file_tools(registry: &mut crate::tools::ToolRegistry) 
 
     macro_rules! reg {
         ($reg:expr, $name:expr, $desc:expr, $schema:expr, $f:expr) => {
-            $reg.register_tool($name, $desc, $schema, Arc::new(|p: serde_json::Value| $f(p)));
+            $reg.register_tool(
+                $name,
+                $desc,
+                $schema,
+                Arc::new(|p: serde_json::Value| $f(p)),
+            );
         };
     }
 
     use serde_json::json;
 
     // ---- 2.1 File type registry ----
-    reg!(registry, "get_file_type", "Identify the type, category and mime of a file", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| get_file_type(p["path"].as_str().unwrap_or("")));
-    reg!(registry, "get_file_metadata", "File metadata: size, mtime, permissions, kind", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| get_file_metadata(p["path"].as_str().unwrap_or("")));
-    reg!(registry, "get_file_preview", "Human-readable text preview of a file", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| get_file_preview(p["path"].as_str().unwrap_or("")));
-    reg!(registry, "get_file_info_deep", "Deep file info: metadata + sha256 + category", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| get_file_info_deep(p["path"].as_str().unwrap_or("")));
-    reg!(registry, "get_file_thumbnail", "Generate a 256x256 PNG thumbnail of an image", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| get_file_thumbnail(p["path"].as_str().unwrap_or("")));
-    reg!(registry, "generate_video_thumbnail", "Extract a video frame as a thumbnail", json!({"type":"object","properties":{"path":{"type":"string"},"at_seconds":{"type":"integer"}},"required":["path"]}), |p: serde_json::Value| generate_video_thumbnail(p["path"].as_str().unwrap_or(""), p["at_seconds"].as_u64().unwrap_or(1)));
-    reg!(registry, "get_file_icon", "Suggest an icon name (freedesktop) for a file", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| get_file_icon(p["path"].as_str().unwrap_or("")));
+    reg!(
+        registry,
+        "get_file_type",
+        "Identify the type, category and mime of a file",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| get_file_type(p["path"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "get_file_metadata",
+        "File metadata: size, mtime, permissions, kind",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| get_file_metadata(p["path"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "get_file_preview",
+        "Human-readable text preview of a file",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| get_file_preview(p["path"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "get_file_info_deep",
+        "Deep file info: metadata + sha256 + category",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| get_file_info_deep(p["path"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "get_file_thumbnail",
+        "Generate a 256x256 PNG thumbnail of an image",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| get_file_thumbnail(p["path"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "generate_video_thumbnail",
+        "Extract a video frame as a thumbnail",
+        json!({"type":"object","properties":{"path":{"type":"string"},"at_seconds":{"type":"integer"}},"required":["path"]}),
+        |p: serde_json::Value| generate_video_thumbnail(
+            p["path"].as_str().unwrap_or(""),
+            p["at_seconds"].as_u64().unwrap_or(1)
+        )
+    );
+    reg!(
+        registry,
+        "get_file_icon",
+        "Suggest an icon name (freedesktop) for a file",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| get_file_icon(p["path"].as_str().unwrap_or(""))
+    );
 
     // ---- 2.2 Natural language opening ----
-    reg!(registry, "open_file", "Open a file with its default application", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| open_file(p["path"].as_str().unwrap_or("")));
-    reg!(registry, "open_url", "Open a URL in the default browser", json!({"type":"object","properties":{"url":{"type":"string"}},"required":["url"]}), |p: serde_json::Value| open_url(p["url"].as_str().unwrap_or("")));
-    reg!(registry, "open_directory", "Open a directory in the file manager", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| open_directory(p["path"].as_str().unwrap_or("")));
-    reg!(registry, "open_with", "Open a file with an explicit application", json!({"type":"object","properties":{"path":{"type":"string"},"app":{"type":"string"}},"required":["path","app"]}), |p: serde_json::Value| open_with(p["path"].as_str().unwrap_or(""), p["app"].as_str().unwrap_or("")));
-    reg!(registry, "set_default_app", "Set the default application for a mime type", json!({"type":"object","properties":{"mime":{"type":"string"},"app":{"type":"string"}},"required":["mime","app"]}), |p: serde_json::Value| set_default_app(p["mime"].as_str().unwrap_or(""), p["app"].as_str().unwrap_or("")));
+    reg!(
+        registry,
+        "open_file",
+        "Open a file with its default application",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| open_file(p["path"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "open_url",
+        "Open a URL in the default browser",
+        json!({"type":"object","properties":{"url":{"type":"string"}},"required":["url"]}),
+        |p: serde_json::Value| open_url(p["url"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "open_directory",
+        "Open a directory in the file manager",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| open_directory(p["path"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "open_with",
+        "Open a file with an explicit application",
+        json!({"type":"object","properties":{"path":{"type":"string"},"app":{"type":"string"}},"required":["path","app"]}),
+        |p: serde_json::Value| open_with(
+            p["path"].as_str().unwrap_or(""),
+            p["app"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "set_default_app",
+        "Set the default application for a mime type",
+        json!({"type":"object","properties":{"mime":{"type":"string"},"app":{"type":"string"}},"required":["mime","app"]}),
+        |p: serde_json::Value| set_default_app(
+            p["mime"].as_str().unwrap_or(""),
+            p["app"].as_str().unwrap_or("")
+        )
+    );
 
     // ---- 2.3 Download integration ----
-    reg!(registry, "list_downloads", "List everything in the Downloads directory", json!({}), |_| list_downloads());
-    reg!(registry, "open_download", "Open a download with its default application", json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}), |p: serde_json::Value| open_download(p["name"].as_str().unwrap_or("")));
-    reg!(registry, "move_download", "Move a download to a destination directory", json!({"type":"object","properties":{"name":{"type":"string"},"destination":{"type":"string"}},"required":["name","destination"]}), |p: serde_json::Value| move_download(p["name"].as_str().unwrap_or(""), p["destination"].as_str().unwrap_or("")));
-    reg!(registry, "delete_download", "Delete a download (DESTRUCTIVE, requires confirmation)", json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}), |p: serde_json::Value| delete_download(p["name"].as_str().unwrap_or("")));
-    reg!(registry, "organize_downloads", "Organize Downloads into category folders (moves files)", json!({}), |_| organize_downloads());
-    reg!(registry, "get_download_stats", "Download statistics per category", json!({}), |_| get_download_stats());
-    reg!(registry, "clean_old_downloads", "Delete downloads older than N days (DESTRUCTIVE)", json!({"type":"object","properties":{"days":{"type":"integer"}},"required":["days"]}), |p: serde_json::Value| clean_old_downloads(p["days"].as_u64().unwrap_or(0)));
-    reg!(registry, "find_duplicate_downloads", "Find duplicate downloads by sha256", json!({}), |_| find_duplicate_downloads());
-    reg!(registry, "scan_download", "Virus-scan a download (clamscan)", json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}), |p: serde_json::Value| scan_download(p["name"].as_str().unwrap_or("")));
+    reg!(
+        registry,
+        "list_downloads",
+        "List everything in the Downloads directory",
+        json!({}),
+        |_| list_downloads()
+    );
+    reg!(
+        registry,
+        "open_download",
+        "Open a download with its default application",
+        json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}),
+        |p: serde_json::Value| open_download(p["name"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "move_download",
+        "Move a download to a destination directory",
+        json!({"type":"object","properties":{"name":{"type":"string"},"destination":{"type":"string"}},"required":["name","destination"]}),
+        |p: serde_json::Value| move_download(
+            p["name"].as_str().unwrap_or(""),
+            p["destination"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "delete_download",
+        "Delete a download (DESTRUCTIVE, requires confirmation)",
+        json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}),
+        |p: serde_json::Value| delete_download(p["name"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "organize_downloads",
+        "Organize Downloads into category folders (moves files)",
+        json!({}),
+        |_| organize_downloads()
+    );
+    reg!(
+        registry,
+        "get_download_stats",
+        "Download statistics per category",
+        json!({}),
+        |_| get_download_stats()
+    );
+    reg!(
+        registry,
+        "clean_old_downloads",
+        "Delete downloads older than N days (DESTRUCTIVE)",
+        json!({"type":"object","properties":{"days":{"type":"integer"}},"required":["days"]}),
+        |p: serde_json::Value| clean_old_downloads(p["days"].as_u64().unwrap_or(0))
+    );
+    reg!(
+        registry,
+        "find_duplicate_downloads",
+        "Find duplicate downloads by sha256",
+        json!({}),
+        |_| find_duplicate_downloads()
+    );
+    reg!(
+        registry,
+        "scan_download",
+        "Virus-scan a download (clamscan)",
+        json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}),
+        |p: serde_json::Value| scan_download(p["name"].as_str().unwrap_or(""))
+    );
 
     // ---- 2.4 Clipboard & sharing ----
-    reg!(registry, "get_clipboard_text", "Read the current clipboard text", json!({}), |_| get_clipboard_text());
-    reg!(registry, "set_clipboard_text", "Write text to the clipboard", json!({"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}), |p: serde_json::Value| set_clipboard_text(p["text"].as_str().unwrap_or("")));
-    reg!(registry, "get_clipboard_image", "Save the clipboard image to a PNG file", json!({}), |_| get_clipboard_image());
-    reg!(registry, "set_clipboard_image", "Copy an image file to the clipboard", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| set_clipboard_image(p["path"].as_str().unwrap_or("")));
-    reg!(registry, "get_clipboard_history", "Clipboard history via cliphist", json!({}), |_| get_clipboard_history());
-    reg!(registry, "clear_clipboard_history", "Clear clipboard history (DESTRUCTIVE, requires confirmation)", json!({}), |_| clear_clipboard_history());
-    reg!(registry, "share_file", "Share a file (KDE Connect or Bluetooth OBEX)", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| share_file(p["path"].as_str().unwrap_or("")));
-    reg!(registry, "qr_code_file", "Generate a QR code for a file", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| qr_code_file(p["path"].as_str().unwrap_or("")));
-    reg!(registry, "share_to_phone", "Share a file to a connected phone (KDE Connect)", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| share_to_phone(p["path"].as_str().unwrap_or("")));
-    reg!(registry, "airdrop_like", "AirDrop-like nearby sharing to all connected devices", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| airdrop_like(p["path"].as_str().unwrap_or("")));
+    reg!(
+        registry,
+        "get_clipboard_text",
+        "Read the current clipboard text",
+        json!({}),
+        |_| get_clipboard_text()
+    );
+    reg!(
+        registry,
+        "set_clipboard_text",
+        "Write text to the clipboard",
+        json!({"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}),
+        |p: serde_json::Value| set_clipboard_text(p["text"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "get_clipboard_image",
+        "Save the clipboard image to a PNG file",
+        json!({}),
+        |_| get_clipboard_image()
+    );
+    reg!(
+        registry,
+        "set_clipboard_image",
+        "Copy an image file to the clipboard",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| set_clipboard_image(p["path"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "get_clipboard_history",
+        "Clipboard history via cliphist",
+        json!({}),
+        |_| get_clipboard_history()
+    );
+    reg!(
+        registry,
+        "clear_clipboard_history",
+        "Clear clipboard history (DESTRUCTIVE, requires confirmation)",
+        json!({}),
+        |_| clear_clipboard_history()
+    );
+    reg!(
+        registry,
+        "share_file",
+        "Share a file (KDE Connect or Bluetooth OBEX)",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| share_file(p["path"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "qr_code_file",
+        "Generate a QR code for a file",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| qr_code_file(p["path"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "share_to_phone",
+        "Share a file to a connected phone (KDE Connect)",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| share_to_phone(p["path"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "airdrop_like",
+        "AirDrop-like nearby sharing to all connected devices",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| airdrop_like(p["path"].as_str().unwrap_or(""))
+    );
 
     // ---- 2.5 Search & organization ----
-    reg!(registry, "search_files", "Search for files by name (rich options: regex, case, hidden, types)", json!({"type":"object","properties":{"query":{"type":"string"},"path":{"type":"string"},"regex":{"type":"boolean"},"case_sensitive":{"type":"boolean"},"include_hidden":{"type":"boolean"},"max_results":{"type":"integer"},"file_types":{"type":"array","items":{"type":"string"}}},"required":["query"]}), |p: serde_json::Value| {
-        let ft = p["file_types"].as_array().map(|a| a.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect::<Vec<String>>()).unwrap_or_default();
-        search_files(p["query"].as_str().unwrap_or(""), p["path"].as_str().unwrap_or(""), p["regex"].as_bool().unwrap_or(false), p["case_sensitive"].as_bool().unwrap_or(false), p["include_hidden"].as_bool().unwrap_or(false), p["max_results"].as_u64().unwrap_or(100), &ft)
-    });
-    reg!(registry, "search_by_content", "Search file contents for a string", json!({"type":"object","properties":{"query":{"type":"string"},"path":{"type":"string"},"case_sensitive":{"type":"boolean"},"max_results":{"type":"integer"}},"required":["query"]}), |p: serde_json::Value| search_by_content(p["query"].as_str().unwrap_or(""), p["path"].as_str().unwrap_or(""), p["case_sensitive"].as_bool().unwrap_or(false), p["max_results"].as_u64().unwrap_or(100)));
-    reg!(registry, "search_by_regex", "Search file contents with a regex", json!({"type":"object","properties":{"pattern":{"type":"string"},"path":{"type":"string"},"case_sensitive":{"type":"boolean"},"max_results":{"type":"integer"}},"required":["pattern"]}), |p: serde_json::Value| search_by_regex(p["pattern"].as_str().unwrap_or(""), p["path"].as_str().unwrap_or(""), p["case_sensitive"].as_bool().unwrap_or(false), p["max_results"].as_u64().unwrap_or(100)));
-    reg!(registry, "tag_file", "Tag a file with one or more tags", json!({"type":"object","properties":{"path":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}},"required":["path","tags"]}}), |p: serde_json::Value| {
-        let tags = p["tags"].as_array().map(|a| a.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect::<Vec<String>>()).unwrap_or_default();
-        tag_file(p["path"].as_str().unwrap_or(""), &tags)
-    });
-    reg!(registry, "get_file_tags", "List the tags of a file", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| get_file_tags(p["path"].as_str().unwrap_or("")));
-    reg!(registry, "search_by_tag", "Find all files carrying a tag", json!({"type":"object","properties":{"tag":{"type":"string"}},"required":["tag"]}), |p: serde_json::Value| search_by_tag(p["tag"].as_str().unwrap_or("")));
-    reg!(registry, "get_recent_files", "Most recently modified files in a directory", json!({"type":"object","properties":{"path":{"type":"string"},"limit":{"type":"integer"}},"required":["path"]}), |p: serde_json::Value| get_recent_files(p["path"].as_str().unwrap_or(""), p["limit"].as_u64().unwrap_or(20)));
-    reg!(registry, "get_duplicate_files", "Find duplicate files by sha256", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| get_duplicate_files(p["path"].as_str().unwrap_or("")));
-    reg!(registry, "index_directory", "Index a directory: path, size, mtime for every file", json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}), |p: serde_json::Value| index_directory(p["path"].as_str().unwrap_or("")));
-    reg!(registry, "get_directory_tree", "Nested JSON tree of a directory", json!({"type":"object","properties":{"path":{"type":"string"},"depth":{"type":"integer"}},"required":["path"]}), |p: serde_json::Value| get_directory_tree(p["path"].as_str().unwrap_or(""), p["depth"].as_u64().unwrap_or(3) as u32));
+    reg!(
+        registry,
+        "search_files",
+        "Search for files by name (rich options: regex, case, hidden, types)",
+        json!({"type":"object","properties":{"query":{"type":"string"},"path":{"type":"string"},"regex":{"type":"boolean"},"case_sensitive":{"type":"boolean"},"include_hidden":{"type":"boolean"},"max_results":{"type":"integer"},"file_types":{"type":"array","items":{"type":"string"}}},"required":["query"]}),
+        |p: serde_json::Value| {
+            let ft = p["file_types"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect::<Vec<String>>()
+                })
+                .unwrap_or_default();
+            search_files(
+                p["query"].as_str().unwrap_or(""),
+                p["path"].as_str().unwrap_or(""),
+                p["regex"].as_bool().unwrap_or(false),
+                p["case_sensitive"].as_bool().unwrap_or(false),
+                p["include_hidden"].as_bool().unwrap_or(false),
+                p["max_results"].as_u64().unwrap_or(100),
+                &ft,
+            )
+        }
+    );
+    reg!(
+        registry,
+        "search_by_content",
+        "Search file contents for a string",
+        json!({"type":"object","properties":{"query":{"type":"string"},"path":{"type":"string"},"case_sensitive":{"type":"boolean"},"max_results":{"type":"integer"}},"required":["query"]}),
+        |p: serde_json::Value| search_by_content(
+            p["query"].as_str().unwrap_or(""),
+            p["path"].as_str().unwrap_or(""),
+            p["case_sensitive"].as_bool().unwrap_or(false),
+            p["max_results"].as_u64().unwrap_or(100)
+        )
+    );
+    reg!(
+        registry,
+        "search_by_regex",
+        "Search file contents with a regex",
+        json!({"type":"object","properties":{"pattern":{"type":"string"},"path":{"type":"string"},"case_sensitive":{"type":"boolean"},"max_results":{"type":"integer"}},"required":["pattern"]}),
+        |p: serde_json::Value| search_by_regex(
+            p["pattern"].as_str().unwrap_or(""),
+            p["path"].as_str().unwrap_or(""),
+            p["case_sensitive"].as_bool().unwrap_or(false),
+            p["max_results"].as_u64().unwrap_or(100)
+        )
+    );
+    reg!(
+        registry,
+        "tag_file",
+        "Tag a file with one or more tags",
+        json!({"type":"object","properties":{"path":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}},"required":["path","tags"]}}),
+        |p: serde_json::Value| {
+            let tags = p["tags"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect::<Vec<String>>()
+                })
+                .unwrap_or_default();
+            tag_file(p["path"].as_str().unwrap_or(""), &tags)
+        }
+    );
+    reg!(
+        registry,
+        "get_file_tags",
+        "List the tags of a file",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| get_file_tags(p["path"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "search_by_tag",
+        "Find all files carrying a tag",
+        json!({"type":"object","properties":{"tag":{"type":"string"}},"required":["tag"]}),
+        |p: serde_json::Value| search_by_tag(p["tag"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "get_recent_files",
+        "Most recently modified files in a directory",
+        json!({"type":"object","properties":{"path":{"type":"string"},"limit":{"type":"integer"}},"required":["path"]}),
+        |p: serde_json::Value| get_recent_files(
+            p["path"].as_str().unwrap_or(""),
+            p["limit"].as_u64().unwrap_or(20)
+        )
+    );
+    reg!(
+        registry,
+        "get_duplicate_files",
+        "Find duplicate files by sha256",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| get_duplicate_files(p["path"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "index_directory",
+        "Index a directory: path, size, mtime for every file",
+        json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}),
+        |p: serde_json::Value| index_directory(p["path"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "get_directory_tree",
+        "Nested JSON tree of a directory",
+        json!({"type":"object","properties":{"path":{"type":"string"},"depth":{"type":"integer"}},"required":["path"]}),
+        |p: serde_json::Value| get_directory_tree(
+            p["path"].as_str().unwrap_or(""),
+            p["depth"].as_u64().unwrap_or(3) as u32
+        )
+    );
 
     // ---- 2.6 Archive management ----
-    reg!(registry, "extract_archive", "Extract an archive into a destination directory", json!({"type":"object","properties":{"archive":{"type":"string"},"destination":{"type":"string"}},"required":["archive","destination"]}), |p: serde_json::Value| extract_archive(p["archive"].as_str().unwrap_or(""), p["destination"].as_str().unwrap_or("")));
-    reg!(registry, "create_archive", "Create an archive (zip, tar, tar.gz, tar.bz2, tar.xz, 7z)", json!({"type":"object","properties":{"source":{"type":"string"},"format":{"type":"string"},"output":{"type":"string"}},"required":["source","format","output"]}), |p: serde_json::Value| create_archive(p["source"].as_str().unwrap_or(""), p["format"].as_str().unwrap_or("zip"), p["output"].as_str().unwrap_or("")));
-    reg!(registry, "list_archive_contents", "List the contents of an archive", json!({"type":"object","properties":{"archive":{"type":"string"}},"required":["archive"]}), |p: serde_json::Value| list_archive_contents(p["archive"].as_str().unwrap_or("")));
-    reg!(registry, "extract_single_file", "Extract a single member from an archive", json!({"type":"object","properties":{"archive":{"type":"string"},"member":{"type":"string"},"destination":{"type":"string"}},"required":["archive","member","destination"]}), |p: serde_json::Value| extract_single_file(p["archive"].as_str().unwrap_or(""), p["member"].as_str().unwrap_or(""), p["destination"].as_str().unwrap_or("")));
-    reg!(registry, "test_archive", "Verify an archive's integrity", json!({"type":"object","properties":{"archive":{"type":"string"}},"required":["archive"]}), |p: serde_json::Value| test_archive(p["archive"].as_str().unwrap_or("")));
-    reg!(registry, "convert_archive", "Convert an archive to another format", json!({"type":"object","properties":{"archive":{"type":"string"},"output_format":{"type":"string"}},"required":["archive","output_format"]}), |p: serde_json::Value| convert_archive(p["archive"].as_str().unwrap_or(""), p["output_format"].as_str().unwrap_or("")));
-    reg!(registry, "encrypt_archive", "Encrypt an archive (7z AES-256 with header encryption)", json!({"type":"object","properties":{"archive":{"type":"string"},"password":{"type":"string"},"output":{"type":"string"}},"required":["archive","password","output"]}), |p: serde_json::Value| encrypt_archive(p["archive"].as_str().unwrap_or(""), p["password"].as_str().unwrap_or(""), p["output"].as_str().unwrap_or("")));
-    reg!(registry, "split_archive", "Split an archive into fixed-size parts", json!({"type":"object","properties":{"archive":{"type":"string"},"part_size_mb":{"type":"integer"},"prefix":{"type":"string"}},"required":["archive","part_size_mb","prefix"]}), |p: serde_json::Value| split_archive(p["archive"].as_str().unwrap_or(""), p["part_size_mb"].as_u64().unwrap_or(0), p["prefix"].as_str().unwrap_or("")));
-    reg!(registry, "merge_archive_parts", "Merge split archive parts back into one file", json!({"type":"object","properties":{"parts_dir":{"type":"string"},"output":{"type":"string"}},"required":["parts_dir","output"]}), |p: serde_json::Value| merge_archive_parts(p["parts_dir"].as_str().unwrap_or(""), p["output"].as_str().unwrap_or("")));
+    reg!(
+        registry,
+        "extract_archive",
+        "Extract an archive into a destination directory",
+        json!({"type":"object","properties":{"archive":{"type":"string"},"destination":{"type":"string"}},"required":["archive","destination"]}),
+        |p: serde_json::Value| extract_archive(
+            p["archive"].as_str().unwrap_or(""),
+            p["destination"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "create_archive",
+        "Create an archive (zip, tar, tar.gz, tar.bz2, tar.xz, 7z)",
+        json!({"type":"object","properties":{"source":{"type":"string"},"format":{"type":"string"},"output":{"type":"string"}},"required":["source","format","output"]}),
+        |p: serde_json::Value| create_archive(
+            p["source"].as_str().unwrap_or(""),
+            p["format"].as_str().unwrap_or("zip"),
+            p["output"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "list_archive_contents",
+        "List the contents of an archive",
+        json!({"type":"object","properties":{"archive":{"type":"string"}},"required":["archive"]}),
+        |p: serde_json::Value| list_archive_contents(p["archive"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "extract_single_file",
+        "Extract a single member from an archive",
+        json!({"type":"object","properties":{"archive":{"type":"string"},"member":{"type":"string"},"destination":{"type":"string"}},"required":["archive","member","destination"]}),
+        |p: serde_json::Value| extract_single_file(
+            p["archive"].as_str().unwrap_or(""),
+            p["member"].as_str().unwrap_or(""),
+            p["destination"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "test_archive",
+        "Verify an archive's integrity",
+        json!({"type":"object","properties":{"archive":{"type":"string"}},"required":["archive"]}),
+        |p: serde_json::Value| test_archive(p["archive"].as_str().unwrap_or(""))
+    );
+    reg!(
+        registry,
+        "convert_archive",
+        "Convert an archive to another format",
+        json!({"type":"object","properties":{"archive":{"type":"string"},"output_format":{"type":"string"}},"required":["archive","output_format"]}),
+        |p: serde_json::Value| convert_archive(
+            p["archive"].as_str().unwrap_or(""),
+            p["output_format"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "encrypt_archive",
+        "Encrypt an archive (7z AES-256 with header encryption)",
+        json!({"type":"object","properties":{"archive":{"type":"string"},"password":{"type":"string"},"output":{"type":"string"}},"required":["archive","password","output"]}),
+        |p: serde_json::Value| encrypt_archive(
+            p["archive"].as_str().unwrap_or(""),
+            p["password"].as_str().unwrap_or(""),
+            p["output"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "split_archive",
+        "Split an archive into fixed-size parts",
+        json!({"type":"object","properties":{"archive":{"type":"string"},"part_size_mb":{"type":"integer"},"prefix":{"type":"string"}},"required":["archive","part_size_mb","prefix"]}),
+        |p: serde_json::Value| split_archive(
+            p["archive"].as_str().unwrap_or(""),
+            p["part_size_mb"].as_u64().unwrap_or(0),
+            p["prefix"].as_str().unwrap_or("")
+        )
+    );
+    reg!(
+        registry,
+        "merge_archive_parts",
+        "Merge split archive parts back into one file",
+        json!({"type":"object","properties":{"parts_dir":{"type":"string"},"output":{"type":"string"}},"required":["parts_dir","output"]}),
+        |p: serde_json::Value| merge_archive_parts(
+            p["parts_dir"].as_str().unwrap_or(""),
+            p["output"].as_str().unwrap_or("")
+        )
+    );
 }
 
 // ===========================================================================
@@ -1950,7 +2535,11 @@ mod tests {
 
     #[test]
     fn test_set_default_app_validation() {
-        assert!(!set_default_app("text/plain;rm", "code.desktop").unwrap().success);
+        assert!(
+            !set_default_app("text/plain;rm", "code.desktop")
+                .unwrap()
+                .success
+        );
         assert!(!set_default_app("text/plain", "code;x").unwrap().success);
         let r = set_default_app("text/plain", "code.desktop").unwrap();
         assert!(r.success || r.error.is_some());
@@ -1966,9 +2555,17 @@ mod tests {
         std::fs::write(dl.join("photo.png"), b"png").unwrap();
 
         let listed = list_downloads().unwrap();
-        assert!(listed.success && listed.output.contains("report.pdf"), "{}", listed.output);
+        assert!(
+            listed.success && listed.output.contains("report.pdf"),
+            "{}",
+            listed.output
+        );
         let stats = get_download_stats().unwrap();
-        assert!(stats.success && stats.output.contains("pdf"), "{}", stats.output);
+        assert!(
+            stats.success && stats.output.contains("pdf"),
+            "{}",
+            stats.output
+        );
 
         let moved = move_download("report.pdf", dl.to_str().unwrap()).unwrap();
         assert!(moved.success, "{}", moved.error.clone().unwrap_or_default());
@@ -2053,7 +2650,11 @@ mod tests {
     #[test]
     fn test_set_clipboard_image_validation() {
         assert!(!set_clipboard_image("../x").unwrap().success);
-        assert!(!set_clipboard_image("/tmp/nonexistent-diad.png").unwrap().success);
+        assert!(
+            !set_clipboard_image("/tmp/nonexistent-diad.png")
+                .unwrap()
+                .success
+        );
     }
 
     #[test]
@@ -2086,13 +2687,25 @@ mod tests {
         let r2 = search_files("*.rs", root, false, false, true, 50, &[]).unwrap();
         assert!(r2.success && r2.output.contains("beta.rs"), "{}", r2.output);
         let r3 = search_files("*", root, false, false, false, 50, &[]).unwrap();
-        assert!(!r3.output.contains(".hidden"), "hidden shown: {}", r3.output);
+        assert!(
+            !r3.output.contains(".hidden"),
+            "hidden shown: {}",
+            r3.output
+        );
     }
 
     #[test]
     fn test_search_files_validation() {
-        assert!(!search_files("", ".", false, false, false, 10, &[]).unwrap().success);
-        assert!(!search_files("q", "/home/../etc", false, false, false, 10, &[]).unwrap().success);
+        assert!(
+            !search_files("", ".", false, false, false, 10, &[])
+                .unwrap()
+                .success
+        );
+        assert!(
+            !search_files("q", "/home/../etc", false, false, false, 10, &[])
+                .unwrap()
+                .success
+        );
     }
 
     #[test]
@@ -2114,11 +2727,23 @@ mod tests {
         std::fs::write(&f, b"x").unwrap();
         let p = f.to_str().unwrap().to_string();
         let tagged = tag_file(&p, &["important".to_string(), "work".to_string()]).unwrap();
-        assert!(tagged.success, "{}", tagged.error.clone().unwrap_or_default());
+        assert!(
+            tagged.success,
+            "{}",
+            tagged.error.clone().unwrap_or_default()
+        );
         let got = get_file_tags(&p).unwrap();
-        assert!(got.success && got.output.contains("important"), "{}", got.output);
+        assert!(
+            got.success && got.output.contains("important"),
+            "{}",
+            got.output
+        );
         let found = search_by_tag("important").unwrap();
-        assert!(found.success && found.output.contains("doc.txt"), "{}", found.output);
+        assert!(
+            found.success && found.output.contains("doc.txt"),
+            "{}",
+            found.output
+        );
         let none = search_by_tag("nope").unwrap();
         assert!(none.output.contains("no files"), "{}", none.output);
     }
@@ -2141,7 +2766,11 @@ mod tests {
         assert!(r.success, "{}", r.error.clone().unwrap_or_default());
         assert!(r.output.contains("a.txt"), "{}", r.output);
         assert!(r.output.contains("sub"), "{}", r.output);
-        assert!(!get_directory_tree(tmp.path().to_str().unwrap(), 99).unwrap().success);
+        assert!(
+            !get_directory_tree(tmp.path().to_str().unwrap(), 99)
+                .unwrap()
+                .success
+        );
     }
 
     #[test]
@@ -2172,11 +2801,23 @@ mod tests {
         assert!(!extract_archive("../x", "/tmp/d").unwrap().success);
         assert!(!extract_archive("/tmp/x", "../d").unwrap().success);
         assert!(!create_archive("../x", "zip", "/tmp/o.zip").unwrap().success);
-        assert!(!create_archive("/tmp/x", "badfmt", "/tmp/o").unwrap().success);
+        assert!(
+            !create_archive("/tmp/x", "badfmt", "/tmp/o")
+                .unwrap()
+                .success
+        );
         assert!(!list_archive_contents("../x").unwrap().success);
-        assert!(!extract_single_file("/tmp/x.zip", "a;b", "/tmp/d").unwrap().success);
+        assert!(
+            !extract_single_file("/tmp/x.zip", "a;b", "/tmp/d")
+                .unwrap()
+                .success
+        );
         assert!(!test_archive("../x").unwrap().success);
-        assert!(!encrypt_archive("/tmp/x", "ab", "/tmp/o.7z").unwrap().success);
+        assert!(
+            !encrypt_archive("/tmp/x", "ab", "/tmp/o.7z")
+                .unwrap()
+                .success
+        );
         assert!(!split_archive("/tmp/x", 0, "part").unwrap().success);
         assert!(!merge_archive_parts("../x", "/tmp/o").unwrap().success);
     }
@@ -2186,27 +2827,51 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let f = tmp.path().join("weird.xyz");
         std::fs::write(&f, b"data").unwrap();
-        let r = extract_archive(f.to_str().unwrap(), tmp.path().join("out").to_str().unwrap()).unwrap();
+        let r = extract_archive(
+            f.to_str().unwrap(),
+            tmp.path().join("out").to_str().unwrap(),
+        )
+        .unwrap();
         assert!(!r.success, "should reject unknown format");
     }
 
     #[test]
     fn test_encrypt_archive_password_rules() {
-        assert!(!encrypt_archive("/tmp/x.7z", "has space", "/tmp/o.7z").unwrap().success);
-        assert!(!encrypt_archive("/tmp/x.7z", "abc", "/tmp/o.7z").unwrap().success);
-        assert!(!encrypt_archive("/tmp/x.7z", "okpassword", "../o.7z").unwrap().success);
+        assert!(
+            !encrypt_archive("/tmp/x.7z", "has space", "/tmp/o.7z")
+                .unwrap()
+                .success
+        );
+        assert!(
+            !encrypt_archive("/tmp/x.7z", "abc", "/tmp/o.7z")
+                .unwrap()
+                .success
+        );
+        assert!(
+            !encrypt_archive("/tmp/x.7z", "okpassword", "../o.7z")
+                .unwrap()
+                .success
+        );
     }
 
     #[test]
     fn test_split_archive_validation() {
         assert!(!split_archive("/tmp/x.zip", 5000, "part").unwrap().success);
-        assert!(!split_archive("/tmp/x.zip", 5, "bad;prefix").unwrap().success);
+        assert!(
+            !split_archive("/tmp/x.zip", 5, "bad;prefix")
+                .unwrap()
+                .success
+        );
         assert!(!split_archive("../x.zip", 5, "part").unwrap().success);
     }
 
     #[test]
     fn test_merge_parts_missing_dir() {
-        assert!(!merge_archive_parts("/tmp/diad-no-such-parts-dir", "/tmp/o.bin").unwrap().success);
+        assert!(
+            !merge_archive_parts("/tmp/diad-no-such-parts-dir", "/tmp/o.bin")
+                .unwrap()
+                .success
+        );
     }
 
     #[test]
@@ -2226,9 +2891,21 @@ mod tests {
 
     #[test]
     fn test_archive_member_validation() {
-        assert!(!extract_single_file("/tmp/a.zip", "../evil", "/tmp/d").unwrap().success);
-        assert!(!extract_single_file("/tmp/a.zip", "a$b", "/tmp/d").unwrap().success);
-        assert!(!extract_single_file("/tmp/a.zip", "a;b", "/tmp/d").unwrap().success);
+        assert!(
+            !extract_single_file("/tmp/a.zip", "../evil", "/tmp/d")
+                .unwrap()
+                .success
+        );
+        assert!(
+            !extract_single_file("/tmp/a.zip", "a$b", "/tmp/d")
+                .unwrap()
+                .success
+        );
+        assert!(
+            !extract_single_file("/tmp/a.zip", "a;b", "/tmp/d")
+                .unwrap()
+                .success
+        );
     }
 
     #[test]
@@ -2236,7 +2913,9 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let f = tmp.path().join("t.txt");
         std::fs::write(&f, "hello world").unwrap();
-        assert!(read_text_preview(f.to_str().unwrap(), 100).unwrap().contains("hello"));
+        assert!(read_text_preview(f.to_str().unwrap(), 100)
+            .unwrap()
+            .contains("hello"));
         let b = tmp.path().join("b.bin");
         std::fs::write(&b, [0u8, 1, 2]).unwrap();
         assert!(read_text_preview(b.to_str().unwrap(), 100).is_none());

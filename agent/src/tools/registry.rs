@@ -38,7 +38,10 @@ static SANDBOX_ALLOWED_PATHS: OnceLock<Vec<String>> = OnceLock::new();
 
 /// Current sandbox allowlist (empty until a registry has been created).
 fn sandbox_allowed_paths() -> &'static [String] {
-    SANDBOX_ALLOWED_PATHS.get().map(|v| v.as_slice()).unwrap_or(&[])
+    SANDBOX_ALLOWED_PATHS
+        .get()
+        .map(|v| v.as_slice())
+        .unwrap_or(&[])
 }
 
 /// Returns the registered-tools snapshot (empty until the default registry
@@ -97,9 +100,16 @@ impl ToolRegistry {
     }
 
     /// Execute a tool by name with the given parameters.
-    pub fn execute_tool(&self, name: &str, params: serde_json::Value) -> anyhow::Result<ToolResult> {
+    pub fn execute_tool(
+        &self,
+        name: &str,
+        params: serde_json::Value,
+    ) -> anyhow::Result<ToolResult> {
         let tool = self.tools.get(name).ok_or_else(|| {
-            anyhow::anyhow!("Unknown tool: {name}. Available: {}", self.list_tool_names().join(", "))
+            anyhow::anyhow!(
+                "Unknown tool: {name}. Available: {}",
+                self.list_tool_names().join(", ")
+            )
         })?;
 
         (tool.handler)(params)
@@ -107,10 +117,7 @@ impl ToolRegistry {
 
     /// List all registered tool definitions.
     pub fn list_tools(&self) -> Vec<ToolDefinition> {
-        self.tools
-            .values()
-            .map(|t| t.definition.clone())
-            .collect()
+        self.tools.values().map(|t| t.definition.clone()).collect()
     }
 
     /// List just the names of registered tools.
@@ -293,7 +300,11 @@ pub fn create_default_registry() -> ToolRegistry {
             let command = params["command"].as_str().unwrap_or("");
             let args: Vec<String> = params["args"]
                 .as_array()
-                .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default();
             process::spawn_process(command, &args)
         }),
@@ -1035,7 +1046,7 @@ pub fn create_default_registry() -> ToolRegistry {
     // ---- Universal file tools (6 subsections) ----
     files_universal::register_universal_file_tools(&mut registry);
 
-    // 
+    //
     // Capture the full tool inventory for help::show_tool_list.
     let _ = REGISTERED_TOOLS.set(registry.list_tools());
 
@@ -1088,10 +1099,7 @@ mod tests {
     fn test_registry_wifi_connect_missing_password_requests_secret() {
         let registry = create_default_registry();
         let result = registry
-            .execute_tool(
-                "wifi_connect",
-                serde_json::json!({ "ssid": "TestNet" }),
-            )
+            .execute_tool("wifi_connect", serde_json::json!({ "ssid": "TestNet" }))
             .unwrap();
         assert!(!result.success);
         let err = result.error.unwrap();
@@ -1146,7 +1154,14 @@ mod tests {
 
     #[test]
     fn test_valid_identifier_accepts_sane_names() {
-        for s in ["wifi_connect", "set_volume", "media_play_pause", "foo@bar", "a.b-c_1", "x:+y"] {
+        for s in [
+            "wifi_connect",
+            "set_volume",
+            "media_play_pause",
+            "foo@bar",
+            "a.b-c_1",
+            "x:+y",
+        ] {
             assert!(valid_identifier(s), "should accept {s:?}");
         }
     }
@@ -1231,7 +1246,10 @@ mod tests {
         let registry = create_default_registry();
         let names = registry.list_tool_names();
         for banned in ["run_shell", "sh", "bash", "sudo", "run_root", "shell"] {
-            assert!(!names.contains(&banned.to_string()), "banned tool present: {banned}");
+            assert!(
+                !names.contains(&banned.to_string()),
+                "banned tool present: {banned}"
+            );
         }
     }
 }

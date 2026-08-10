@@ -694,17 +694,23 @@ mod tests {
 
     #[test]
     fn test_parse_key_spec_rejects_garbage() {
-        for spec in ["", "  ", "f13", "ctrl+f14", "bogus+key", "ctrl+", "++x", "ctrl+alt+shift+meta+x"] {
+        for spec in [
+            "",
+            "  ",
+            "f13",
+            "ctrl+f14",
+            "bogus+key",
+            "ctrl+",
+            "++x",
+            "ctrl+alt+shift+meta+x",
+        ] {
             assert_eq!(parse_key_spec(spec), None, "should reject {spec:?}");
         }
     }
 
     #[test]
     fn test_default_keybindings_fall_back() {
-        let app = App::new(
-            "anthropic".into(),
-            DiadConfig::default(),
-        );
+        let app = App::new("anthropic".into(), DiadConfig::default());
         let f2 = KeyEvent::new(KeyCode::F(2), KeyModifiers::empty());
         assert!(app.binding_is(&f2, "file_tree"));
         assert!(app.binding_is(&f2, "file_tree"));
@@ -719,7 +725,10 @@ mod tests {
             ("connect", KeyCode::F(5)),
             ("provider_picker", KeyCode::F(6)),
         ] {
-            assert!(app.binding_is(&KeyEvent::new(k, KeyModifiers::empty()), a), "{a}");
+            assert!(
+                app.binding_is(&KeyEvent::new(k, KeyModifiers::empty()), a),
+                "{a}"
+            );
         }
     }
 

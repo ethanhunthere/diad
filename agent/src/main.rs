@@ -63,7 +63,10 @@ fn build_brain(cli: &Cli) -> anyhow::Result<Brain> {
         DiadConfig::default()
     }));
     let vault = Arc::new(diad_agent::auth::vault::Vault::new()?);
-    let factory = Arc::new(ProviderFactory::new(Arc::clone(&vault), Arc::clone(&config)));
+    let factory = Arc::new(ProviderFactory::new(
+        Arc::clone(&vault),
+        Arc::clone(&config),
+    ));
     let registry = Arc::new(diad_agent::tools::create_default_registry());
     let state = Arc::new(DaemonState::new(
         Arc::clone(&config),
@@ -109,8 +112,8 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     // ---- Initialize tracing ----
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(&cli.log_level));
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&cli.log_level));
     tracing_subscriber::registry()
         .with(fmt::layer().with_target(true))
         .with(env_filter)
@@ -163,7 +166,10 @@ async fn run_tui_client(brain: &Brain, _port: u16) -> anyhow::Result<()> {
     let provider = brain.state.provider.read().unwrap().clone();
     let mut app = App::new(provider, (*brain.config).clone());
     app.model = brain.state.model.read().unwrap().clone();
-    app.connected = brain.state.connected.load(std::sync::atomic::Ordering::SeqCst);
+    app.connected = brain
+        .state
+        .connected
+        .load(std::sync::atomic::Ordering::SeqCst);
 
     // Setup terminal
     crossterm::terminal::enable_raw_mode()?;
@@ -246,13 +252,15 @@ async fn run_tui_event_loop(
 
                 match key_event.code {
                     KeyCode::Char('c')
-                        if key_event.modifiers
+                        if key_event
+                            .modifiers
                             .contains(crossterm::event::KeyModifiers::CONTROL) =>
                     {
                         break;
                     }
                     KeyCode::Char('d')
-                        if key_event.modifiers
+                        if key_event
+                            .modifiers
                             .contains(crossterm::event::KeyModifiers::CONTROL) =>
                     {
                         break;
@@ -297,8 +305,7 @@ async fn run_tui_event_loop(
 
                 // ---- Provider needs a key → masked SecurePrompt → connect ----
                 if let Some(name) = app.pending_connect_provider.take() {
-                    let (reply_tx, mut reply_rx) =
-                        tokio::sync::mpsc::unbounded_channel::<String>();
+                    let (reply_tx, mut reply_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
                     let _ = tx.send(Event::SecurePromptRequest {
                         label: format!("Paste API key for {name} (hidden):"),
                         reply: reply_tx,
@@ -325,11 +332,7 @@ async fn run_tui_event_loop(
 
                 // ---- User submitted a message while streaming just started ----
                 if !prev_streaming && app.streaming {
-                    let input = app
-                        .messages
-                        .last()
-                        .cloned()
-                        .unwrap_or_default();
+                    let input = app.messages.last().cloned().unwrap_or_default();
                     let input = input.strip_prefix("[You] ").unwrap_or(&input).to_string();
                     client.chat_send(input);
                 }
@@ -381,8 +384,9 @@ async fn run_tui_event_loop(
                     }
                 }
                 app.offline_flow = Some(diad_agent::tui::app::OfflineFlow::WifiSelect);
-                app.messages
-                    .push("[system] Type the SSID you want to connect to, then press Enter.".into());
+                app.messages.push(
+                    "[system] Type the SSID you want to connect to, then press Enter.".into(),
+                );
                 app.streaming = false;
             }
             Ok(Event::HistoryUpdated(_)) => {

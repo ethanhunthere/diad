@@ -16,16 +16,16 @@ use super::app::{App, AppMode};
 /// Compute a color for the current provider badge.
 fn provider_color(provider: &str) -> Color {
     match provider.to_lowercase().as_str() {
-        "anthropic" => Color::Rgb(212, 167, 98), // warm amber
-        "gemini" => Color::Rgb(66, 133, 244),     // google blue
-        "openai" => Color::Rgb(16, 163, 127),     // openai green
-        "qwen" => Color::Rgb(97, 56, 212),        // purple
-        "kimi" => Color::Rgb(251, 113, 133),      // rose
-        "deepseek" => Color::Rgb(34, 211, 238),   // cyan
-        "groq" => Color::Rgb(251, 146, 60),       // orange
-        "mistral" => Color::Rgb(234, 179, 8),     // yellow
-        "openrouter" => Color::Rgb(167, 139, 250),// violet
-        "ollama" => Color::Rgb(148, 163, 184),    // slate
+        "anthropic" => Color::Rgb(212, 167, 98),   // warm amber
+        "gemini" => Color::Rgb(66, 133, 244),      // google blue
+        "openai" => Color::Rgb(16, 163, 127),      // openai green
+        "qwen" => Color::Rgb(97, 56, 212),         // purple
+        "kimi" => Color::Rgb(251, 113, 133),       // rose
+        "deepseek" => Color::Rgb(34, 211, 238),    // cyan
+        "groq" => Color::Rgb(251, 146, 60),        // orange
+        "mistral" => Color::Rgb(234, 179, 8),      // yellow
+        "openrouter" => Color::Rgb(167, 139, 250), // violet
+        "ollama" => Color::Rgb(148, 163, 184),     // slate
         _ => Color::Gray,
     }
 }
@@ -42,7 +42,12 @@ pub fn render(frame: &mut Frame, app: &App) {
     let bottom_bar = render_bottom_bar(app);
     frame.render_widget(
         bottom_bar,
-        Rect::new(area.x, area.y + area.height.saturating_sub(3), area.width, 3),
+        Rect::new(
+            area.x,
+            area.y + area.height.saturating_sub(3),
+            area.width,
+            3,
+        ),
     );
 
     // ---- Main content area ----
@@ -73,8 +78,16 @@ pub fn render(frame: &mut Frame, app: &App) {
 
 /// Top bar: DIAD Agent title + active provider·model pill + connection status.
 fn render_top_bar(app: &App) -> Paragraph<'static> {
-    let status = if app.connected { "● CONNECTED" } else { "○ OFFLINE" };
-    let status_color = if app.connected { Color::Green } else { Color::Yellow };
+    let status = if app.connected {
+        "● CONNECTED"
+    } else {
+        "○ OFFLINE"
+    };
+    let status_color = if app.connected {
+        Color::Green
+    } else {
+        Color::Yellow
+    };
 
     let provider_pill = if app.model.is_empty() {
         app.provider.to_uppercase()
@@ -83,11 +96,16 @@ fn render_top_bar(app: &App) -> Paragraph<'static> {
     };
 
     let line = Line::from(vec![
-        Span::styled(" DIAD Agent ", Style::default().fg(Color::Black).bg(Color::Cyan).bold()),
+        Span::styled(
+            " DIAD Agent ",
+            Style::default().fg(Color::Black).bg(Color::Cyan).bold(),
+        ),
         Span::raw(" │ "),
         Span::styled(
             format!(" {provider_pill} "),
-            Style::default().fg(Color::Black).bg(provider_color(&app.provider)),
+            Style::default()
+                .fg(Color::Black)
+                .bg(provider_color(&app.provider)),
         ),
         Span::raw(" │ "),
         Span::styled(
@@ -98,8 +116,7 @@ fn render_top_bar(app: &App) -> Paragraph<'static> {
         Span::styled(status, Style::default().fg(status_color)),
     ]);
 
-    Paragraph::new(line)
-        .style(Style::default().bg(Color::Rgb(30, 30, 30)))
+    Paragraph::new(line).style(Style::default().bg(Color::Rgb(30, 30, 30)))
 }
 
 /// Bottom bar: input field with cursor (or masked secret/confirmation prompt).
@@ -111,7 +128,11 @@ fn render_bottom_bar(app: &App) -> Paragraph<'_> {
             Span::styled(prompt, Style::default().fg(Color::Yellow)),
             Span::styled(masked, Style::default().fg(Color::White)),
             Span::styled(
-                if app.connect_input.is_empty() { "▊" } else { "" },
+                if app.connect_input.is_empty() {
+                    "▊"
+                } else {
+                    ""
+                },
                 Style::default().fg(Color::Cyan),
             ),
         ]);
@@ -120,7 +141,9 @@ fn render_bottom_bar(app: &App) -> Paragraph<'_> {
             .borders(Borders::TOP)
             .border_style(Style::default().fg(Color::Yellow));
 
-        return Paragraph::new(line).block(block).style(Style::default().fg(Color::White));
+        return Paragraph::new(line)
+            .block(block)
+            .style(Style::default().fg(Color::White));
     }
 
     // ---- SecurePrompt mode (masked secret input) ----
@@ -139,27 +162,37 @@ fn render_bottom_bar(app: &App) -> Paragraph<'_> {
                 .borders(Borders::TOP)
                 .border_style(Style::default().fg(Color::Yellow));
 
-            return Paragraph::new(line).block(block).style(Style::default().fg(Color::White));
+            return Paragraph::new(line)
+                .block(block)
+                .style(Style::default().fg(Color::White));
         }
 
         // Masked secret input
         if let Some(prompt) = &app.secret_prompt {
             let masked: String = prompt.buffer.chars().map(|_| '•').collect();
             let line = Line::from(vec![
-                Span::styled(format!(" {} ", prompt.label), Style::default().fg(Color::Yellow)),
+                Span::styled(
+                    format!(" {} ", prompt.label),
+                    Style::default().fg(Color::Yellow),
+                ),
                 Span::styled(masked, Style::default().fg(Color::White)),
                 Span::styled(
                     if prompt.buffer.is_empty() { "▊" } else { "" },
                     Style::default().fg(Color::Cyan),
                 ),
-                Span::styled(" (Enter to confirm, Esc to cancel)", Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    " (Enter to confirm, Esc to cancel)",
+                    Style::default().fg(Color::DarkGray),
+                ),
             ]);
 
             let block = Block::default()
                 .borders(Borders::TOP)
                 .border_style(Style::default().fg(Color::Yellow));
 
-            return Paragraph::new(line).block(block).style(Style::default().fg(Color::White));
+            return Paragraph::new(line)
+                .block(block)
+                .style(Style::default().fg(Color::White));
         }
 
         // No active prompt — fall back to chat input
@@ -232,10 +265,16 @@ fn render_chat_view(frame: &mut Frame, app: &App, area: Rect) {
                 Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Green)))
             } else if msg.starts_with("[tool]") {
                 // Dim system line for tool executions
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Blue).italic()))
+                Line::from(Span::styled(
+                    msg.clone(),
+                    Style::default().fg(Color::Blue).italic(),
+                ))
             } else if msg.starts_with("[local]") {
                 // Dim system line for offline intent execution
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::DarkGray).italic()))
+                Line::from(Span::styled(
+                    msg.clone(),
+                    Style::default().fg(Color::DarkGray).italic(),
+                ))
             } else if msg.starts_with("[Assistant]") || msg.starts_with('[') {
                 Line::from(Span::styled(msg.clone(), Style::default().fg(Color::White)))
             } else {
@@ -325,7 +364,14 @@ fn render_system_view(frame: &mut Frame, app: &App, area: Rect) {
         ("OS", "DIAD (Arch Linux)"),
         ("Kernel", env!("CARGO_PKG_VERSION")), // placeholder
         ("Provider", &app.provider),
-        ("Connection", if app.connected { "Connected" } else { "Offline" }),
+        (
+            "Connection",
+            if app.connected {
+                "Connected"
+            } else {
+                "Offline"
+            },
+        ),
         ("Session Dir", "~/.diad/sessions/"),
     ];
 
@@ -335,7 +381,10 @@ fn render_system_view(frame: &mut Frame, app: &App, area: Rect) {
             .border_style(Style::default().fg(Color::DarkGray));
 
         let line = Line::from(vec![
-            Span::styled(format!(" {label:>12}  "), Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!(" {label:>12}  "),
+                Style::default().fg(Color::DarkGray),
+            ),
             Span::styled(*value, Style::default().fg(Color::White)),
         ]);
 
@@ -386,14 +435,11 @@ fn render_connect_view(frame: &mut Frame, app: &App, area: Rect) {
         ])
         .split(area);
 
-    let title_block = Block::default()
-        .borders(Borders::NONE);
-    let title = Paragraph::new(Line::from(vec![
-        Span::styled(
-            format!(" Connect to {} ", app.connect_target),
-            Style::default().fg(Color::Yellow).bold(),
-        ),
-    ]))
+    let title_block = Block::default().borders(Borders::NONE);
+    let title = Paragraph::new(Line::from(vec![Span::styled(
+        format!(" Connect to {} ", app.connect_target),
+        Style::default().fg(Color::Yellow).bold(),
+    )]))
     .block(title_block)
     .centered();
     frame.render_widget(title, layout[0]);
@@ -404,12 +450,15 @@ fn render_connect_view(frame: &mut Frame, app: &App, area: Rect) {
         .title(" Instructions ");
     let info = Paragraph::new(vec![
         Line::from(""),
-        Line::from(vec![
-            Span::raw("  Your API key is stored securely in the system keyring (libsecret),"),
-        ]),
+        Line::from(vec![Span::raw(
+            "  Your API key is stored securely in the system keyring (libsecret),",
+        )]),
         Line::from(vec![
             Span::raw("  in the "),
-            Span::styled(format!("'{}'", app.connect_target), Style::default().fg(Color::Cyan).bold()),
+            Span::styled(
+                format!("'{}'", app.connect_target),
+                Style::default().fg(Color::Cyan).bold(),
+            ),
             Span::raw(" slot."),
         ]),
         Line::from(vec![
@@ -443,7 +492,10 @@ fn render_connect_view(frame: &mut Frame, app: &App, area: Rect) {
             } else if msg.starts_with("[Error]") {
                 Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Red)))
             } else {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::DarkGray)))
+                Line::from(Span::styled(
+                    msg.clone(),
+                    Style::default().fg(Color::DarkGray),
+                ))
             };
             ListItem::new(styled)
         })
@@ -468,9 +520,10 @@ fn render_secure_prompt_view(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         " Secure Prompt".to_string()
     };
-    let title = Paragraph::new(Line::from(vec![
-        Span::styled(title_text, Style::default().fg(Color::Yellow).bold()),
-    ]))
+    let title = Paragraph::new(Line::from(vec![Span::styled(
+        title_text,
+        Style::default().fg(Color::Yellow).bold(),
+    )]))
     .block(title_block);
     frame.render_widget(title, layout[0]);
 
@@ -487,11 +540,20 @@ fn render_secure_prompt_view(frame: &mut Frame, app: &App, area: Rect) {
             } else if msg.starts_with("[Error]") {
                 Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Red)))
             } else if msg.starts_with("[local]") {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::DarkGray).italic()))
+                Line::from(Span::styled(
+                    msg.clone(),
+                    Style::default().fg(Color::DarkGray).italic(),
+                ))
             } else if msg.starts_with("[tool]") {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Blue).italic()))
+                Line::from(Span::styled(
+                    msg.clone(),
+                    Style::default().fg(Color::Blue).italic(),
+                ))
             } else {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::DarkGray)))
+                Line::from(Span::styled(
+                    msg.clone(),
+                    Style::default().fg(Color::DarkGray),
+                ))
             };
             ListItem::new(styled)
         })
@@ -530,7 +592,11 @@ fn render_provider_picker(frame: &mut Frame, app: &App, area: Rect) {
             } else {
                 "✓ no key needed"
             };
-            let status_color = if e.has_key { Color::Green } else { Color::Yellow };
+            let status_color = if e.has_key {
+                Color::Green
+            } else {
+                Color::Yellow
+            };
             let active = if e.name == app.provider { "►" } else { " " };
             ListItem::new(Line::from(vec![
                 Span::raw(format!(" {active} ")),

@@ -46,9 +46,7 @@ impl AnthropicProvider {
             stream: false,
             messages: vec![AnthropicMessage {
                 role: "user".into(),
-                content: vec![AnthropicContent::Text {
-                    text: "Hi".into(),
-                }],
+                content: vec![AnthropicContent::Text { text: "Hi".into() }],
             }],
             system: None,
             tools: None,
@@ -219,7 +217,13 @@ impl LlmProvider for AnthropicProvider {
                 String::new(),
                 None::<String>,
             ),
-            |(mut stream, mut buffer, mut current_tool_id, mut current_tool_name, mut stop_reason)| async move {
+            |(
+                mut stream,
+                mut buffer,
+                mut current_tool_id,
+                mut current_tool_name,
+                mut stop_reason,
+            )| async move {
                 use futures::StreamExt;
 
                 loop {
@@ -250,86 +254,27 @@ impl LlmProvider for AnthropicProvider {
                                         }
 
                                         match serde_json::from_str::<AnthropicSseEvent>(data) {
-                                            Ok(event) => {
-                                                match event.event_type.as_str() {
-                                                    "content_block_start" => {
-                                                        if let Some(ref block) = event.content_block
+                                            Ok(event) => match event.event_type.as_str() {
+                                                "content_block_start" => {
+                                                    if let Some(ref block) = event.content_block {
+                                                        if block.block_type.as_deref()
+                                                            == Some("tool_use")
                                                         {
-                                                            if block.block_type.as_deref()
-                                                                == Some("tool_use")
-                                                            {
-                                                                let id = block
-                                                                    .id
-                                                                    .clone()
-                                                                    .unwrap_or_default();
-                                                                let name = block
-                                                                    .name
-                                                                    .clone()
-                                                                    .unwrap_or_default();
-                                                                current_tool_id = id.clone();
-                                                                current_tool_name = name.clone();
-                                                                return Some((
-                                                                    Ok(StreamEvent::ToolUseStart {
-                                                                        id,
-                                                                        name,
-                                                                    }),
-                                                                    (
-                                                                        stream,
-                                                                        buffer,
-                                                                        current_tool_id,
-                                                                        current_tool_name,
-                                                                        stop_reason,
-                                                                    ),
-                                                                ));
-                                                            }
-                                                        }
-                                                    }
-                                                    "content_block_delta" => {
-                                                        if let Some(ref delta) = event.delta {
-                                                            if let Some(ref text) = delta.text {
-                                                                if !text.is_empty() {
-                                                                    return Some((
-                                                                        Ok(StreamEvent::TextDelta(
-                                                                            text.clone(),
-                                                                        )),
-                                                                        (
-                                                                            stream,
-                                                                            buffer,
-                                                                            current_tool_id,
-                                                                            current_tool_name,
-                                                                            stop_reason,
-                                                                        ),
-                                                                    ));
-                                                                }
-                                                            }
-                                                            if let Some(ref json) =
-                                                                delta.partial_json
-                                                            {
-                                                                return Some((
-                                                                    Ok(
-                                                                        StreamEvent::ToolInputDelta(
-                                                                            json.clone(),
-                                                                        ),
-                                                                    ),
-                                                                    (
-                                                                        stream,
-                                                                        buffer,
-                                                                        current_tool_id,
-                                                                        current_tool_name,
-                                                                        stop_reason,
-                                                                    ),
-                                                                ));
-                                                            }
-                                                        }
-                                                    }
-                                                    "content_block_stop" => {
-                                                        if !current_tool_id.is_empty() {
-                                                            let id =
-                                                                std::mem::take(&mut current_tool_id);
-                                                            let _ =
-                                                                std::mem::take(&mut current_tool_name);
+                                                            let id = block
+                                                                .id
+                                                                .clone()
+                                                                .unwrap_or_default();
+                                                            let name = block
+                                                                .name
+                                                                .clone()
+                                                                .unwrap_or_default();
+                                                            current_tool_id = id.clone();
+                                                            current_tool_name = name.clone();
                                                             return Some((
-                                                                Ok(StreamEvent::ToolUseEnd { id }),
+                                                                Ok(StreamEvent::ToolUseStart {
+                                                                    id,
+                                                                    name,
+                                                                }),
                                                                 (
                                                                     stream,
                                                                     buffer,
@@ -340,42 +285,94 @@ impl LlmProvider for AnthropicProvider {
                                                             ));
                                                         }
                                                     }
-                                                    "message_delta" => {
-                                                        if let Some(ref delta) = event.delta {
-                                                            stop_reason = delta.stop_reason.clone();
+                                                }
+                                                "content_block_delta" => {
+                                                    if let Some(ref delta) = event.delta {
+                                                        if let Some(ref text) = delta.text {
+                                                            if !text.is_empty() {
+                                                                return Some((
+                                                                    Ok(StreamEvent::TextDelta(
+                                                                        text.clone(),
+                                                                    )),
+                                                                    (
+                                                                        stream,
+                                                                        buffer,
+                                                                        current_tool_id,
+                                                                        current_tool_name,
+                                                                        stop_reason,
+                                                                    ),
+                                                                ));
+                                                            }
+                                                        }
+                                                        if let Some(ref json) = delta.partial_json {
+                                                            return Some((
+                                                                Ok(StreamEvent::ToolInputDelta(
+                                                                    json.clone(),
+                                                                )),
+                                                                (
+                                                                    stream,
+                                                                    buffer,
+                                                                    current_tool_id,
+                                                                    current_tool_name,
+                                                                    stop_reason,
+                                                                ),
+                                                            ));
                                                         }
                                                     }
-                                                    "message_stop" => {
-                                                        return Some((
-                                                            Ok(StreamEvent::StreamEnd {
-                                                                stop_reason: stop_reason.clone(),
-                                                            }),
-                                                            (
-                                                                stream,
-                                                                buffer,
-                                                                current_tool_id,
-                                                                current_tool_name,
-                                                                stop_reason,
-                                                            ),
-                                                        ));
-                                                    }
-                                                    "error" => {
-                                                        return Some((
-                                                            Ok(StreamEvent::Error(format!(
-                                                                "Anthropic error: {data}"
-                                                            ))),
-                                                            (
-                                                                stream,
-                                                                buffer,
-                                                                current_tool_id,
-                                                                current_tool_name,
-                                                                stop_reason,
-                                                            ),
-                                                        ));
-                                                    }
-                                                    _ => {}
                                                 }
-                                            }
+                                                "content_block_stop" => {
+                                                    if !current_tool_id.is_empty() {
+                                                        let id =
+                                                            std::mem::take(&mut current_tool_id);
+                                                        let _ =
+                                                            std::mem::take(&mut current_tool_name);
+                                                        return Some((
+                                                            Ok(StreamEvent::ToolUseEnd { id }),
+                                                            (
+                                                                stream,
+                                                                buffer,
+                                                                current_tool_id,
+                                                                current_tool_name,
+                                                                stop_reason,
+                                                            ),
+                                                        ));
+                                                    }
+                                                }
+                                                "message_delta" => {
+                                                    if let Some(ref delta) = event.delta {
+                                                        stop_reason = delta.stop_reason.clone();
+                                                    }
+                                                }
+                                                "message_stop" => {
+                                                    return Some((
+                                                        Ok(StreamEvent::StreamEnd {
+                                                            stop_reason: stop_reason.clone(),
+                                                        }),
+                                                        (
+                                                            stream,
+                                                            buffer,
+                                                            current_tool_id,
+                                                            current_tool_name,
+                                                            stop_reason,
+                                                        ),
+                                                    ));
+                                                }
+                                                "error" => {
+                                                    return Some((
+                                                        Ok(StreamEvent::Error(format!(
+                                                            "Anthropic error: {data}"
+                                                        ))),
+                                                        (
+                                                            stream,
+                                                            buffer,
+                                                            current_tool_id,
+                                                            current_tool_name,
+                                                            stop_reason,
+                                                        ),
+                                                    ));
+                                                }
+                                                _ => {}
+                                            },
                                             Err(e) => {
                                                 tracing::debug!(
                                                     "Failed to parse SSE event: {} — data: {}",

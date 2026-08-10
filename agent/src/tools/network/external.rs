@@ -194,12 +194,18 @@ mod tests {
     #[test]
     fn test_command_args() {
         assert_eq!(command_args("claude", "fix the bug"), ["-p", "fix the bug"]);
-        assert_eq!(command_args("codex", "fix the bug"), ["exec", "fix the bug"]);
+        assert_eq!(
+            command_args("codex", "fix the bug"),
+            ["exec", "fix the bug"]
+        );
         assert_eq!(
             command_args("aider", "fix the bug"),
             ["--message", "fix the bug"]
         );
-        assert_eq!(command_args("opencode", "fix the bug"), ["run", "fix the bug"]);
+        assert_eq!(
+            command_args("opencode", "fix the bug"),
+            ["run", "fix the bug"]
+        );
         assert_eq!(command_args("gemini", "fix the bug"), ["-p", "fix the bug"]);
     }
 
@@ -212,8 +218,7 @@ mod tests {
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
-                std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
-                    .unwrap();
+                std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
             }
         }
 
@@ -239,8 +244,8 @@ mod tests {
     #[test]
     fn test_delegate_missing_binary_is_friendly() {
         let dir = tempfile::tempdir().unwrap();
-        let result = delegate_to_agent_in_paths("claude", "task", &[dir.path().to_path_buf()])
-            .unwrap();
+        let result =
+            delegate_to_agent_in_paths("claude", "task", &[dir.path().to_path_buf()]).unwrap();
         assert!(!result.success);
         let err = result.error.unwrap();
         assert!(err.contains("not installed"), "got: {err}");

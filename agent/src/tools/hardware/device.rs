@@ -35,9 +35,17 @@ fn run(args: &[&str]) -> anyhow::Result<ToolResult> {
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
 
     if output.status.success() {
-        Ok(ToolResult::ok(if stdout.is_empty() { stderr } else { stdout }))
+        Ok(ToolResult::ok(if stdout.is_empty() {
+            stderr
+        } else {
+            stdout
+        }))
     } else {
-        Ok(ToolResult::err(if stderr.is_empty() { stdout } else { stderr }))
+        Ok(ToolResult::err(if stderr.is_empty() {
+            stdout
+        } else {
+            stderr
+        }))
     }
 }
 
@@ -56,9 +64,17 @@ fn run_privileged(args: &[&str]) -> anyhow::Result<ToolResult> {
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
 
     if output.status.success() {
-        Ok(ToolResult::ok(if stdout.is_empty() { stderr } else { stdout }))
+        Ok(ToolResult::ok(if stdout.is_empty() {
+            stderr
+        } else {
+            stdout
+        }))
     } else {
-        Ok(ToolResult::err(if stderr.is_empty() { stdout } else { stderr }))
+        Ok(ToolResult::err(if stderr.is_empty() {
+            stdout
+        } else {
+            stderr
+        }))
     }
 }
 
@@ -68,7 +84,15 @@ fn run_privileged(args: &[&str]) -> anyhow::Result<ToolResult> {
 
 /// List nearby Wi-Fi networks: SSID, SIGNAL, SECURITY.
 pub fn wifi_list() -> anyhow::Result<ToolResult> {
-    run(&["nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "dev", "wifi", "list"])
+    run(&[
+        "nmcli",
+        "-t",
+        "-f",
+        "SSID,SIGNAL,SECURITY",
+        "dev",
+        "wifi",
+        "list",
+    ])
 }
 
 /// Connect to a Wi-Fi network by SSID.
@@ -96,7 +120,9 @@ pub fn wifi_connect(ssid: &str, password: Option<&str>) -> anyhow::Result<ToolRe
         }
     };
 
-    run_privileged(&["nmcli", "dev", "wifi", "connect", ssid, "password", &password])
+    run_privileged(&[
+        "nmcli", "dev", "wifi", "connect", ssid, "password", &password,
+    ])
 }
 
 /// Show NetworkManager general + device status, the active Wi-Fi signal, and
@@ -112,7 +138,15 @@ pub fn wifi_status() -> anyhow::Result<ToolResult> {
     output.push_str(&devices.output);
 
     // Signal strength of the currently connected access point (if any)
-    let signal = run(&["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL", "dev", "wifi", "list"]);
+    let signal = run(&[
+        "nmcli",
+        "-t",
+        "-f",
+        "IN-USE,SSID,SIGNAL",
+        "dev",
+        "wifi",
+        "list",
+    ]);
     if let Ok(s) = signal {
         if s.success && !s.output.trim().is_empty() {
             output.push_str("\n\nActive Wi-Fi (IN-USE,SSID,SIGNAL):\n");
@@ -177,7 +211,12 @@ pub fn get_volume() -> anyhow::Result<ToolResult> {
 /// (the registry clamps as well) and the function re-clamps defensively.
 pub fn set_volume(percent: u8) -> anyhow::Result<ToolResult> {
     let percent = percent.min(100);
-    run(&["wpctl", "set-volume", "@DEFAULT_SINK@", &format!("{percent}%")])
+    run(&[
+        "wpctl",
+        "set-volume",
+        "@DEFAULT_SINK@",
+        &format!("{percent}%"),
+    ])
 }
 
 /// Toggle mute on the default sink.
@@ -212,9 +251,7 @@ pub fn set_brightness(percent: u8) -> anyhow::Result<ToolResult> {
 /// before this tool executes — it is a destructive system action.
 pub fn power(action: &str) -> anyhow::Result<ToolResult> {
     match action {
-        "shutdown" | "reboot" | "suspend" => {
-            run_privileged(&["systemctl", action])
-        }
+        "shutdown" | "reboot" | "suspend" => run_privileged(&["systemctl", action]),
         other => Ok(ToolResult::err(format!(
             "power: invalid action '{other}'. Valid actions: shutdown, reboot, suspend"
         ))),

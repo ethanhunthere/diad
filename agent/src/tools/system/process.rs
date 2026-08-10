@@ -196,7 +196,11 @@ mod tests {
     fn test_spawn_process_rejects_shell_escape() {
         // Attempted privilege/shell escape via argv[0] — must be hard-rejected
         // before any process is spawned.
-        let result = spawn_process("sudo", &["rm".to_string(), "-rf".to_string(), "/".to_string()]).unwrap();
+        let result = spawn_process(
+            "sudo",
+            &["rm".to_string(), "-rf".to_string(), "/".to_string()],
+        )
+        .unwrap();
         assert!(!result.success);
         let err = result.error.unwrap();
         assert!(err.contains("Refusing to spawn sudo"), "got: {err}");
@@ -216,7 +220,10 @@ mod tests {
         assert!(log.contains("--flag value"), "log: {log}");
         assert!(log.contains("approved:true"), "log: {log}");
         // RFC3339 timestamp in square brackets, e.g. [2026-08-09T16:45:43+00:00]
-        assert!(log.starts_with('['), "expected bracketed timestamp in: {log}");
+        assert!(
+            log.starts_with('['),
+            "expected bracketed timestamp in: {log}"
+        );
         assert!(log.contains('T'), "expected RFC3339 timestamp in: {log}");
     }
 }

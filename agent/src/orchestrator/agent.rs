@@ -270,8 +270,8 @@ async fn execute_tool_with_prompts(
     // AI-edit flow: `write_file` proposes a diff that must be approved.
     if tc.name == "write_file" {
         if let Some(path) = params["path"].as_str() {
-            let old = std::fs::read_to_string(shellexpand::tilde(path).as_ref())
-                .unwrap_or_default();
+            let old =
+                std::fs::read_to_string(shellexpand::tilde(path).as_ref()).unwrap_or_default();
             let new = params["content"].as_str().unwrap_or("");
             if old != new {
                 let diff = unified_diff(path, &old, new);
@@ -354,9 +354,10 @@ async fn execute_tool_with_prompts(
                         if let Some(secret) = request_secret(tx, label).await {
                             if !secret.is_empty() {
                                 params["password"] = serde_json::Value::String(secret);
-                                result = registry
-                                    .execute_tool(&tc.name, params)
-                                    .unwrap_or_else(|e| ToolResult::err(format!("Tool error: {e}")));
+                                result =
+                                    registry.execute_tool(&tc.name, params).unwrap_or_else(|e| {
+                                        ToolResult::err(format!("Tool error: {e}"))
+                                    });
                             } else {
                                 result = ToolResult::err("Password entry cancelled.");
                             }
@@ -399,11 +400,7 @@ async fn request_confirmation(tx: &UnboundedSender<Event>, label: String) -> boo
 /// Request approval for a proposed file edit and await the answer.
 ///
 /// Returns `false` if the prompt channel closed unexpectedly.
-async fn request_edit_approval(
-    tx: &UnboundedSender<Event>,
-    path: String,
-    diff: String,
-) -> bool {
+async fn request_edit_approval(tx: &UnboundedSender<Event>, path: String, diff: String) -> bool {
     let (reply_tx, mut reply_rx) = unbounded_channel::<bool>();
     let _ = tx.send(Event::EditDiffRequest {
         id: format!("diff-{}", uuid::Uuid::new_v4()),
@@ -423,7 +420,11 @@ fn unified_diff(path: &str, old: &str, new: &str) -> String {
     let new_lines: Vec<&str> = new.lines().collect();
     let mut out = String::new();
     out.push_str(&format!("--- a/{path}\n+++ b/{path}\n"));
-    out.push_str(&format!("@@ -1,{} +1,{} @@\n", old_lines.len(), new_lines.len()));
+    out.push_str(&format!(
+        "@@ -1,{} +1,{} @@\n",
+        old_lines.len(),
+        new_lines.len()
+    ));
 
     // LCS table (compact: only one row kept) → backtrace.
     let (n, m) = (old_lines.len(), new_lines.len());
@@ -490,7 +491,8 @@ mod tests {
     #[test]
     fn test_tool_call_default_input() {
         // Verify that a malformed JSON buffer degrades to an empty object.
-        let input = serde_json::from_str::<serde_json::Value>("not json").unwrap_or_else(|_| serde_json::json!({}));
+        let input = serde_json::from_str::<serde_json::Value>("not json")
+            .unwrap_or_else(|_| serde_json::json!({}));
         assert_eq!(input, serde_json::json!({}));
     }
 

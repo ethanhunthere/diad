@@ -36,7 +36,11 @@ pub struct OpenAiCompatProvider {
 
 impl OpenAiCompatProvider {
     /// Create a new provider for the given name/base URL/model.
-    pub fn new(name: impl Into<String>, base_url: impl Into<String>, model: impl Into<String>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        base_url: impl Into<String>,
+        model: impl Into<String>,
+    ) -> Self {
         Self {
             name: name.into(),
             base_url: base_url.into(),
@@ -67,10 +71,7 @@ impl OpenAiCompatProvider {
 
     /// The full chat completions URL.
     fn chat_url(&self) -> String {
-        format!(
-            "{}/chat/completions",
-            self.base_url.trim_end_matches('/')
-        )
+        format!("{}/chat/completions", self.base_url.trim_end_matches('/'))
     }
 
     /// Lightweight, non-streaming key validation (`max_tokens: 1`).
@@ -109,8 +110,7 @@ impl LlmProvider for OpenAiCompatProvider {
         messages: Vec<Message>,
         tools: Vec<ToolDefinition>,
     ) -> anyhow::Result<Pin<Box<dyn Stream<Item = anyhow::Result<StreamEvent>> + Send>>> {
-        let request =
-            openai_common::build_chat_request(&self.model, &messages, &tools, 4096, true);
+        let request = openai_common::build_chat_request(&self.model, &messages, &tools, 4096, true);
 
         let mut req = self
             .client
@@ -159,10 +159,7 @@ mod tests {
     #[test]
     fn test_chat_url_appends_endpoint() {
         let p = OpenAiCompatProvider::new("kimi", "https://api.moonshot.ai/v1", "kimi-k2-0905");
-        assert_eq!(
-            p.chat_url(),
-            "https://api.moonshot.ai/v1/chat/completions"
-        );
+        assert_eq!(p.chat_url(), "https://api.moonshot.ai/v1/chat/completions");
     }
 
     #[test]
@@ -244,11 +241,7 @@ mod tests {
             tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         });
 
-        let provider = OpenAiCompatProvider::new(
-            "mock",
-            format!("http://{addr}/v1"),
-            "mock-model",
-        );
+        let provider = OpenAiCompatProvider::new("mock", format!("http://{addr}/v1"), "mock-model");
 
         let mut stream = provider
             .stream_chat(vec![Message::user("ping")], vec![])

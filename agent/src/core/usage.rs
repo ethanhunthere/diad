@@ -71,14 +71,17 @@ const PRICING: &[(&str, &str, f64, f64)] = &[
 const FALLBACK_PRICE: (f64, f64) = (1.00, 3.00);
 
 /// Estimate the dollar cost of a request, using the pricing table above.
-pub fn estimate_cost(provider: &str, model: &str, prompt_tokens: u64, completion_tokens: u64) -> f64 {
+pub fn estimate_cost(
+    provider: &str,
+    model: &str,
+    prompt_tokens: u64,
+    completion_tokens: u64,
+) -> f64 {
     let p = provider.to_lowercase();
     let m = model.to_lowercase();
     let (in_p, out_p) = PRICING
         .iter()
-        .find(|(prov, sub, _, _)| {
-            prov == &p.as_str() && (sub.is_empty() || m.contains(sub))
-        })
+        .find(|(prov, sub, _, _)| prov == &p.as_str() && (sub.is_empty() || m.contains(sub)))
         .map(|(_, _, i, o)| (*i, *o))
         .unwrap_or(FALLBACK_PRICE);
     (prompt_tokens as f64 / 1_000_000.0) * in_p + (completion_tokens as f64 / 1_000_000.0) * out_p
@@ -133,11 +136,20 @@ pub fn aggregate(records: &[UsageRecord]) -> UsageSummary {
                 requests: 1,
                 prompt_tokens: rec.prompt_tokens,
                 completion_tokens: rec.completion_tokens,
-                est_cost_usd: estimate_cost(&rec.provider, &rec.model, rec.prompt_tokens, rec.completion_tokens),
+                est_cost_usd: estimate_cost(
+                    &rec.provider,
+                    &rec.model,
+                    rec.prompt_tokens,
+                    rec.completion_tokens,
+                ),
             }),
         }
     }
-    by_provider.sort_by(|a, b| b.est_cost_usd.partial_cmp(&a.est_cost_usd).unwrap_or(std::cmp::Ordering::Equal));
+    by_provider.sort_by(|a, b| {
+        b.est_cost_usd
+            .partial_cmp(&a.est_cost_usd)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     let total_requests = records.len() as u64;
     let total_prompt_tokens = records.iter().map(|r| r.prompt_tokens).sum();
@@ -251,7 +263,10 @@ pub fn failover_chain(factory: &crate::providers::ProviderFactory, current: &str
     // Ensure the current provider is first in the chain.
     let mut chain: Vec<String> = Vec::new();
     let current_l = current.to_lowercase();
-    if let Some(pos) = ordered.iter().position(|n| n.eq_ignore_ascii_case(&current_l)) {
+    if let Some(pos) = ordered
+        .iter()
+        .position(|n| n.eq_ignore_ascii_case(&current_l))
+    {
         chain.push(ordered.remove(pos));
     }
     chain.extend(ordered);
@@ -277,9 +292,9 @@ pub struct RecallHit {
 }
 
 const STOPWORDS: &[&str] = &[
-    "the", "and", "for", "are", "was", "with", "this", "that", "from", "have", "has", "had",
-    "you", "your", "what", "when", "where", "will", "would", "could", "should", "about", "into",
-    "over", "than", "then", "them", "they", "there", "these", "those", "because", "been", "but",
+    "the", "and", "for", "are", "was", "with", "this", "that", "from", "have", "has", "had", "you",
+    "your", "what", "when", "where", "will", "would", "could", "should", "about", "into", "over",
+    "than", "then", "them", "they", "there", "these", "those", "because", "been", "but",
 ];
 
 /// Tokenize a string into lowercase keyword tokens (≥3 chars, non-stopword).
@@ -301,7 +316,10 @@ fn keywords(text: &str) -> Vec<String> {
 
 /// Score a message against a query's keywords (token overlap, user messages
 /// weigh double — the user's own words matter most).
-fn score_message(msg: &crate::orchestrator::session::SessionMessage, query_terms: &[String]) -> u32 {
+fn score_message(
+    msg: &crate::orchestrator::session::SessionMessage,
+    query_terms: &[String],
+) -> u32 {
     let text_terms = keywords(&msg.content);
     if text_terms.is_empty() {
         return 0;
@@ -309,13 +327,7 @@ fn score_message(msg: &crate::orchestrator::session::SessionMessage, query_terms
     let weight = if msg.role == "user" { 2 } else { 1 };
     query_terms
         .iter()
-        .map(|q| {
-            if text_terms.contains(q) {
-                weight
-            } else {
-                0
-            }
-        })
+        .map(|q| if text_terms.contains(q) { weight } else { 0 })
         .sum()
 }
 
@@ -335,7 +347,11 @@ pub fn recall(manager: &SessionManager, query: &str, limit: usize) -> Vec<Recall
 
     let mut hits: Vec<RecallHit> = Vec::new();
     for session in sessions {
-        for msg in session.messages.iter().filter(|m| m.role == "user" || m.role == "assistant") {
+        for msg in session
+            .messages
+            .iter()
+            .filter(|m| m.role == "user" || m.role == "assistant")
+        {
             let score = score_message(msg, &terms);
             if score > 0 {
                 let snippet: String = msg.content.chars().take(400).collect();
@@ -461,8 +477,12 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("diad-usage-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         let tracker = UsageTracker::new_with_dir(dir.clone());
-        tracker.record(&rec("deepseek", "deepseek-chat", 10, 20, true, 100)).unwrap();
-        tracker.record(&rec("deepseek", "deepseek-chat", 10, 20, false, 100)).unwrap();
+        tracker
+            .record(&rec("deepseek", "deepseek-chat", 10, 20, true, 100))
+            .unwrap();
+        tracker
+            .record(&rec("deepseek", "deepseek-chat", 10, 20, false, 100))
+            .unwrap();
         let all = tracker.load_all();
         assert_eq!(all.len(), 2);
         assert!(all[0].success);
@@ -497,8 +517,14 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         let manager = SessionManager::new_with_dir(dir.clone());
         let mut s = Session::new("Network work", "anthropic");
-        s.add_message("user", "The Wi-Fi keeps disconnecting, please check the NetworkManager logs");
-        s.add_message("assistant", "I restarted NetworkManager and set the regulatory domain.");
+        s.add_message(
+            "user",
+            "The Wi-Fi keeps disconnecting, please check the NetworkManager logs",
+        );
+        s.add_message(
+            "assistant",
+            "I restarted NetworkManager and set the regulatory domain.",
+        );
         manager.save_session(&s).unwrap();
 
         let mut s2 = Session::new("Cooking", "openai");

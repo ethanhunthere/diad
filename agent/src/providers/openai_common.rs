@@ -190,9 +190,8 @@ pub fn parse_sse_stream(
                                     // Text content deltas
                                     if let Some(ref content) = choice.delta.content {
                                         if !content.is_empty() {
-                                            results.push(Ok(StreamEvent::TextDelta(
-                                                content.clone(),
-                                            )));
+                                            results
+                                                .push(Ok(StreamEvent::TextDelta(content.clone())));
                                         }
                                     }
 
@@ -205,19 +204,15 @@ pub fn parse_sse_stream(
                                             if let Some(ref function) = tc.function {
                                                 if let Some(ref name) = function.name {
                                                     current_tool_name = name.clone();
-                                                    results.push(Ok(
-                                                        StreamEvent::ToolUseStart {
-                                                            id: current_tool_id.clone(),
-                                                            name: current_tool_name.clone(),
-                                                        },
-                                                    ));
+                                                    results.push(Ok(StreamEvent::ToolUseStart {
+                                                        id: current_tool_id.clone(),
+                                                        name: current_tool_name.clone(),
+                                                    }));
                                                 }
                                                 if let Some(ref args) = function.arguments {
-                                                    results.push(Ok(
-                                                        StreamEvent::ToolInputDelta(
-                                                            args.clone(),
-                                                        ),
-                                                    ));
+                                                    results.push(Ok(StreamEvent::ToolInputDelta(
+                                                        args.clone(),
+                                                    )));
                                                 }
                                             }
                                         }

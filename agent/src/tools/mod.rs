@@ -47,7 +47,11 @@ pub mod testutil {
             let original = std::env::var_os("HOME");
             let dir = tempfile::tempdir().expect("tempdir for test HOME");
             std::env::set_var("HOME", dir.path());
-            Self { _lock: lock, original, _dir: dir }
+            Self {
+                _lock: lock,
+                original,
+                _dir: dir,
+            }
         }
 
         /// The temp dir currently backing `HOME` (also useful for writing
@@ -128,12 +132,9 @@ pub fn valid_identifier(s: &str) -> bool {
         && s != "."
         && s != ".."
         && !s.starts_with('-')
-        && s.chars().all(|c| {
-            c.is_ascii_alphanumeric() || matches!(c, '@' | '.' | '_' | '+' | ':' | '-')
-        })
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '@' | '.' | '_' | '+' | ':' | '-'))
 }
 
-
-
-pub use registry::{create_default_registry, ToolRegistry};
 pub(crate) use registry::registered_tools_snapshot;
+pub use registry::{create_default_registry, ToolRegistry};

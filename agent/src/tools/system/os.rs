@@ -91,9 +91,9 @@ pub fn install_package(package: &str) -> anyhow::Result<ToolResult> {
         c
     };
 
-    let output = cmd.output().map_err(|e| {
-        anyhow::anyhow!("Failed to install {package}: {e}")
-    })?;
+    let output = cmd
+        .output()
+        .map_err(|e| anyhow::anyhow!("Failed to install {package}: {e}"))?;
 
     if output.status.success() {
         Ok(ToolResult::ok(format!(
@@ -133,9 +133,9 @@ pub fn remove_package(package: &str) -> anyhow::Result<ToolResult> {
         c
     };
 
-    let output = cmd.output().map_err(|e| {
-        anyhow::anyhow!("Failed to remove {package}: {e}")
-    })?;
+    let output = cmd
+        .output()
+        .map_err(|e| anyhow::anyhow!("Failed to remove {package}: {e}"))?;
 
     if output.status.success() {
         Ok(ToolResult::ok(format!(
@@ -168,15 +168,12 @@ pub fn manage_service(service: &str, action: &str) -> anyhow::Result<ToolResult>
         )));
     }
 
-    let use_sudo = if action != "status"
-        && std::env::var("USER")
-            .map(|u| u != "root")
-            .unwrap_or(true)
-    {
-        "sudo"
-    } else {
-        ""
-    };
+    let use_sudo =
+        if action != "status" && std::env::var("USER").map(|u| u != "root").unwrap_or(true) {
+            "sudo"
+        } else {
+            ""
+        };
 
     let mut cmd = if use_sudo.is_empty() {
         let mut c = Command::new("systemctl");
@@ -188,9 +185,9 @@ pub fn manage_service(service: &str, action: &str) -> anyhow::Result<ToolResult>
         c
     };
 
-    let output = cmd.output().map_err(|e| {
-        anyhow::anyhow!("Failed to {action} {service}: {e}")
-    })?;
+    let output = cmd
+        .output()
+        .map_err(|e| anyhow::anyhow!("Failed to {action} {service}: {e}"))?;
 
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -316,7 +313,15 @@ mod tests {
 
     #[test]
     fn test_valid_package_names_accepted() {
-        for good in ["htop", "libx11", "gcc-libs", "python-pip", "1password", "ffmpeg+", "a@b"] {
+        for good in [
+            "htop",
+            "libx11",
+            "gcc-libs",
+            "python-pip",
+            "1password",
+            "ffmpeg+",
+            "a@b",
+        ] {
             assert!(valid_identifier(good), "{good:?} should be valid");
             // No process should actually spawn in tests — validation happens
             // before the Command runs, so we only assert the validator.
@@ -341,14 +346,32 @@ mod tests {
 
     #[test]
     fn test_manage_service_valid_unit_names() {
-        for good in ["sshd.service", "NetworkManager", "diad-firewall.service", "user@1000.service"] {
+        for good in [
+            "sshd.service",
+            "NetworkManager",
+            "diad-firewall.service",
+            "user@1000.service",
+        ] {
             assert!(valid_identifier(good), "{good:?} should be valid");
         }
     }
 
     #[test]
     fn test_valid_identifier_rejects_attacks() {
-        for evil in ["", "-", "--config=/tmp/x", "a b", "a;b", "a|b", "a&b", "a$(b)", "a`b`", "a\nb", "a\tb", ".."] {
+        for evil in [
+            "",
+            "-",
+            "--config=/tmp/x",
+            "a b",
+            "a;b",
+            "a|b",
+            "a&b",
+            "a$(b)",
+            "a`b`",
+            "a\nb",
+            "a\tb",
+            "..",
+        ] {
             assert!(!valid_identifier(evil), "{evil:?} should be rejected");
         }
     }

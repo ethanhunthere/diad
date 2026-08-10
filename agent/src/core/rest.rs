@@ -30,8 +30,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::mpsc::unbounded_channel;
 
-use super::protocol::{FileEntryDto, PROTOCOL_VERSION, ServerMsg};
 use super::daemon::{handle_chat_send, next_id, Conn, DaemonState, PromptBroker};
+use super::protocol::{FileEntryDto, ServerMsg, PROTOCOL_VERSION};
 
 // ---------------------------------------------------------------------------
 // Request / response types
@@ -244,7 +244,10 @@ pub fn api_router() -> Router<Arc<DaemonState>> {
         .route("/debug/start", post(api_debug_start))
         .route("/debug/session", post(api_debug_session))
         .route("/debug/breakpoint", post(api_debug_breakpoint))
-        .route("/debug/delete-breakpoint", post(api_debug_delete_breakpoint))
+        .route(
+            "/debug/delete-breakpoint",
+            post(api_debug_delete_breakpoint),
+        )
         .route("/debug/run", post(api_debug_run))
         .route("/debug/continue", post(api_debug_continue))
         .route("/debug/step", post(api_debug_step))
@@ -283,7 +286,11 @@ pub fn api_router() -> Router<Arc<DaemonState>> {
 
 /// JSON body with a consistent error shape.
 fn error_response(status: StatusCode, message: impl Into<String>) -> Response {
-    (status, Json(json!({ "error": true, "message": message.into() }))).into_response()
+    (
+        status,
+        Json(json!({ "error": true, "message": message.into() })),
+    )
+        .into_response()
 }
 
 /// The sandboxed, tilde-expanded absolute path for a request, or an error
@@ -305,9 +312,12 @@ fn allowed_path(state: &DaemonState, raw: &str) -> Result<std::path::PathBuf, Bo
 async fn blocking<T: Send + 'static>(
     f: impl FnOnce() -> T + Send + 'static,
 ) -> Result<T, Response> {
-    tokio::task::spawn_blocking(f)
-        .await
-        .map_err(|e| error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("task error: {e}")))
+    tokio::task::spawn_blocking(f).await.map_err(|e| {
+        error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("task error: {e}"),
+        )
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -376,15 +386,15 @@ async fn api_stats(State(state): State<Arc<DaemonState>>) -> Json<Value> {
 // Chat
 // ---------------------------------------------------------------------------
 
-async fn api_chat(
-    State(state): State<Arc<DaemonState>>,
-    Json(req): Json<ChatRequest>,
-) -> Response {
+async fn api_chat(State(state): State<Arc<DaemonState>>, Json(req): Json<ChatRequest>) -> Response {
     if req.text.trim().is_empty() {
         return error_response(StatusCode::BAD_REQUEST, "chat: text must not be empty");
     }
     if state.streaming.load(std::sync::atomic::Ordering::SeqCst) {
-        return error_response(StatusCode::CONFLICT, "chat: another request is already streaming");
+        return error_response(
+            StatusCode::CONFLICT,
+            "chat: another request is already streaming",
+        );
     }
 
     let id = req.id.unwrap_or_else(|| next_id("rest-chat"));
@@ -712,7 +722,10 @@ async fn api_git_commit(
     Json(req): Json<GitCommitRequest>,
 ) -> Response {
     if req.message.trim().is_empty() {
-        return error_response(StatusCode::BAD_REQUEST, "git/commit: message must not be empty");
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "git/commit: message must not be empty",
+        );
     }
     let path_buf = match allowed_path(&state, &req.path) {
         Ok(p) => p,
@@ -735,7 +748,10 @@ async fn api_git_commit(
             .arg("-A")
             .output()?;
         if !add.status.success() {
-            return Ok::<_, std::io::Error>((false, String::from_utf8_lossy(&add.stderr).to_string()));
+            return Ok::<_, std::io::Error>((
+                false,
+                String::from_utf8_lossy(&add.stderr).to_string(),
+            ));
         }
         let commit = std::process::Command::new("git")
             .arg("-C")
@@ -751,9 +767,7 @@ async fn api_git_commit(
     .await
     {
         Ok(Ok((true, out))) => Json(json!({ "committed": true, "output": out })).into_response(),
-        Ok(Ok((false, out))) => {
-            error_response(StatusCode::UNPROCESSABLE_ENTITY, out)
-        }
+        Ok(Ok((false, out))) => error_response(StatusCode::UNPROCESSABLE_ENTITY, out),
         Ok(Err(e)) => error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("git: {e}")),
         Err(resp) => resp,
     }
@@ -945,7 +959,10 @@ async fn api_debug_start(
     Json(req): Json<DebugStartRequest>,
 ) -> Response {
     if req.program.trim().is_empty() {
-        return error_response(StatusCode::BAD_REQUEST, "debug/start: program must not be empty");
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "debug/start: program must not be empty",
+        );
     }
     // Reuse the process sandbox: argv-array spawn, no shell, banned argv0.
     let program = req.program.clone();
@@ -987,10 +1004,16 @@ async fn api_debug_session(
 ) -> Response {
     let program = req.program.trim().to_string();
     if program.is_empty() || program.len() > 512 {
-        return error_response(StatusCode::BAD_REQUEST, "debug/session: program must not be empty");
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "debug/session: program must not be empty",
+        );
     }
     if program.starts_with('-') {
-        return error_response(StatusCode::BAD_REQUEST, "debug/session: invalid program name");
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "debug/session: invalid program name",
+        );
     }
     let args = req.args.clone();
     let cwd = req.working_dir.clone();
@@ -1011,7 +1034,10 @@ async fn api_debug_breakpoint(
     Json(req): Json<DebugBreakpointRequest>,
 ) -> Response {
     if req.line == 0 || req.line > 100_000 || req.file.trim().is_empty() {
-        return error_response(StatusCode::BAD_REQUEST, "debug/breakpoint: invalid file or line");
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "debug/breakpoint: invalid file or line",
+        );
     }
     let Some(session) = state.debug.get(&req.session) else {
         return error_response(StatusCode::NOT_FOUND, "debug/breakpoint: unknown session");
@@ -1032,7 +1058,10 @@ async fn api_debug_delete_breakpoint(
     Json(req): Json<DebugDeleteBreakpointRequest>,
 ) -> Response {
     let Some(session) = state.debug.get(&req.session) else {
-        return error_response(StatusCode::NOT_FOUND, "debug/delete-breakpoint: unknown session");
+        return error_response(
+            StatusCode::NOT_FOUND,
+            "debug/delete-breakpoint: unknown session",
+        );
     };
     match blocking(move || session.delete_breakpoint(req.number)).await {
         Ok(Ok(())) => Json(json!({ "deleted": true })).into_response(),
@@ -1170,9 +1199,19 @@ async fn api_projects_list(
             }
             // Recognise project markers.
             let markers = [
-                ".git", "package.json", "Cargo.toml", "go.mod", "pyproject.toml",
-                "requirements.txt", "Makefile", "CMakeLists.txt", "pom.xml",
-                "build.gradle", "mix.exs", "Gemfile", "composer.json",
+                ".git",
+                "package.json",
+                "Cargo.toml",
+                "go.mod",
+                "pyproject.toml",
+                "requirements.txt",
+                "Makefile",
+                "CMakeLists.txt",
+                "pom.xml",
+                "build.gradle",
+                "mix.exs",
+                "Gemfile",
+                "composer.json",
             ];
             let kind = markers
                 .iter()
@@ -1191,8 +1230,11 @@ async fn api_projects_list(
                     _ => "other",
                 })
                 .unwrap_or("other");
-            let modified = meta.modified().ok().map(|t| t.duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_secs() as i64).unwrap_or(0));
+            let modified = meta.modified().ok().map(|t| {
+                t.duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs() as i64)
+                    .unwrap_or(0)
+            });
             projects.push(json!({
                 "name": name,
                 "path": path.display().to_string(),
@@ -1201,7 +1243,10 @@ async fn api_projects_list(
             }));
         }
         projects.sort_by(|a, b| {
-            b["modified"].as_i64().unwrap_or(0).cmp(&a["modified"].as_i64().unwrap_or(0))
+            b["modified"]
+                .as_i64()
+                .unwrap_or(0)
+                .cmp(&a["modified"].as_i64().unwrap_or(0))
         });
         projects
     })
@@ -1242,7 +1287,9 @@ async fn api_sessions_list(State(state): State<Arc<DaemonState>>) -> Response {
             Ok(list) => list,
             Err(e) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
         },
-        Err(_) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, "sessions lock poisoned"),
+        Err(_) => {
+            return error_response(StatusCode::INTERNAL_SERVER_ERROR, "sessions lock poisoned")
+        }
     };
     Json(json!({
         "sessions": sessions.iter().map(|s| json!({
@@ -1264,9 +1311,13 @@ async fn api_sessions_export(
     let session = match state.sessions.lock() {
         Ok(manager) => match manager.load_session(&q.id) {
             Ok(s) => s,
-            Err(e) => return error_response(StatusCode::NOT_FOUND, format!("session not found: {e}")),
+            Err(e) => {
+                return error_response(StatusCode::NOT_FOUND, format!("session not found: {e}"))
+            }
         },
-        Err(_) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, "sessions lock poisoned"),
+        Err(_) => {
+            return error_response(StatusCode::INTERNAL_SERVER_ERROR, "sessions lock poisoned")
+        }
     };
     let markdown = super::usage::session_to_markdown(&session);
     Json(json!({
@@ -1336,7 +1387,12 @@ async fn api_sessions_import(
         .and_then(|t| t.as_str())
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| format!("Imported session {}", chrono::Utc::now().format("%Y-%m-%d %H:%M")));
+        .unwrap_or_else(|| {
+            format!(
+                "Imported session {}",
+                chrono::Utc::now().format("%Y-%m-%d %H:%M")
+            )
+        });
     let provider = session
         .get("active_provider")
         .and_then(|p| p.as_str())
@@ -1470,7 +1526,10 @@ async fn api_collab_announce(
 ) -> Response {
     let message = req.message.trim().to_string();
     if message.is_empty() {
-        return error_response(StatusCode::BAD_REQUEST, "announce message must not be empty");
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "announce message must not be empty",
+        );
     }
     let frontends = state.client_count();
     state.broadcast(ServerMsg::System {
@@ -1489,7 +1548,12 @@ async fn api_system_stats(State(state): State<Arc<DaemonState>>) -> Json<Value> 
         .map(|n| n.get())
         .unwrap_or(1);
     let load = std::fs::read_to_string("/proc/loadavg")
-        .map(|s| s.split_whitespace().take(3).map(|v| v.to_string()).collect::<Vec<_>>())
+        .map(|s| {
+            s.split_whitespace()
+                .take(3)
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>()
+        })
         .unwrap_or_default();
     let mem = std::fs::read_to_string("/proc/meminfo")
         .map(|s| {
@@ -1552,7 +1616,10 @@ mod tests {
     fn test_state() -> Arc<DaemonState> {
         let vault = Arc::new(Vault::new().expect("vault"));
         let config = Arc::new(DiadConfig::default());
-        let factory = Arc::new(ProviderFactory::new(Arc::clone(&vault), Arc::clone(&config)));
+        let factory = Arc::new(ProviderFactory::new(
+            Arc::clone(&vault),
+            Arc::clone(&config),
+        ));
         let registry = Arc::new(crate::tools::create_default_registry());
         Arc::new(DaemonState::new(config, vault, factory, registry))
     }
@@ -1570,7 +1637,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(v["name"], "diad-agent");
         assert_eq!(v["protocol"], PROTOCOL_VERSION);
@@ -1589,7 +1658,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(v["provider"], "anthropic");
         assert!(v["connected"].is_boolean());
@@ -1608,7 +1679,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         let providers = v["providers"].as_array().expect("providers array");
         assert!(providers.len() >= 10);
@@ -1653,7 +1726,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
 
         // Public config surface is present.
@@ -1679,7 +1754,10 @@ mod tests {
         // No secret material anywhere in the serialized config.
         let serialized = serde_json::to_string(&v).unwrap().to_lowercase();
         for needle in ["sk-ant", "api_key", "auth_header", "bearer "] {
-            assert!(!serialized.contains(needle), "secret pattern {needle:?} leaked");
+            assert!(
+                !serialized.contains(needle),
+                "secret pattern {needle:?} leaked"
+            );
         }
     }
 
@@ -1700,7 +1778,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(v["provider"], "openai");
     }
@@ -1753,7 +1833,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert!(v["entries"].is_array());
     }
@@ -1787,7 +1869,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert!(v["count"].as_u64().unwrap() > 50);
     }
@@ -1805,7 +1889,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert!(v["cpus"].as_u64().unwrap() >= 1);
     }
@@ -1861,7 +1947,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(v["dirty"], true);
         assert!(!v["branch"].as_str().unwrap_or("").is_empty());
@@ -1878,7 +1966,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         let diff = v["diff"].as_str().unwrap();
         assert!(diff.contains("+hello world"), "diff missing change: {diff}");
@@ -1896,7 +1986,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         let commits = v["commits"].as_array().unwrap();
         assert_eq!(commits.len(), 1);
@@ -1914,7 +2006,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert!(!v["current"].as_str().unwrap_or("").is_empty());
         assert!(!v["branches"].as_array().unwrap().is_empty());
@@ -1984,7 +2078,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(v["sessions"].as_array().unwrap().len(), 0);
     }
@@ -2012,8 +2108,11 @@ mod tests {
     async fn test_projects_list() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("myproj")).unwrap();
-        std::fs::write(dir.path().join("myproj/Cargo.toml"), "[package]\nname = \"x\"\n")
-            .unwrap();
+        std::fs::write(
+            dir.path().join("myproj/Cargo.toml"),
+            "[package]\nname = \"x\"\n",
+        )
+        .unwrap();
         let root = dir.path().display().to_string();
         let app = api_router().with_state(test_state());
         let resp = app
@@ -2026,7 +2125,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         let projects = v["projects"].as_array().unwrap();
         let mine = projects.iter().find(|p| p["name"] == "myproj");
@@ -2051,7 +2152,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(v["total_requests"], 0);
         assert_eq!(v["est_cost_usd"], 0.0);
@@ -2072,7 +2175,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         // Sessions live in the shared ~/.diad store and tests run in parallel,
         // so other tests may legitimately add sessions. Assert shape, not count.
@@ -2123,7 +2228,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert!(v["hits"].as_array().unwrap().is_empty());
     }
@@ -2158,14 +2265,17 @@ mod tests {
                     .uri("/notes/write")
                     .header("content-type", "application/json")
                     .body(axum::body::Body::from(
-                        serde_json::to_vec(&json!({ "name": "agenda", "content": "# hi" })).unwrap(),
+                        serde_json::to_vec(&json!({ "name": "agenda", "content": "# hi" }))
+                            .unwrap(),
                     ))
                     .unwrap(),
             )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(v["name"], "agenda");
         assert!(v["size"].as_u64().unwrap() > 0);
@@ -2182,7 +2292,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(v["content"], "# hi");
 
@@ -2197,7 +2309,9 @@ mod tests {
             )
             .await
             .unwrap();
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(v["notes"].as_array().unwrap().len(), 1);
         assert_eq!(v["notes"][0]["name"], "agenda");
@@ -2285,7 +2399,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert!(v["frontends"].is_number());
         assert!(v["sessions"].is_number());
@@ -2323,7 +2439,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(v["message"], "meeting at 3");
         assert_eq!(v["sent"], 0);
@@ -2363,7 +2481,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(v["title"], "Shared planning");
         assert_eq!(v["messages"], 2);
@@ -2382,7 +2502,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(v["format"], "diad-session");
         assert_eq!(v["session"]["messages"].as_array().unwrap().len(), 2);
@@ -2417,7 +2539,9 @@ mod tests {
             )
             .await
             .unwrap();
-        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&body).unwrap();
         let sessions = v["sessions"].as_array().unwrap();
         assert!(

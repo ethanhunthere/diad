@@ -94,7 +94,11 @@ const ANTHROPIC_MODELS: &[&str] = &[
     "claude-haiku-4-20250514",
 ];
 const OPENAI_MODELS: &[&str] = &["gpt-5", "gpt-5-codex", "codex-mini-latest", "o4-mini"];
-const GEMINI_MODELS: &[&str] = &["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"];
+const GEMINI_MODELS: &[&str] = &[
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash-lite",
+];
 const QWEN_MODELS: &[&str] = &["qwen-max", "qwen-plus", "qwen-turbo"];
 
 // ---------------------------------------------------------------------------
@@ -307,8 +311,7 @@ impl ProviderFactory {
     /// (preset or user-defined).
     pub fn is_openai_compat(&self, name: &str) -> bool {
         let n = name.to_lowercase();
-        OPENAI_COMPAT_PRESETS.iter().any(|p| p.name == n)
-            || self.config.providers.contains_key(&n)
+        OPENAI_COMPAT_PRESETS.iter().any(|p| p.name == n) || self.config.providers.contains_key(&n)
     }
 
     /// Validate an API key for a provider. Returns `Ok(())` for providers
@@ -331,9 +334,7 @@ impl ProviderFactory {
                     }
                     provider.validate_key().await
                 } else {
-                    tracing::info!(
-                        "No lightweight validation for provider '{n}' — accepting key."
-                    );
+                    tracing::info!("No lightweight validation for provider '{n}' — accepting key.");
                     Ok(())
                 }
             }
@@ -343,11 +344,7 @@ impl ProviderFactory {
     /// (base_url, model, auth_header) for an OpenAI-compatible provider.
     fn openai_compat_params(&self, name: &str) -> Option<(String, String, Option<String>)> {
         if let Some(preset) = OPENAI_COMPAT_PRESETS.iter().find(|p| p.name == name) {
-            return Some((
-                preset.base_url.to_string(),
-                preset.model.to_string(),
-                None,
-            ));
+            return Some((preset.base_url.to_string(), preset.model.to_string(), None));
         }
         let user = self.config.providers.get(name)?;
         let base_url = user.base_url.clone()?;
@@ -382,32 +379,57 @@ mod tests {
         let names: Vec<&str> = OPENAI_COMPAT_PRESETS.iter().map(|p| p.name).collect();
         assert_eq!(
             names,
-            ["kimi", "deepseek", "groq", "mistral", "openrouter", "ollama"]
+            [
+                "kimi",
+                "deepseek",
+                "groq",
+                "mistral",
+                "openrouter",
+                "ollama"
+            ]
         );
 
-        let kimi = OPENAI_COMPAT_PRESETS.iter().find(|p| p.name == "kimi").unwrap();
+        let kimi = OPENAI_COMPAT_PRESETS
+            .iter()
+            .find(|p| p.name == "kimi")
+            .unwrap();
         assert_eq!(kimi.base_url, "https://api.moonshot.ai/v1");
         assert_eq!(kimi.model, "kimi-k2-0905");
         assert!(kimi.needs_key);
 
-        let deepseek = OPENAI_COMPAT_PRESETS.iter().find(|p| p.name == "deepseek").unwrap();
+        let deepseek = OPENAI_COMPAT_PRESETS
+            .iter()
+            .find(|p| p.name == "deepseek")
+            .unwrap();
         assert_eq!(deepseek.base_url, "https://api.deepseek.com");
         assert_eq!(deepseek.model, "deepseek-chat");
         assert!(deepseek.needs_key);
 
-        let groq = OPENAI_COMPAT_PRESETS.iter().find(|p| p.name == "groq").unwrap();
+        let groq = OPENAI_COMPAT_PRESETS
+            .iter()
+            .find(|p| p.name == "groq")
+            .unwrap();
         assert_eq!(groq.base_url, "https://api.groq.com/openai/v1");
         assert_eq!(groq.model, "llama-3.3-70b-versatile");
 
-        let mistral = OPENAI_COMPAT_PRESETS.iter().find(|p| p.name == "mistral").unwrap();
+        let mistral = OPENAI_COMPAT_PRESETS
+            .iter()
+            .find(|p| p.name == "mistral")
+            .unwrap();
         assert_eq!(mistral.base_url, "https://api.mistral.ai/v1");
         assert_eq!(mistral.model, "mistral-large-latest");
 
-        let openrouter = OPENAI_COMPAT_PRESETS.iter().find(|p| p.name == "openrouter").unwrap();
+        let openrouter = OPENAI_COMPAT_PRESETS
+            .iter()
+            .find(|p| p.name == "openrouter")
+            .unwrap();
         assert_eq!(openrouter.base_url, "https://openrouter.ai/api/v1");
         assert_eq!(openrouter.model, "anthropic/claude-sonnet-4");
 
-        let ollama = OPENAI_COMPAT_PRESETS.iter().find(|p| p.name == "ollama").unwrap();
+        let ollama = OPENAI_COMPAT_PRESETS
+            .iter()
+            .find(|p| p.name == "ollama")
+            .unwrap();
         assert_eq!(ollama.base_url, "http://localhost:11434/v1");
         assert_eq!(ollama.model, "qwen2.5:7b");
         assert!(!ollama.needs_key);
@@ -454,8 +476,16 @@ mod tests {
         // exactly the models the picker expects.
         assert_eq!(OPENAI_COMPAT_PRESETS.len(), 6);
         for preset in OPENAI_COMPAT_PRESETS {
-            assert!(!preset.base_url.is_empty(), "{} needs a base_url", preset.name);
-            assert!(!preset.model.is_empty(), "{} needs a default model", preset.name);
+            assert!(
+                !preset.base_url.is_empty(),
+                "{} needs a base_url",
+                preset.name
+            );
+            assert!(
+                !preset.model.is_empty(),
+                "{} needs a default model",
+                preset.name
+            );
             assert_eq!(
                 factory.models_for(preset.name),
                 [preset.model],
