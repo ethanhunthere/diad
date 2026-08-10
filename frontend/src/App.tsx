@@ -142,6 +142,30 @@ export default function App() {
       });
   }, []);
 
+  // PROMPT-2 S4.3 — GUI fallback toast: if the previous boot's GUI failed
+  // twice and the supervisor engaged the TUI, surface the persisted reason
+  // exactly once (GET /gui/fallback then DELETE clears the marker).
+  useEffect(() => {
+    if (isLaunchpad) return;
+    import("./services/api")
+      .then(({ apiGet, api }) =>
+        apiGet<{ reason: string | null }>("/gui/fallback").then((r) => {
+          if (r.reason) {
+            useStore.getState().toast({
+              kind: "warn",
+              title: "GUI fallback",
+              message: r.reason,
+              ttl: 8000,
+            });
+            api("/gui/fallback", { method: "DELETE" }).catch(() => {});
+          }
+        }),
+      )
+      .catch(() => {
+        /* daemon offline — nothing to surface */
+      });
+  }, []);
+
   // MASTER FIX S4: standalone launchpad page — early-return before any of
   // the main GUI chrome so it stays a tiny, dedicated launcher.
   if (isLaunchpad) {

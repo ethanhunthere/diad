@@ -220,6 +220,11 @@ pub fn api_router() -> Router<Arc<DaemonState>> {
         .route("/status", get(api_status))
         .route("/stats", get(api_stats))
         .route("/config", get(api_config))
+        // PROMPT-2 S4.3 — GUI-fallback reason: the supervisor writes
+        // ~/.diad/.gui-fallback-reason when the GUI failed twice at boot;
+        // the next GUI start reads it (GET) and clears it (DELETE) after
+        // surfacing the toast.
+        .route("/gui/fallback", get(api_gui_fallback).delete(api_gui_fallback_clear))
         // Chat
         .route("/chat", post(api_chat))
         // Providers
@@ -374,6 +379,28 @@ async fn api_status(State(state): State<Arc<DaemonState>>) -> Json<Value> {
         "perf_tier": state.perf_tier,
         "idle_stage": state.idle.get().label(),
     }))
+}
+
+// PROMPT-2 S4.3 — GUI fallback reason. The supervisor writes a one-line
+// reason to ~/.diad/.gui-fallback-reason when the GUI failed twice at boot
+// and the TUI engaged; the GUI surfaces it as a toast exactly once (GET
+// returns the reason, DELETE removes the file).
+fn gui_fallback_path() -> std::path::PathBuf {
+    std::env::var("HOME")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::path::PathBuf::from("/tmp"))
+        .join(".diad")
+        .join(".gui-fallback-reason")
+}
+
+async fn api_gui_fallback() -> Response {
+    let reason = std::fs::read_to_string(gui_fallback_path()).ok();
+    Json(json!({ "reason": reason })).into_response()
+}
+
+async fn api_gui_fallback_clear() -> Response {
+    let _ = std::fs::remove_file(gui_fallback_path());
+    Json(json!({ "ok": true })).into_response()
 }
 
 async fn api_stats(State(state): State<Arc<DaemonState>>) -> Json<Value> {

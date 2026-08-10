@@ -60,8 +60,10 @@ rotate_logs() {
 }
 
 # ---- Health / window-count helpers ----
+# PROMPT-2 S4.2 — healthy means the API v1 status probe answers (the real
+# agent surface), not just the bare /health ping.
 daemon_healthy() {
-    curl -sf http://127.0.0.1:7860/health >/dev/null 2>&1
+    curl -sf http://127.0.0.1:7860/api/v1/status >/dev/null 2>&1
 }
 
 # Number of real browser windows on any workspace, EXCLUDING the DIAD AGENT
@@ -185,6 +187,12 @@ else
             log "supervisor: DIAD AGENT GUI verified on workspace 1 (retry)"
         else
             log "supervisor: GUI failed twice — engaging TUI fallback (reason in daemon.log)"
+            # PROMPT-2 S4.3 — persist the exact reason for the next GUI start
+            # (read + cleared via GET/DELETE /api/v1/gui/fallback) and send a
+            # live notification now.
+            reason="GUI failed twice: Brave flatpak + chromium shim could not open a window for http://127.0.0.1:7860 — TUI fallback engaged"
+            printf '%s\n' "${reason}" > "${DIAD_HOME}/.gui-fallback-reason"
+            notify-send "DIAD AGENT: GUI failed — TUI engaged" "${reason}" -u critical 2>/dev/null || true
             tail -n 10 "${DIAD_HOME}/daemon.log" >> "${LOG_FILE}" 2>&1 || true
             launch_agent_tui
         fi

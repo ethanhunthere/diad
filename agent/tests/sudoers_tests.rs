@@ -208,8 +208,9 @@ fn wrappers_exist_on_disk_and_are_executable_in_iso() {
 fn sudoers_syntax_sanity() {
     // Cheap parse sanity (the authoritative check is `visudo -cf`, run by the
     // maintainer on the ISO — see docs/audits/): every non-comment line must
-    // contain `ALL=(ALL)` and `NOPASSWD:`, and no path may contain whitespace
-    // beyond the single separator.
+    // carry `NOPASSWD:` against a fixed target `(ALL)` or `(root)` (MASTER
+    // FIX S2's diad-set-password wrapper is pinned to `(root)` on purpose),
+    // and no path may contain whitespace beyond the single separator.
     let content = read_repo_file(SUDOERS_REL);
     for line in content.lines() {
         let line = line.trim();
@@ -217,7 +218,8 @@ fn sudoers_syntax_sanity() {
             continue;
         }
         assert!(
-            line.contains("ALL=(ALL)") && line.contains("NOPASSWD:"),
+            (line.contains("ALL=(ALL)") || line.contains("ALL=(root)"))
+                && line.contains("NOPASSWD:"),
             "malformed sudoers line: {line}"
         );
         assert!(
