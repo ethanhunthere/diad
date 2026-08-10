@@ -4,7 +4,7 @@ import { useStore, sendMsg } from "../stores/useStore";
 
 /**
  * Confirmation modal — shown when the daemon needs an explicit
- * yes/no (destructive tools). Maps to tool.approve / tool.reject.
+ * yes/no (destructive tools). Maps to tool_approve / tool_reject.
  */
 export function ConfirmModal() {
   const pending = useStore((s) => s.pendingConfirm);
@@ -20,20 +20,10 @@ export function ConfirmModal() {
     return () => window.removeEventListener("keydown", onKey);
   }, [pending?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (!pending) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "y" || e.key === "Y") answer(true);
-      if (e.key === "n" || e.key === "N") answer(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [pending?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
   if (!pending) return null;
 
   const answer = (yes: boolean) => {
-    sendMsg({ type: yes ? "tool.approve" : "tool.reject", id: pending.id });
+    sendMsg({ type: yes ? "tool_approve" : "tool_reject", id: pending.id });
     setPendingConfirm(null);
   };
 

@@ -384,10 +384,14 @@ export const useStore = create<Store>((set, get) => ({
   setAgents: (a) => set({ agents: a }),
 }));
 
-/** Convenience: send an envelope-wrapped message if the socket is live. */
-export function sendMsg(msg: unknown): boolean {
+/**
+ * Convenience: send a FLAT protocol-v1 envelope (`{ v: 1, ...msg }`) if the
+ * socket is live. The daemon's `Envelope` flattens the message into the top
+ * level — never nest it under a `msg` key.
+ */
+export function sendMsg(msg: import("../lib/types").ClientMsg): boolean {
   const s = useStore.getState();
   if (!s.send) return false;
-  s.send({ v: 1, msg });
+  s.send({ v: 1, ...msg });
   return true;
 }

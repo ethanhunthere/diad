@@ -49,7 +49,7 @@ export function useGlobalKeys(): void {
       // Ctrl+Shift+X — spawn TUI via the daemon.
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "x") {
         e.preventDefault();
-        sendMsg({ type: "spawn.tui" });
+        sendMsg({ type: "spawn_tui" });
         return;
       }
 

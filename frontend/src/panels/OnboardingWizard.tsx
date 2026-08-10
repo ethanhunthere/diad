@@ -31,11 +31,11 @@ export function OnboardingWizard() {
     const name = ssid.trim();
     if (!name) return;
     // Two-step daemon flow: the first message triggers a network scan and
-    // arms the "next chat.send is the SSID" flag; the second message is
+    // arms the "next chat_send is the SSID" flag; the second message is
     // captured as the SSID, after which the daemon asks for the password
-    // via secret.request (masked modal).
-    sendMsg({ type: "chat.send", id: nextId("wifi1"), text: "connect to wifi" });
-    sendMsg({ type: "chat.send", id: nextId("wifi2"), text: name });
+    // via secret_request (masked modal).
+    sendMsg({ type: "chat_send", id: nextId("wifi1"), text: "connect to wifi" });
+    sendMsg({ type: "chat_send", id: nextId("wifi2"), text: name });
     setWifiSent(true);
   };
 
@@ -111,7 +111,7 @@ export function OnboardingWizard() {
                   className="flex w-full items-center gap-2.5 rounded-control border border-border-subtle bg-surface-2/50 px-3 py-2 text-left transition-all duration-150 ease-out hover:border-copper/40 hover:bg-surface-2"
                   onClick={() => {
                     if (p.has_key) {
-                      sendMsg({ type: "provider.switch", name: p.name });
+                      sendMsg({ type: "provider_switch", name: p.name });
                       setOnboarding({ kind: "wifi" });
                     } else {
                       setPendingConnectProvider(p.name);
@@ -211,7 +211,7 @@ export function OnboardingWizard() {
                 onClick={() => {
                   localStorage.setItem("diad.onboarded", "1");
                   setOnboarding(null);
-                  sendMsg({ type: "chat.send", id: nextId("hello"), text: "/help" });
+                  sendMsg({ type: "chat_send", id: nextId("hello"), text: "/help" });
                 }}
               >
                 Start chatting <ArrowRight size={14} />

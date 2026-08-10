@@ -37,7 +37,7 @@ export function ExplorerPanel() {
   const list = (p: string) => {
     setErr(null);
     setExplorer(p, [], true);
-    sendMsg({ type: "file.list", id: nextId("fl"), path: p });
+    sendMsg({ type: "file_list", id: nextId("fl"), path: p });
   };
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export function ExplorerPanel() {
     } else if (e.kind === "symlink") {
       toast({ kind: "warn", title: "Symlink", message: "Opening symlinks is not supported.", ttl: 3000 });
     } else {
-      sendMsg({ type: "file.read", id: nextId("fr"), path: full });
+      sendMsg({ type: "file_read", id: nextId("fr"), path: full });
     }
   };
 

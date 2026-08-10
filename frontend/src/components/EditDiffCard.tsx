@@ -29,12 +29,12 @@ export function EditDiffCard({ card }: { card: DiffCard }) {
 
   const accept = () => {
     resolveDiffCard(card.requestId, "accepted");
-    sendMsg({ type: "edit.approve", id: card.requestId });
+    sendMsg({ type: "edit_approve", id: card.requestId });
     toast({ kind: "success", title: "Edit accepted", message: card.path, ttl: 3000 });
   };
   const reject = () => {
     resolveDiffCard(card.requestId, "rejected");
-    sendMsg({ type: "edit.reject", id: card.requestId });
+    sendMsg({ type: "edit_reject", id: card.requestId });
   };
 
   const lines = card.diff.split("\n");

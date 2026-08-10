@@ -12,7 +12,7 @@ const THEMES = [
 /**
  * Settings view — theme accent, default provider/model, keybindings
  * reference, storage path, and the offline firewall toggle. Changes
- * persist via config.set to the daemon.
+ * persist via config_set to the daemon.
  */
 export function SettingsPanel() {
   const settings = useStore((s) => s.settings);
@@ -25,7 +25,7 @@ export function SettingsPanel() {
   const [saved, setSaved] = useState<string | null>(null);
 
   const persist = (key: string, value: unknown, label: string) => {
-    sendMsg({ type: "config.set", key, value });
+    sendMsg({ type: "config_set", key, value });
     setSaved(label);
     setTimeout(() => setSaved(null), 1500);
   };

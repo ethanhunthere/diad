@@ -1,6 +1,13 @@
 // ---------------------------------------------------------------------------
 // DIAD AGENT — WebSocket protocol types
-// Mirrors agent/src/daemon/protocol.rs exactly (version v1, snake_case tags).
+// Mirrors agent/src/core/protocol.rs exactly (version v1, snake_case tags).
+//
+// Wire contract (guarded by the Rust `test_all_*_msg_variants_roundtrip`
+// tests in protocol.rs):
+// - Client → daemon: FLAT envelope — { "v": 1, "type": "<snake_case>", ... }
+//   (the Rust `Envelope` flattens the message into the top level).
+// - Daemon → client: bare ServerMsg — { "type": "<snake_case>", ... }
+//   (no v/msg wrapper).
 // ---------------------------------------------------------------------------
 
 export const PROTOCOL_VERSION = 1;
@@ -8,32 +15,31 @@ export const PROTOCOL_VERSION = 1;
 // ---- Client → daemon -------------------------------------------------------
 
 export type ClientMsg =
-  | { type: "chat.send"; id: string; text: string }
-  | { type: "tool.approve"; id: string }
-  | { type: "tool.reject"; id: string }
-  | { type: "edit.approve"; id: string }
-  | { type: "edit.reject"; id: string }
-  | { type: "spawn.tui" }
-  | { type: "secret.submit"; id: string; value: string }
-  | { type: "secret.cancel"; id: string }
-  | { type: "file.read"; id: string; path: string }
-  | { type: "file.write"; id: string; path: string; content: string }
-  | { type: "file.list"; id: string; path: string }
-  | { type: "term.input"; data: string }
-  | { type: "term.resize"; cols: number; rows: number }
-  | { type: "provider.switch"; name: string }
-  | { type: "model.switch"; model: string }
-  | { type: "provider.connect"; id: string; name: string; key: string }
-  | { type: "agent.delegate"; id: string; agent: string; task: string }
-  | { type: "config.set"; key: string; value: unknown }
-  | { type: "providers.list"; id: string }
-  | { type: "stats.get"; id: string }
-  | { type: "models.list"; id: string; provider: string };
+  | { type: "chat_send"; id: string; text: string }
+  | { type: "tool_approve"; id: string }
+  | { type: "tool_reject"; id: string }
+  | { type: "edit_approve"; id: string }
+  | { type: "edit_reject"; id: string }
+  | { type: "spawn_tui" }
+  | { type: "secret_submit"; id: string; value: string }
+  | { type: "secret_cancel"; id: string }
+  | { type: "file_read"; id: string; path: string }
+  | { type: "file_write"; id: string; path: string; content: string }
+  | { type: "file_list"; id: string; path: string }
+  | { type: "term_input"; data: string }
+  | { type: "term_resize"; cols: number; rows: number }
+  | { type: "provider_switch"; name: string }
+  | { type: "model_switch"; model: string }
+  | { type: "provider_connect"; id: string; name: string; key: string }
+  | { type: "agent_delegate"; id: string; agent: string; task: string }
+  | { type: "config_set"; key: string; value: unknown }
+  | { type: "providers_list"; id: string }
+  | { type: "stats_get"; id: string }
+  | { type: "models_list"; id: string; provider: string }
+  | { type: "agents_list"; id: string };
 
-export interface Envelope<T> {
-  v: number;
-  msg: T;
-}
+/** Flat client envelope: `{ v: 1 }` + the message fields at the top level. */
+export type ClientEnvelope = { v: number } & ClientMsg;
 
 // ---- Daemon → client -------------------------------------------------------
 
@@ -94,10 +100,10 @@ export type ServerMsg =
       wifi: string;
       cwd: string;
     }
-  | { type: "term.output"; data: string }
-  | { type: "secret.request"; id: string; label: string }
-  | { type: "confirm.request"; id: string; label: string }
-  | { type: "stream.done"; id: string }
+  | { type: "term_output"; data: string }
+  | { type: "secret_request"; id: string; label: string }
+  | { type: "confirm_request"; id: string; label: string }
+  | { type: "stream_done"; id: string }
   | { type: "system"; message: string }
   | { type: "error"; id: string | null; message: string }
   | { type: "agents"; id: string; agents: string[] }
@@ -110,9 +116,9 @@ export type ServerMsg =
       streaming: boolean;
       daemon_version: string;
     }
-  | { type: "file.content"; id: string; path: string; content: string }
+  | { type: "file_content"; id: string; path: string; content: string }
   | { type: "files"; id: string; path: string; entries: FileEntryDto[] }
-  | { type: "file.written"; id: string; path: string };
+  | { type: "file_written"; id: string; path: string };
 
 // ---- Frontend domain types --------------------------------------------------
 

@@ -85,7 +85,7 @@ export function ProjectsPanel() {
   const open = (p: Project) => {
     setWorkspace(p.path);
     setExplorer(p.path, [], true);
-    sendMsg({ type: "file.list", id: nextId("fl"), path: p.path });
+    sendMsg({ type: "file_list", id: nextId("fl"), path: p.path });
     setView("explorer");
     toast({ kind: "success", title: "Project opened", message: p.path, ttl: 2500 });
   };

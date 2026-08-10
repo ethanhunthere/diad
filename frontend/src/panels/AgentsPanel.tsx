@@ -36,12 +36,12 @@ export function AgentsPanel() {
   const delegate = (agent: string) => {
     const task = prompt(`Delegate task to ${agent}:`)?.trim();
     if (!task) return;
-    sendMsg({ type: "agent.delegate", id: nextId("ad"), agent, task });
+    sendMsg({ type: "agent_delegate", id: nextId("ad"), agent, task });
   };
 
   const connect = (p: ProviderEntryDto) => {
     if (p.has_key) {
-      sendMsg({ type: "provider.switch", name: p.name });
+      sendMsg({ type: "provider_switch", name: p.name });
     } else {
       setPendingConnectProvider(p.name);
     }

@@ -26,7 +26,7 @@ export function TopBar() {
   }, []);
 
   const spawnTui = () => {
-    if (send) send({ v: 1, msg: { type: "spawn.tui" } });
+    if (send) send({ v: 1, type: "spawn_tui" });
     else toast({ kind: "warn", title: "Daemon offline", message: "Cannot open TUI while the daemon is disconnected.", ttl: 4000 });
   };
 

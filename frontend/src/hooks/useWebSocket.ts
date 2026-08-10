@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { Envelope, ServerMsg } from "../lib/types";
+import type { ServerMsg } from "../lib/types";
 import { nextId } from "../lib/format";
 import { useStore } from "../stores/useStore";
 
@@ -7,6 +7,10 @@ import { useStore } from "../stores/useStore";
  * Owns the WebSocket connection to the DIAD AGENT daemon
  * (ws://127.0.0.1:7860/ws, protocol v1) and fans every ServerMsg
  * into the zustand store. Auto-reconnects with a short backoff.
+ *
+ * Wire contract (mirrors agent/src/core/protocol.rs):
+ * - daemon → client: BARE ServerMsg frames { "type": "<snake_case>", ... }
+ * - client → daemon: FLAT envelopes { "v": 1, "type": "<snake_case>", ... }
  */
 export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
   const socketRef = useRef<WebSocket | null>(null);
@@ -17,13 +21,10 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
     let disposed = false;
 
     const dispatch = (raw: unknown) => {
-      const envelope = raw as Envelope<ServerMsg>;
-      if (!envelope || typeof envelope.v !== "number" || !envelope.msg) return;
-      if (envelope.v !== 1) {
-        console.warn(`[diad] unknown protocol version ${envelope.v}`);
-        return;
-      }
-      const m = envelope.msg;
+      // The daemon sends bare ServerMsg frames (no v/msg wrapper); only
+      // the `connected` greeting carries a `v` field, inside the message.
+      const m = raw as ServerMsg;
+      if (!m || typeof m.type !== "string") return;
       const store = useStore.getState();
       switch (m.type) {
         case "connected": {
@@ -36,15 +37,15 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
             version: m.daemon_version,
           });
           // Prime the UI with live data.
-          store.send?.({ v: 1, msg: { type: "providers.list", id: nextId("pl") } });
-          store.send?.({ v: 1, msg: { type: "stats.get", id: nextId("st") } });
-          store.send?.({ v: 1, msg: { type: "agents.list", id: nextId("ag") } });
+          store.send?.({ v: 1, type: "providers_list", id: nextId("pl") });
+          store.send?.({ v: 1, type: "stats_get", id: nextId("st") });
+          store.send?.({ v: 1, type: "agents_list", id: nextId("ag") });
           break;
         }
         case "token":
           store.appendToken(m.id, m.text);
           break;
-        case "stream.done":
+        case "stream_done":
           store.finishStream(m.id);
           break;
         case "status":
@@ -85,13 +86,13 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
           if (m.cwd && m.cwd !== store.workspace) store.setWorkspace(m.cwd);
           break;
         }
-        case "term.output":
+        case "term_output":
           store.appendTermOutput(m.data);
           break;
-        case "secret.request":
+        case "secret_request":
           store.setPendingSecret({ id: m.id, label: m.label });
           break;
-        case "confirm.request":
+        case "confirm_request":
           store.setPendingConfirm({ id: m.id, label: m.label });
           break;
         case "system": {
@@ -145,10 +146,10 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
           store.addDiffCard(msgId, { requestId: m.id, path: m.path, diff: m.diff });
           break;
         }
-        case "file.content":
+        case "file_content":
           store.openFile(m.path, m.content);
           break;
-        case "file.written":
+        case "file_written":
           store.markFileSaved(m.path);
           break;
         case "files":

@@ -6,7 +6,7 @@ import { useStore } from "../stores/useStore";
 
 /**
  * Terminal panel — xterm.js wired to the daemon's PTY session
- * (term.input / term.output / term.resize over the WebSocket).
+ * (term_input / term_output / term_resize over the WebSocket).
  */
 export function TerminalPanel() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,7 +67,7 @@ export function TerminalPanel() {
     // Send term input to the daemon PTY.
     const dataSub = term.onData((data) => {
       const s = useStore.getState();
-      s.send?.({ v: 1, msg: { type: "term.input", data } });
+      s.send?.({ v: 1, type: "term_input", data });
     });
 
     // Resize propagation.
@@ -106,7 +106,7 @@ export function TerminalPanel() {
   useEffect(() => {
     if (send && termRef.current) {
       const t = termRef.current;
-      send({ v: 1, msg: { type: "term.resize", cols: t.cols, rows: t.rows } });
+      send({ v: 1, type: "term_resize", cols: t.cols, rows: t.rows });
     }
   }, [send, setTermSize]);
 

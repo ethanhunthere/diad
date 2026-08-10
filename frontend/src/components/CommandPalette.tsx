@@ -48,7 +48,7 @@ export function CommandPalette() {
       { id: "v-agents", label: "Go to Agents", icon: Bot, run: () => setView("agents") },
       { id: "v-settings", label: "Go to Settings", icon: Settings2, run: () => setView("settings") },
       { id: "c-clear", label: "Clear chat", icon: Wrench, run: () => useStore.setState({ messages: [] }) },
-      { id: "c-spawn-tui", label: "Open TUI client", icon: TerminalSquare, run: () => sendMsg({ type: "spawn.tui" }) },
+      { id: "c-spawn-tui", label: "Open TUI client", icon: TerminalSquare, run: () => sendMsg({ type: "spawn_tui" }) },
     ];
     const providerItems: PaletteItem[] = providers.map((p) => ({
       id: `p-${p.name}`,
@@ -57,7 +57,7 @@ export function CommandPalette() {
       icon: KeyRound,
       run: () => {
         if (p.has_key) {
-          sendMsg({ type: "provider.switch", name: p.name });
+          sendMsg({ type: "provider_switch", name: p.name });
         } else {
           setPendingConnectProvider(p.name);
         }
@@ -69,7 +69,7 @@ export function CommandPalette() {
       hint: "send command",
       icon: ArrowRight,
       run: () => {
-        sendMsg({ type: "chat.send", id: nextId("pal"), text: c });
+        sendMsg({ type: "chat_send", id: nextId("pal"), text: c });
         setView("chat");
       },
     }));

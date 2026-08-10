@@ -14,11 +14,11 @@ export function ToolCallCard({ msgId, card }: { msgId: string; card: ToolCard })
 
   const approve = () => {
     resolveToolCard(card.requestId, "approved");
-    sendMsg({ type: "tool.approve", id: card.requestId });
+    sendMsg({ type: "tool_approve", id: card.requestId });
   };
   const reject = () => {
     resolveToolCard(card.requestId, "rejected");
-    sendMsg({ type: "tool.reject", id: card.requestId });
+    sendMsg({ type: "tool_reject", id: card.requestId });
   };
 
   const argsText = card.args

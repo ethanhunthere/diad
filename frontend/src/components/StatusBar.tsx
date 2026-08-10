@@ -21,7 +21,7 @@ export function StatusBar() {
   useEffect(() => {
     if (!wsConnected) return;
     const t = setInterval(() => {
-      sendMsg({ type: "stats.get", id: nextId("st") });
+      sendMsg({ type: "stats_get", id: nextId("st") });
     }, 5000);
     return () => clearInterval(t);
   }, [wsConnected]);

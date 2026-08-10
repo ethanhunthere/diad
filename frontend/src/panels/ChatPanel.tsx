@@ -102,7 +102,7 @@ export function ChatPanel() {
     const trimmed = text.trim();
     if (!trimmed) return;
     useStore.getState().appendMessage({ role: "user", content: trimmed });
-    sendMsg({ type: "chat.send", id: nextId("chat"), text: trimmed });
+    sendMsg({ type: "chat_send", id: nextId("chat"), text: trimmed });
   };
 
   return (

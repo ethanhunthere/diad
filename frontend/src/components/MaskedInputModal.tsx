@@ -25,13 +25,13 @@ export function MaskedInputModal() {
   if (!pending) return null;
 
   const cancel = () => {
-    sendMsg({ type: "secret.cancel", id: pending.id });
+    sendMsg({ type: "secret_cancel", id: pending.id });
     setPendingSecret(null);
   };
 
   const submit = () => {
     if (!value) return;
-    sendMsg({ type: "secret.submit", id: pending.id, value });
+    sendMsg({ type: "secret_submit", id: pending.id, value });
     setPendingSecret(null);
   };
 

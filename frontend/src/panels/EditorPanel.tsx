@@ -114,9 +114,9 @@ export function EditorPanel() {
       const target = path ?? activeFile;
       const file = openFiles.find((f) => f.path === target);
       if (!file || !file.dirty) return;
-      sendMsg({ type: "file.write", id: nextId("fw"), path: file.path, content: file.content });
+      sendMsg({ type: "file_write", id: nextId("fw"), path: file.path, content: file.content });
       toast({ kind: "info", title: "Saving…", message: basename(file.path), ttl: 1200 });
-      // The daemon responds file.written → store.markFileSaved.
+      // The daemon responds file_written → store.markFileSaved.
     },
     [activeFile, openFiles, toast],
   );
@@ -192,7 +192,7 @@ export function EditorPanel() {
       const file = basename(activeFile);
       const kind = mode === "explain" ? "Explain" : "Fix";
       sendMsg({
-        type: "chat.send",
+        type: "chat_send",
         id: nextId("ai"),
         text: `${kind} the selected code in ${file}:\n\n\`\`\`\n${code}\n\`\`\``,
       });
