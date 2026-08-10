@@ -14,7 +14,7 @@ use axum::routing::get;
 use axum::Router;
 use futures_util::{SinkExt, StreamExt};
 use rust_embed::RustEmbed;
-use tokio::sync::mpsc::unbounded_channel;
+use tokio::sync::mpsc::channel;
 
 use super::daemon::{handle_client_msg, Conn, DaemonState, PromptBroker};
 use super::protocol::{Envelope, ServerMsg, PROTOCOL_VERSION};
@@ -38,8 +38,11 @@ async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<DaemonState>>)
 async fn handle_socket(socket: WebSocket, state: Arc<DaemonState>) {
     let (mut sender, mut receiver) = socket.split();
 
-    // This task drains ServerMsg → WS text frames.
-    let (conn_tx, mut conn_rx) = unbounded_channel::<ServerMsg>();
+    // This task drains ServerMsg → WS text frames. The channel is BOUNDED:
+    // a slow or malicious client that stops draining gets frames dropped
+    // (try_send in broadcast/forward paths) instead of an unbounded queue
+    // in daemon memory (spec 2.1).
+    let (conn_tx, mut conn_rx) = channel::<ServerMsg>(4096);
     let writer = tokio::spawn(async move {
         while let Some(msg) = conn_rx.recv().await {
             let text = match serde_json::to_string(&msg) {
@@ -71,7 +74,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<DaemonState>) {
         streaming: state.streaming.load(Ordering::SeqCst),
         daemon_version: env!("CARGO_PKG_VERSION").into(),
     };
-    let _ = conn_tx.send(greeting);
+    let _ = conn_tx.try_send(greeting);
     state.broadcast_status();
 
     // Inbound loop.
@@ -81,7 +84,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<DaemonState>) {
                 let env: Envelope = match serde_json::from_str(&text) {
                     Ok(e) => e,
                     Err(err) => {
-                        let _ = conn_tx.send(ServerMsg::Error {
+                        let _ = conn_tx.try_send(ServerMsg::Error {
                             id: None,
                             message: format!("protocol error: {err}"),
                         });
@@ -89,7 +92,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<DaemonState>) {
                     }
                 };
                 if env.v != PROTOCOL_VERSION {
-                    let _ = conn_tx.send(ServerMsg::Error {
+                    let _ = conn_tx.try_send(ServerMsg::Error {
                         id: None,
                         message: format!(
                             "protocol version mismatch: client {} != server {}",

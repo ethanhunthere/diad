@@ -28,7 +28,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tokio::sync::mpsc::unbounded_channel;
+use tokio::sync::mpsc::channel;
 
 use super::daemon::{handle_chat_send, next_id, Conn, DaemonState, PromptBroker};
 use super::protocol::{FileEntryDto, ServerMsg, PROTOCOL_VERSION};
@@ -406,7 +406,7 @@ async fn api_chat(State(state): State<Arc<DaemonState>>, Json(req): Json<ChatReq
 
     // A dedicated conn: REST chat is non-interactive, so prompts are
     // auto-resolved (confirm → reject, secret → cancel) inside the drain loop.
-    let (tx, mut rx) = unbounded_channel::<ServerMsg>();
+    let (tx, mut rx) = channel::<ServerMsg>(4096);
     let conn = Conn {
         tx,
         prompts: PromptBroker::default(),
@@ -646,7 +646,7 @@ async fn api_terminal_input(
     State(state): State<Arc<DaemonState>>,
     Json(req): Json<TerminalInputRequest>,
 ) -> Response {
-    let (tx, mut rx) = unbounded_channel::<ServerMsg>();
+    let (tx, mut rx) = channel::<ServerMsg>(4096);
     // Forward any PTY output to all connected frontends.
     let state2 = Arc::clone(&state);
     tokio::spawn(async move {

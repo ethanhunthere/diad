@@ -9,7 +9,7 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 
 use portable_pty::{native_pty_system, Child, MasterPty, PtySize};
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::Sender;
 
 use super::protocol::ServerMsg;
 
@@ -24,7 +24,7 @@ pub struct PtySession {
 
 impl PtySession {
     /// Spawn the user's login shell (fallback: bash).
-    pub fn spawn(tx: UnboundedSender<ServerMsg>) -> anyhow::Result<Self> {
+    pub fn spawn(tx: Sender<ServerMsg>) -> anyhow::Result<Self> {
         let pty_system = native_pty_system();
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
 
@@ -69,7 +69,7 @@ impl PtySession {
                         }
                         let data = String::from_utf8_lossy(&pending[..valid_up_to]).into_owned();
                         pending.drain(..valid_up_to);
-                        if reader_tx.send(ServerMsg::TermOutput { data }).is_err() {
+                        if reader_tx.try_send(ServerMsg::TermOutput { data }).is_err() {
                             break;
                         }
                     }
@@ -118,7 +118,7 @@ impl PtyManager {
     }
 
     /// Ensure a PTY exists (spawning the shell on first use), then write.
-    pub fn input(&self, data: &str, tx: UnboundedSender<ServerMsg>) -> anyhow::Result<()> {
+    pub fn input(&self, data: &str, tx: Sender<ServerMsg>) -> anyhow::Result<()> {
         let mut guard = self.session.lock().unwrap();
         if guard.is_none() {
             *guard = Some(PtySession::spawn(tx)?);
@@ -166,7 +166,7 @@ mod tests {
     #[tokio::test]
     async fn test_pty_spawns_shell_and_writes() {
         // Spawn a real PTY with a shell and verify output arrives.
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<ServerMsg>();
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<ServerMsg>(4096);
 
         let mut session = match PtySession::spawn(tx) {
             Ok(s) => s,
@@ -200,7 +200,7 @@ mod tests {
     /// `input` spawns a fresh shell.
     #[tokio::test]
     async fn test_pty_manager_lazy_spawn_and_shutdown() {
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<ServerMsg>();
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<ServerMsg>(4096);
         let mgr = PtyManager::new();
 
         // Resize with no session must not panic.
