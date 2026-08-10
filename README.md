@@ -9,7 +9,40 @@ DIAD is a minimal, intent-driven operating system built on Arch Linux. It presen
 
 The DIAD AGENT daemon replaces the terminal, file manager, system administration tools, and code editor. It connects to cloud LLM providers via authenticated APIs and translates user intent into system-level actions executed locally through sandboxed Rust functions.
 
-Every major model family is selectable from a single interface (press `F6` or type `/model` in the chat): Anthropic Claude, Google Gemini, OpenAI (incl. Codex models), Alibaba Qwen, Moonshot Kimi, DeepSeek, Groq, Mistral, OpenRouter, and local Ollama — plus any custom OpenAI-compatible endpoint you configure.
+Every major model family is selectable from a single interface (press `F6` or type
+`/model` in the chat): Anthropic Claude, Google Gemini, OpenAI (incl. Codex
+models), Alibaba Qwen, Moonshot Kimi, DeepSeek, Groq, Mistral, OpenRouter, and
+local Ollama — plus any custom OpenAI-compatible endpoint you configure.
+
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph Surfaces["Two user surfaces, one brain"]
+        GUI["React GUI<br/>brave --app=127.0.0.1:7860"]
+        TUI["ratatui TUI<br/>diad-agent --tui"]
+    end
+    WS["WebSocket JSON API v1<br/>127.0.0.1:7860/ws"]
+    Daemon["Daemon (tokio + axum)"]
+    subgraph Core["Daemon internals"]
+        ORCH["Orchestrator<br/>intent router · sessions"]
+        PROV["Provider adapters<br/>anthropic · gemini · qwen · openai-compatible"]
+        REG["ToolRegistry<br/>files · hardware · network · system"]
+        VAULT["Keyring vault<br/>libsecret"]
+    end
+    GPT["LLM APIs"]
+    SYS["Local system (sandboxed)"]
+
+    GUI --> WS
+    TUI --> WS
+    WS --> Daemon
+    Daemon --> ORCH --> PROV --> GPT
+    ORCH --> REG --> SYS
+    Daemon --> VAULT
+```
+
+See `docs/ARCHITECTURE.md` for the boot chain, the full WebSocket protocol and
+the sandbox model.
 
 ## Providers
 
@@ -80,8 +113,6 @@ Usage:
 - If the CLI is not installed, the tool returns a friendly message telling you so.
 
 Install the CLIs with your package manager or `npm` (e.g. `npm install -g @anthropic-ai/claude-code @openai/codex aider opencode-ai`).
-
-## Tech Stack
 
 ## Philosophy
 
@@ -195,24 +226,34 @@ API keys are stored securely via `libsecret`/`gnome-keyring` and configured thro
 
 ```
 diados/
-├── agent/          # DIAD AGENT (Rust daemon + GUI server + TUI client)
-│   ├── src/        # Source code
-│   │   ├── daemon/  # axum HTTP server (GUI + /ws JSON API), PTY sessions
-│   │   ├── tui/     # Terminal UI components (thin WS client)
-│   │   ├── orchestrator/  # Intent routing & session management
-│   │   ├── providers/     # LLM provider integrations
-│   │   ├── tools/        # Sandboxed system tools
-│   │   ├── auth/         # OAuth & token management
-│   │   └── config/       # Configuration management
-│   └── tests/      # Integration tests
-├── frontend/       # DIAD AGENT GUI (Vite + React + TypeScript + Tailwind)
-│   ├── src/        # Components, store (zustand), WS client
-│   └── dist/       # Built assets (embedded into the binary via rust-embed)
-├── os/             # OS build files
-│   └── archiso/    # Arch ISO profile
-├── docs/           # Documentation
-├── Makefile        # Build targets (build, gui, iso, test, …)
-└── install.sh      # Bootstrap script
+├── agent/          # DIAD AGENT (Rust crate `diad-agent`)
+│   ├── src/
+│   │   ├── core/          # daemon, WS protocol, REST, PTY, server, notes
+│   │   ├── tools/         # sandboxed capability surface
+│   │   │   ├── files/     #   universal + filesystem tools
+│   │   │   ├── hardware/  #   device, display, input, universal
+│   │   │   ├── network/   #   connectivity + external AI CLIs
+│   │   │   ├── system/    #   exec, help, os, power, process, security, update
+│   │   │   └── registry.rs
+│   │   ├── orchestrator/  # intent router, sessions, agent loop
+│   │   ├── providers/     # LLM adapters (native + openai-compatible)
+│   │   ├── auth/          # keyring vault + OAuth
+│   │   ├── config/        # layered TOML configuration
+│   │   └── tui/           # ratatui client (thin WS consumer)
+│   └── tests/             # domain-split integration tests (29)
+├── frontend/       # GUI (Vite + React + TS + Tailwind + zustand)
+│   ├── src/
+│   │   ├── components/    # shared primitives (TopBar, ToolCallCard, …)
+│   │   ├── panels/        # ChatPanel, EditorPanel, TerminalPanel, …
+│   │   ├── services/      # WebSocket + REST clients
+│   │   ├── hooks/         # useWebSocket, useGlobalKeys
+│   │   ├── stores/        # zustand store
+│   │   └── lib/           # types + formatting
+│   └── dist/              # built assets (embedded via rust-embed)
+├── os/             # archiso profile (sway, systemd units, setup scripts)
+├── docs/           # ARCHITECTURE, SECURITY, TESTING, ROADMAP, GETTING_STARTED, audits
+├── Makefile        # build targets (build, gui, iso, test, lint, …)
+└── install.sh      # system installer
 ```
 
 ## License

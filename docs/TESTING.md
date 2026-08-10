@@ -8,9 +8,23 @@ Run the full automated suite first:
 
 ```bash
 cd agent
-cargo test          # 57 tests (41 unit + 16 integration)
+cargo test          # 311 tests (282 unit + 29 integration)
 cargo build --all-targets   # must be 0 errors, 0 warnings
+cargo clippy --all-targets -- -D warnings   # must be clean
 ```
+
+Integration tests are split by domain under `agent/tests/`:
+
+| File                        | Tests | Coverage                              |
+|-----------------------------|-------|---------------------------------------|
+| `tui_app_tests.rs`          | 10    | app init, submit, modes, F6 picker, `/model`, `/connect` |
+| `tools_sandbox_tests.rs`    | 8     | sandbox *rejects* privileged paths, shells, traversal |
+| `tools_system_tests.rs`     | 4     | registry completeness, list_dir, system info |
+| `orchestrator_tests.rs`     | 4     | intent classification, sessions, message constructors |
+| `config_tests.rs`           | 2     | defaults, TOML roundtrip |
+| `providers_tests.rs`        | 1     | provider factory resolution |
+
+`agent/tests/common/mod.rs` holds shared helpers (e.g. `default_registry()`).
 
 ---
 

@@ -1,3 +1,8 @@
+//! Input/network event loop for the TUI.
+//!
+//! Polls crossterm keys with a timeout and multiplexes them with daemon
+//! WebSocket messages onto a single channel consumed by the app.
+
 use std::time::Duration;
 
 use crossterm::event::{self, KeyEvent};

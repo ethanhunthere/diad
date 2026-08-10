@@ -1,3 +1,8 @@
+//! Ratatui rendering for the TUI client.
+//!
+//! Stateless draw functions for the chat, file tree, code editor and system
+//! status views; the app supplies state, this module supplies pixels.
+
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},

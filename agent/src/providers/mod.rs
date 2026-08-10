@@ -1,3 +1,10 @@
+//! LLM provider adapters.
+//!
+//! All providers implement the shared [`traits::LlmProvider`] streaming
+//! interface. Anthropic, Gemini and Qwen speak their native protocols;
+//! OpenAI and everything else (DeepSeek, Kimi, Groq, Mistral, OpenRouter,
+//! Ollama, custom) shares the OpenAI-compatible code path in `openai_compat`.
+
 pub mod anthropic;
 pub mod gemini;
 pub mod openai;

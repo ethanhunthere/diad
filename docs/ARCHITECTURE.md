@@ -44,6 +44,71 @@ DIAD (Intent-Driven Operating System) presents exactly two user surfaces:
 └──────────────────────────────────────────────────────────────┘
 ```
 
+## Boot Chain
+
+The installed system boots straight into the agent desktop with no login
+prompt and no terminal required:
+
+```mermaid
+flowchart LR
+    A[GRUB] --> B[systemd]
+    B --> C[getty@tty1 autologin]
+    C --> D[Sway compositor]
+    D --> E[diad-supervisor.sh]
+    E --> F[diad-hardware-setup.sh]
+    E --> G[diad-network-setup.sh]
+    E --> H[diad-power-setup.sh]
+    E --> I[diad-first-run.sh / diad-splash.sh]
+    E --> J[diad-launch.sh]
+    J --> K[diad-agent daemon :7860]
+    J --> L[Brave app window]
+    K --> M[React GUI served by daemon]
+    K --> N[TUI client via WebSocket]
+```
+
+1. **GRUB → systemd**: normal Arch boot (linux-lts kernel).
+2. **Autologin**: `getty@tty1.service.d/autologin.conf` drops straight into the
+   `diad` user session.
+3. **Sway**: the compositor starts and `exec`s `diad-supervisor.sh`
+   (`os/archiso/airootfs/etc/sway/config`).
+4. **Supervisor** (`usr/local/bin/diad-supervisor.sh`): runs the marker-gated
+   setup scripts (hardware/network/power) *before* the wizard, then calls
+   `diad-launch.sh`. No `set -e` — a failing setup step never blocks the
+   desktop; every step is logged to `~/.diad/logs/boot.log`.
+5. **Launch** (`usr/local/bin/diad-launch.sh`): ensures the `diad-agent` daemon
+   is running (it binds `127.0.0.1:7860` and serves the embedded GUI), opens
+   the Brave app window on the agent workspace, and Brave on workspace 2.
+6. **Firewall**: `diad-firewall.service` (nftables) is enabled at install and
+   drops inbound traffic except loopback.
+
+## WebSocket Protocol
+
+The daemon exposes a versioned WebSocket JSON API at `ws://127.0.0.1:7860/ws`
+that both the React GUI and the ratatui TUI consume. Every message carries
+`"v": 1` (protocol version) and a `"type"` tag; long-running requests carry an
+`id` echoed by the daemon so clients can match replies.
+
+**Client → daemon** (`ClientMsg`):
+
+| Type                | Purpose                                        |
+|---------------------|------------------------------------------------|
+| `chat.send`         | Send chat text (routed to agent loop / offline router) |
+| `tool.approve` / `tool.reject` | Approve or reject a pending tool call |
+| `edit.approve` / `edit.reject` | Approve or reject a proposed file edit |
+| `file.read` / `file.write` / `file.list` | Sandboxed file operations |
+| `term.input` / `term.resize` | Daemon-spawned PTY shell I/O |
+| `provider.switch` / `model.switch` | Change active provider/model |
+| `provider.connect`  | Store and validate an API key |
+| `agent.delegate`    | Delegate a task to an external AI CLI |
+| `config.set`        | Set a config value |
+| `providers.list` / `stats.get` / `models.list` / `agents.list` | Snapshots |
+| `secret.submit` / `secret.cancel` | Respond to masked-secret prompts |
+| `spawn_tui`         | Open the TUI in a foot terminal (GUI hotkey) |
+
+**Daemon → client** (`ServerMsg`): `token` (streaming deltas), `tool_use`,
+`tool_result`, `edit_diff`, `secret.request`, `system`, `error`, `agents`,
+`connected` plus stream-end/result messages echoing request `id`s.
+
 ## Component Diagram
 
 ### Layer 1: User Surfaces

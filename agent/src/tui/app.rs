@@ -1,3 +1,8 @@
+//! TUI application state and key handling.
+//!
+//! Owns the mode stack (`Input` / `Tree` / `Code` / `Sys` / `Model`), the
+//! input buffer, and forwards every event to the daemon client.
+
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tokio::sync::mpsc::UnboundedSender;
 
