@@ -57,17 +57,19 @@ export SOURCE_DATE_EPOCH
 # rust-embed, so the GUI must be built BEFORE the release binary.
 iso: gui
 	@echo "Building DIAD ISO..."
-	@echo "  [0/4] Pinned reproducible timestamp SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH)..."
-	@echo "  [1/4] Building diad-agent (release, GUI embedded)..."
+	@echo "  [0/5] Pinned reproducible timestamp SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH)..."
+	@echo "  [1/5] Building diad-agent (release, GUI embedded)..."
 	cd $(AGENT_DIR) && cargo build --release
-	@echo "  [2/4] Staging diad-agent into the ISO profile..."
+	@echo "  [2/5] Staging diad-agent into the ISO profile..."
 	mkdir -p $(ISO_DIR)/airootfs/usr/local/bin
 	cp $(TARGET_DIR)/release/$(BINARY) $(ISO_DIR)/airootfs/usr/local/bin/$(BINARY)
 	chmod +x $(ISO_DIR)/airootfs/usr/local/bin/$(BINARY)
-	@echo "  [3/4] Assembling ISO with mkarchiso (this takes a while)..."
+	@echo "  [3/5] Validating nftables rules (build-time gate)..."
+	@nft -cf $(ISO_DIR)/airootfs/etc/nftables.conf && echo "  nftables.conf OK" || (echo "  ERROR: nftables.conf failed validation" && exit 1)
+	@echo "  [4/5] Assembling ISO with mkarchiso (this takes a while)..."
 	mkdir -p work out
 	sudo mkarchiso -v -w work -o out $(ISO_DIR)
-	@echo "  [4/4] Done."
+	@echo "  [5/5] Done."
 	@echo "ISO built: out/$(ISO_NAME)-*.iso"
 
 iso-clean:

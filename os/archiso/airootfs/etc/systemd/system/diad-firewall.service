@@ -2,6 +2,8 @@
 Description=DIAD nftables firewall
 After=network-pre.target
 Wants=network-pre.target
+# P3-S2.4 — skip the unit entirely if nft is missing (never a boot failure).
+ConditionPathExists=/usr/sbin/nft
 
 [Service]
 Type=oneshot
