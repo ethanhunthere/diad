@@ -85,6 +85,12 @@ const initialSettings: SettingsState = {
   defaultModel: "",
   storagePath: "",
   firewall: true,
+  // Persisted locally (spec 2.7/2.9): the daemon never needs these.
+  fontScale: Math.min(2, Math.max(0.8, parseFloat(localStorage.getItem("diad.fontScale") ?? "1") || 1)),
+  density: ((): SettingsState["density"] => {
+    const d = localStorage.getItem("diad.density");
+    return d === "compact" || d === "comfortable" ? d : "auto";
+  })(),
   loaded: false,
 };
 

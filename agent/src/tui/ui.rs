@@ -31,8 +31,25 @@ fn provider_color(provider: &str) -> Color {
 }
 
 /// Render the complete TUI frame.
+///
+/// Minimum usable size (spec 2.8): below 60x15 the layout would overlap,
+/// so a centered resize hint is drawn instead — the TUI recovers the
+/// moment the terminal grows again.
 pub fn render(frame: &mut Frame, app: &App) {
     let area = frame.area();
+
+    if area.width < 60 || area.height < 15 {
+        let hint = ratatui::widgets::Paragraph::new(vec![
+            ratatui::text::Line::from("DIAD AGENT"),
+            ratatui::text::Line::from(""),
+            ratatui::text::Line::from("Terminal too small — resize to at least 60x15."),
+            ratatui::text::Line::from(format!("Current: {}x{}", area.width, area.height)),
+        ])
+        .alignment(ratatui::layout::Alignment::Center)
+        .style(ratatui::style::Style::default().fg(ratatui::style::Color::Gray));
+        frame.render_widget(hint, area);
+        return;
+    }
 
     // ---- Top Bar ----
     let top_bar = render_top_bar(app);

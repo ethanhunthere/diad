@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { useStore } from "../stores/useStore";
 import { clock12 } from "../lib/format";
 
 /**
  * Top bar — wordmark, palette trigger, provider·model pill,
- * connection dot, GUI⇄TUI toggle, clock.
+ * connection dot, GUI⇄TUI toggle, clock. Accepts an optional
+ * hamburger slot, shown only at the TINY breakpoint (see CSS).
  */
-export function TopBar() {
+export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
   const provider = useStore((s) => s.provider);
   const model = useStore((s) => s.model);
   const connected = useStore((s) => s.connected);
@@ -32,6 +34,9 @@ export function TopBar() {
 
   return (
     <header className="glass z-30 flex h-11 shrink-0 items-center gap-3 border-b border-border-subtle px-3">
+      {/* TINY-breakpoint menu button (hidden otherwise, see index.css) */}
+      {hamburger}
+
       {/* Wordmark */}
       <div className="flex items-center gap-2 select-none">
         <span className="flex h-5 w-5 items-center justify-center rounded-[6px] border border-copper/40 bg-copper/15 text-[11px] font-bold text-copper-hover">
@@ -60,9 +65,9 @@ export function TopBar() {
 
       <div className="flex-1" />
 
-      {/* Provider · model pill */}
+      {/* Provider · model pill (hidden on TINY, see index.css) */}
       <div
-        className="flex items-center gap-2 rounded-full border border-border-subtle bg-surface-2/60 px-3 py-1 text-[11px]"
+        className="topbar-pill flex items-center gap-2 rounded-full border border-border-subtle bg-surface-2/60 px-3 py-1 text-[11px]"
         title={`Provider: ${provider || "none"} · Model: ${model || "none"}`}
       >
         <span className="text-dim">provider</span>

@@ -16,7 +16,7 @@ import { useStore } from "../stores/useStore";
 import type { ViewId } from "../lib/types";
 import { VIEW_LABELS } from "../lib/format";
 
-const VIEWS: { id: ViewId; icon: typeof MessageSquare }[] = [
+export const VIEWS: { id: ViewId; icon: typeof MessageSquare }[] = [
   { id: "chat", icon: MessageSquare },
   { id: "explorer", icon: FolderOpen },
   { id: "editor", icon: FileCode2 },
@@ -41,7 +41,7 @@ export function ActivityBar({ collapsed }: { collapsed: boolean }) {
 
   if (collapsed) {
     return (
-      <nav className="flex w-0 shrink-0 flex-col items-center border-r border-border-subtle bg-surface/40 py-2 transition-all duration-150 ease-out">
+      <nav className="activity-bar flex w-0 shrink-0 flex-col items-center border-r border-border-subtle bg-surface/40 py-2 transition-all duration-150 ease-out">
         <button className="icon-btn" onClick={toggleActivityBar} title="Expand activity bar (Ctrl+B)">
           <PanelLeftOpen size={16} />
         </button>
@@ -50,7 +50,7 @@ export function ActivityBar({ collapsed }: { collapsed: boolean }) {
   }
 
   return (
-    <nav className="flex w-12 shrink-0 flex-col items-center border-r border-border-subtle bg-surface/40 py-2 transition-all duration-150 ease-out">
+    <nav className="activity-bar flex w-12 shrink-0 flex-col items-center border-r border-border-subtle bg-surface/40 py-2 transition-all duration-150 ease-out">
       {VIEWS.map(({ id, icon: Icon }) => {
         const active = view === id;
         const badge =

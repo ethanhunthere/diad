@@ -76,6 +76,38 @@ export function SettingsPanel() {
               </button>
             ))}
           </div>
+
+          {/* Font scale (spec 2.9): 0.8x–2.0x, live, persisted. */}
+          <div className="mt-4 text-[11.5px] text-dim">
+            Font scale — <span className="font-mono text-ink">{settings.fontScale.toFixed(2)}x</span>
+          </div>
+          <input
+            type="range"
+            min={0.8}
+            max={2}
+            step={0.05}
+            value={settings.fontScale}
+            onChange={(e) => setSettings({ fontScale: parseFloat(e.target.value) })}
+            className="mt-1 w-full accent-[#C87F4A]"
+          />
+
+          {/* Density override (spec 2.7) */}
+          <div className="mt-3 text-[11.5px] text-dim">Layout density</div>
+          <div className="mt-1.5 flex gap-2">
+            {(["auto", "compact", "comfortable"] as const).map((d) => (
+              <button
+                key={d}
+                className={`rounded-control border px-3 py-1.5 text-[12px] ${
+                  settings.density === d
+                    ? "border-copper/60 bg-copper/10 text-ink"
+                    : "border-border-subtle bg-surface-2/50 text-dim hover:border-border-strong"
+                }`}
+                onClick={() => setSettings({ density: d })}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 

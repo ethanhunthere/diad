@@ -100,6 +100,12 @@ bindsym $mod+Shift+c reload
 # Kill focused window
 bindsym $mod+q kill
 
+# Snap layouts (diad-snap.sh — tested integer-pixel geometry, spec 2.6):
+# Super+G tiles the first 2 windows side by side, Super+Shift+G tiles 4
+# in a 2x2 grid (portrait outputs stack vertically, handled by the agent).
+bindsym $mod+g exec diad-snap.sh 2
+bindsym $mod+Shift+g exec diad-snap.sh 4
+
 # Focus navigation
 bindsym $mod+h focus left
 bindsym $mod+j focus down

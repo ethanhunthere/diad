@@ -26,7 +26,8 @@
 
   body {
     @apply bg-obsidian text-ink font-sans antialiased;
-    font-size: 14px;
+    /* rem-based so the user font-scale multiplier (spec 2.9) applies live */
+    font-size: 0.875rem;
     letter-spacing: 0.01em;
   }
 
@@ -304,4 +305,95 @@
 .diff-del {
   background: rgba(224, 122, 122, 0.12);
   color: #eba3a3;
+}
+
+/* ------------------------------------------------------------------ */
+/* Responsive breakpoints (spec 2.1/2.2)                               */
+/* ------------------------------------------------------------------ */
+/* `data-bp` is published on <html> by App's ResizeObserver on EVERY    */
+/* resize. Thresholds mirror core/perf.rs::breakpoint:                  */
+/*   TINY <800 · COMPACT <1280 · NORMAL <1920 · WIDE <3000 · ULTRAWIDE */
+
+/* Hamburger menu button exists in the DOM but only renders on TINY. */
+.hamburger {
+  display: none;
+}
+
+[data-bp="TINY"] .hamburger {
+  display: inline-flex;
+}
+[data-bp="TINY"] .activity-bar {
+  display: none; /* replaced by the overlay menu in App.tsx */
+}
+[data-bp="TINY"] .statusbar-extras {
+  display: none; /* status bar keeps only mode + provider */
+}
+[data-bp="TINY"] .topbar-pill {
+  display: none;
+}
+
+/* ULTRAWIDE: cap content width, keep side gutters (no stretched lines). */
+[data-bp="ULTRAWIDE"] main {
+  max-width: 2200px;
+  margin-inline: auto;
+  border-inline: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Below the 640x480 minimum the layout scrolls instead of breaking. */
+@media (max-width: 639px) {
+  body {
+    overflow: auto;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Touch adaptation (spec 2.7)                                         */
+/* ------------------------------------------------------------------ */
+/* `.touch` is added by App when navigator.maxTouchPoints > 0; the      */
+/* pointer:coarse media query covers OS-level touch without the class.  */
+
+html.touch .icon-btn,
+html.compact .icon-btn {
+  /* 44px minimum hit targets */
+  height: 44px;
+  width: 44px;
+}
+html.touch .btn,
+html.touch .btn-primary,
+html.touch .btn-danger,
+html.touch .btn-ghost {
+  min-height: 44px;
+}
+html.touch *::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+html.touch * {
+  scrollbar-width: auto;
+}
+
+/* Drop hover feedback for real touch input (no hover hardware). */
+@media (hover: none) and (pointer: coarse) {
+  .btn:hover,
+  .btn-primary:hover,
+  .btn-danger:hover,
+  .btn-ghost:hover,
+  .icon-btn:hover {
+    filter: none;
+    opacity: 1;
+  }
+}
+
+/* Density override (spec 2.7): compact tightens, comfortable relaxes. */
+html.comfortable .panel {
+  padding: 1rem;
+}
+html.comfortable .btn,
+html.comfortable .btn-primary,
+html.comfortable .btn-danger,
+html.comfortable .btn-ghost {
+  padding-block: 0.5rem;
+}
+html.compact .panel {
+  padding: 0.5rem;
 }

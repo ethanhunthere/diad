@@ -198,6 +198,10 @@ export interface SettingsState {
   defaultModel: string;
   storagePath: string;
   firewall: boolean;
+  /** UI font scale multiplier 0.8–2.0 (spec 2.9), persisted, no restart. */
+  fontScale: number;
+  /** Touch/layout density override (spec 2.7). */
+  density: "auto" | "compact" | "comfortable";
   loaded: boolean;
 }
 

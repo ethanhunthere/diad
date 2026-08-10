@@ -43,6 +43,40 @@ OUTPUTS_JSON="$(swaymsg -t get_outputs 2>/dev/null)" || {
 BUILTIN="$(printf '%s' "${OUTPUTS_JSON}" | jq -r '.[] | select(.name | test("^(eDP|LVDS|DSI)")) | .name' | head -1)"
 EXTERNALS="$(printf '%s' "${OUTPUTS_JSON}" | jq -r '.[] | select(.name | test("^(eDP|LVDS|DSI)") | not) | select(.active == true) | .name')"
 
+# ---- HiDPI / fractional scaling (spec 2.4) --------------------------------
+# DPI from the EDID physical size (bytes 21/22 = width/height in cm) and the
+# active mode width:  <120 → 1.0 · <150 → 1.25 · <200 → 1.5 · else → 2.0.
+# Per-output: multi-monitor setups with different DPI scale independently.
+compute_scale() {
+    local name="$1" px="$2"
+    local edid cm dpi
+    edid="$(ls "/sys/class/drm/card*-${name}/edid" 2>/dev/null | head -1)"
+    [[ -z "${edid}" ]] && { echo "1"; return; }
+    cm="$(od -An -tu1 -j21 -N1 "${edid}" 2>/dev/null | tr -d ' ')"
+    if [[ -z "${cm}" || "${cm}" == "0" ]]; then
+        echo "1"; return
+    fi
+    dpi=$(( px * 254 / (cm * 100) ))
+    if   (( dpi < 120 )); then echo "1"
+    elif (( dpi < 150 )); then echo "1.25"
+    elif (( dpi < 200 )); then echo "1.5"
+    else echo "2"
+    fi
+}
+
+ALL_ACTIVE="$(printf '%s' "${OUTPUTS_JSON}" | jq -r '.[] | select(.active == true) | .name')"
+for out in ${ALL_ACTIVE}; do
+    PX="$(printf '%s' "${OUTPUTS_JSON}" | jq -r --arg o "${out}" '.[] | select(.name == $o) | (.current_mode.width // .modes[0].width // 1920)')"
+    SCALE="$(compute_scale "${out}" "${PX}")"
+    CURRENT="$(printf '%s' "${OUTPUTS_JSON}" | jq -r --arg o "${out}" '.[] | select(.name == $o) | .scale // 1')"
+    if [[ "${SCALE}" != "${CURRENT}" ]]; then
+        swaymsg output "${out}" scale "${SCALE}" >/dev/null 2>&1 \
+            && log "display-setup: ${out} scale ${CURRENT} → ${SCALE} (${PX}px wide)."
+    fi
+done
+# Re-read after scaling: rect dimensions are now logical (scaled) units.
+OUTPUTS_JSON="$(swaymsg -t get_outputs 2>/dev/null)" || true
+
 # ---- Only built-in: enforce native resolution ----
 if [[ -z "${BUILTIN}" && -z "${EXTERNALS}" ]]; then
     log "display-setup: no active outputs detected."
