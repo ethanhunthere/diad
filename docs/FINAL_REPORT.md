@@ -189,6 +189,73 @@ Boot-focus sanity (PROMPT-2 S1–S4): `for_window [app_id="chromium" title="*786
 
 ---
 
+## 6.7 RBRO-004 — release blocker resolution (boot parity, session landing, waybar)
+
+Work packages: WP-01 GRUB parity (`d6ffe2a`), WP-02 daemon crash guard
+(`77439bb`), WP-03 exactly-one WS1 (`7788e86`), WP-04 WS2 Apps page
+(`0b7761d`), WP-05 WS3 Launchpad (`037b763`), WP-06 waybar glass pills + power
+parity (`a9b7b52`), WP-07 diagnostics foot (marker-gated, inside WP-02),
+WP-08 workspace limits watcher (`df51c18`). Tagged **`RBRO-004-RELEASE`**.
+Full detail: `docs/BOOT.md`, `docs/UI.md`.
+
+### RBRO-004 regression gates (final run)
+
+| Gate | Command | Result |
+|------|---------|--------|
+| GRUB parity | 3-entry arg diff (quiet/loglevel/show_status/copytoram only) | ✅ PARITY OK |
+| Tests | `cargo test` (all targets) | ✅ 381 passed (342 unit + 39 integration) |
+| Clippy | `cargo clippy --all-targets -- -D warnings` | ✅ 0 findings |
+| Format | `cargo fmt --check` | ✅ clean |
+| Shell syntax | `bash -n` on supervisor + all `airootfs/usr/local/bin/*.sh` | ✅ all clean |
+| Sudoers | `visudo -cf /etc/sudoers.d/diad` | ✅ parsed OK (pins `systemctl poweroff, reboot, suspend`) |
+| Frontend | `npm run build` (frontend/) | ✅ EXIT 0, all chunks within budget, entry `index-BV-xNFif.js` |
+| Legacy names | `rg -i "intentos"` + `diod[^a]` (agent/src, frontend/src, os/archiso) | ✅ 0 hits |
+| Waybar configs | `jq empty` on config / config.compact / config.full | ✅ all 3 valid |
+| Power verb map | `device::power_verb` unit tests + `diad-power.sh` DRYRUN (suspend/reboot/power + invalid) | ✅ 3/3 + reject |
+| Slash parity | WS runtime test (`test_slash_ws.py`): `/shutdown` → `Run \`systemctl poweroff\`? This will power off the system.` → reject → cancelled; `/help` lists all three; `/reboot`, `/sleep` labels | ✅ ALL PASSED |
+
+### Real-hardware landing checklist (run on the target machine)
+
+Boot **DIAD** (default entry) from the USB stick, then within ~6 s of login:
+
+1. **WS1** — exactly one agent window: GUI (`brave --app=http://127.0.0.1:7860`)
+   if the daemon is healthy, else exactly one foot TUI. Never both, never zero.
+   The window is focused with no click.
+2. **WS2** — exactly one DIAD Apps icon page. Clicking a tile opens the real
+   app; nothing else opens.
+3. **WS3** — exactly one DIAD Launchpad. Clicking Telegram + Slack opens both
+   chats; the launchpad closes itself.
+4. **Waybar** — glass pills visible with Font Awesome glyphs; workspace,
+   clock, and ⏻ power pill work. The power pill opens the sleep/restart/
+   shutdown menu; each action asks for confirmation and uses the pinned verb
+   (`systemctl suspend|reboot|poweroff`).
+5. **Zero** popups, floods, or connection-error pages anywhere.
+6. **TUI parity** — `foot` + `/shutdown`/`/reboot`/`/sleep` ask for
+   confirmation with the human-readable label, then cancel cleanly.
+7. **Flood backstop** — rapidly opening 10+ agent windows caps at 8; the
+   excess lands in the scratchpad (`Super+Shift+M` restores) with one toast.
+8. **GRUB menu** — three entries; verbose shows full console log; RAM entry
+   boots from RAM with `pv` progress.
+
+### QEMU matrix
+
+Boot all three GRUB entries headless (kernel/initrd from `work/iso`,
+`archisosearchuuid=2026-08-11-09-38-15-00`, serial log) → login → verify the
+TARGET STATE above for each entry. Status: **PENDING final ISO** (mkarchiso
+requires root — see build note below).
+
+### ISO deliverable
+
+- Build: `sudo rm -rf work out && sudo make iso` (root required).
+- Artifact: `out/diados-*.iso`.
+- Write: `sudo dd if=out/diados-*.iso of=/dev/sda bs=4M status=progress conv=fsync`.
+- sha256: recorded after the ISO exists (see commit message of the final
+  RBRO-004 close commit).
+- Rollback: `git checkout RBRO-004-RELEASE~1` (pre-RBRO-004 tree) or reset to
+  any WP commit listed above.
+
+---
+
 ## 7. GOOGLE ENGINEER TEST — 10-step walkthrough
 
 A senior engineer cloning this repo and reading in order can fully understand
