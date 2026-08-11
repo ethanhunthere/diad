@@ -271,14 +271,18 @@ QEMU); **8 GB or more is required for the RAM-mode GRUB entry.** The default
 ### ISO deliverable
 
 - Build: `sudo rm -rf work out && sudo make iso` (root required — the only
-  remaining action before real-hardware landing).
-- Artifact: `out/diados-2026.08.11-x86_64.iso` (~3.4 GiB).
-- Write: `sudo dd if=out/diados-2026.08.11-x86_64.iso of=/dev/sda bs=4M status=progress conv=fsync`.
-- sha256: **must be recomputed after the rebuild** (`sha256sum out/diados-2026.08.11-x86_64.iso`);
+  remaining action before real-hardware landing). The Makefile pins
+  `SOURCE_DATE_EPOCH` (F-23 reproducibility, default `BUILD_DATE=2026-01-01`),
+  so the rebuild produces:
+  - Artifact: `out/diados-2026.01.01-x86_64.iso` (~3.4 GiB)
+  - `archisosearchuuid=2026-01-01-00-00-00-00` (mkarchiso derives both from
+    the epoch — see `profiledef.sh` / `mkarchiso` `iso_uuid`)
+- Write: `sudo dd if=out/diados-2026.01.01-x86_64.iso of=/dev/sda bs=4M status=progress conv=fsync`.
+- sha256: **must be computed on the rebuilt ISO** (`sha256sum out/diados-2026.01.01-x86_64.iso`);
   any pre-rebuild hash refers to the stale ISO and is invalid.
-- Post-rebuild matrix reruns (no injection): sync `UUID` in `.matrix/matrix.py`
-  to the rebuilt ISO's `archisosearchuuid` (mkarchiso stamps a fresh
-  `%ARCHISO_UUID%` at build time) and re-point `ISO=` if the filename changes.
+- Post-rebuild matrix reruns (no injection): `.matrix/matrix.py` is already
+  synced to the rebuilt artifact (`ISO=out/diados-2026.01.01-x86_64.iso`,
+  `UUID="2026-01-01-00-00-00-00"`).
 - Rollback: `git checkout RBRO-004-RELEASE~1` (pre-RBRO-004 tree) or reset to
   any WP commit listed above.
 
