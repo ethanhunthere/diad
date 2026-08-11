@@ -40,15 +40,23 @@ input type:touchpad {
 default_border normal
 default_floating_border normal
 
-# Every window gets the DIAD title frame. Flatpak Brave reports app_id
-# com.brave.Browser; the shim app_id and chromium report their own ids —
-# %app_id shows whichever the client actually exposes.
-for_window [*] title_format "DIAD · %app_id"
+# Every window gets a visible titlebar (default_border normal above). The
+# title shows the client's REAL title — no global title_format rewrite, so
+# every title-based rule below (assign/for_window, window counts, waybar
+# buttons) matches what the client actually reports. RBRO-004 WP-03: title
+# matching integrity is what stops the boot flood (a rewritten title made
+# every DIAD window look identical and unassignable).
 
 # PROMPT-2 S1 — auto-focus at boot (no user click ever needed): the GUI
 # app-window (chromium, URL :7860) and any foot window grab focus when they
 # map and are pinned to workspace 1. `focus_follows_mouse no` keeps the
 # pointer from ever stealing focus from the agent window.
+# The GUI title at map time is the URL (127.0.0.1:7860); after the page
+# loads it is the document title (DIAD AGENT) — both rules cover the two
+# states. The /apps and /launch app-windows must be matched FIRST so the
+# generic :7860 rule never pulls them onto workspace 1.
+for_window [app_id="chromium" title="*7860/launch*"] move to workspace 3
+for_window [app_id="chromium" title="*7860/apps*"] move to workspace 2
 for_window [app_id="chromium" title="*7860*"] focus, move to workspace 1
 for_window [app_id="foot"] focus, move to workspace 1
 focus_follows_mouse no
@@ -107,6 +115,7 @@ exec diad-supervisor.sh
 # Exit Sway moved to Super+Shift+E (sway's default exit binding).
 bindsym $mod+m move scratchpad
 bindsym $mod+Shift+m scratchpad show
+bindsym $mod+f fullscreen toggle
 bindsym $mod+Shift+q kill
 bindsym $mod+Shift+e exit
 
@@ -115,6 +124,11 @@ bindsym $mod+Return exec $term
 
 # Start browser
 bindsym $mod+b exec $browser
+
+# RBRO-004 WP-03 — user relaunch of the DIAD AGENT GUI (the supervisor
+# spawns it exactly once at boot; closing it never auto-reopens it, but the
+# user can always bring it back with Super+Shift+A).
+bindsym $mod+Shift+a exec brave --app=http://127.0.0.1:7860
 
 # Switch workspaces
 bindsym $mod+1 workspace number 1

@@ -138,8 +138,10 @@ pub struct App {
     /// Set by the A7 parity slash commands (/trash, /clipboard, /nightlight,
     /// /dnd); the event loop forwards them to the daemon via the matching
     /// `ClientHandle` methods.
-    pub pending_action: Option<DesktopAction>,
-}
+    pub pending_action: Option<DesktopAction>,    /// Set by F9 (`open_agent`); the event loop re-opens the DIAD AGENT GUI.
+    /// RBRO-004 WP-03 — closing the agent window never auto-reopens it, but
+    /// the user can always bring it back with F9 (or Super+Shift+A in sway).
+    pub open_gui_requested: bool,}
 
 /// A7 parity actions the TUI can trigger (trash, clipboard history, night
 /// light, do-not-disturb) — resolved by the event loop in main.rs.
@@ -200,11 +202,20 @@ impl App {
             connect_target,
             pending_config_set: None,
             pending_action: None,
+            open_gui_requested: false,
         }
     }
 
     /// Handle a key event, mutating app state accordingly.
     pub fn handle_key_event(&mut self, key_event: KeyEvent) {
+        // Global action: F9 re-opens the DIAD AGENT GUI (RBRO-004 WP-03).
+        // Checked before the per-mode dispatch so it works from every view.
+        if self.binding_is(&key_event, "open_agent") {
+            self.open_gui_requested = true;
+            self.messages
+                .push("[system] Opening DIAD AGENT GUI (F9)".into());
+            return;
+        }
         match self.mode {
             AppMode::Chat => self.handle_chat_key(key_event),
             AppMode::FileTree => self.handle_filetree_key(key_event),
@@ -243,6 +254,7 @@ impl App {
             "system_status" => KeyEvent::new(KeyCode::F(4), KeyModifiers::empty()),
             "connect" => KeyEvent::new(KeyCode::F(5), KeyModifiers::empty()),
             "provider_picker" => KeyEvent::new(KeyCode::F(6), KeyModifiers::empty()),
+            "open_agent" => KeyEvent::new(KeyCode::F(9), KeyModifiers::empty()),
             "clear_chat" => KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL),
             _ => return false,
         };

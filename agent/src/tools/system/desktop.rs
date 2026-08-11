@@ -73,6 +73,26 @@ pub fn night_light(enabled: bool, temperature: u32) -> anyhow::Result<ToolResult
     }
 }
 
+/// Re-open the DIAD AGENT GUI in a browser app-window (RBRO-004 WP-03).
+///
+/// The supervisor spawns the agent window exactly once at boot; this tool
+/// is the in-chat relaunch (mirrors sway Super+Shift+A and TUI F9). The
+/// browser is spawned detached — the daemon must never block on it.
+pub fn open_agent() -> anyhow::Result<ToolResult> {
+    match Command::new("brave")
+        .arg("--app=http://127.0.0.1:7860")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        Ok(_) => Ok(ToolResult::ok("DIAD AGENT GUI re-opened")),
+        Err(e) => Ok(ToolResult::err(format!(
+            "open_agent: brave failed to launch: {e}"
+        ))),
+    }
+}
+
 /// Degrade a missing-binary / spawn error into `ToolResult::err` so desktop
 /// tools never surface a hard error to callers — absent binaries (CI,
 /// minimal installs) degrade gracefully instead of panicking.

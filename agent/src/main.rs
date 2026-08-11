@@ -472,6 +472,15 @@ async fn run_tui_event_loop(
                     client.config_set(key, value);
                 }
 
+                // ---- F9 (open_agent): re-open the DIAD AGENT GUI ----
+                // RBRO-004 WP-03 — the supervisor spawns the agent window
+                // exactly once at boot; the user relaunches it with F9 (or
+                // Super+Shift+A in sway, or the open_agent tool in chat).
+                if app.open_gui_requested {
+                    app.open_gui_requested = false;
+                    diad_agent::core::open_gui();
+                }
+
                 // ---- A7 parity slash commands (trash/clipboard/night light) ----
                 if let Some(action) = app.pending_action.take() {
                     use diad_agent::tui::app::DesktopAction;

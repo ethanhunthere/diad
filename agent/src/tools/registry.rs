@@ -1217,6 +1217,13 @@ pub fn create_default_registry() -> ToolRegistry {
         }),
     );
 
+    registry.register_tool(
+        "open_agent",
+        "Re-open the DIAD AGENT GUI window (spawned exactly once at boot; use this to bring it back after closing)",
+        serde_json::json!({ "type": "object", "properties": {} }),
+        Arc::new(|_params| desktop::open_agent()),
+    );
+
     //
     // Capture the full tool inventory for help::show_tool_list.
     let _ = REGISTERED_TOOLS.set(registry.list_tools());

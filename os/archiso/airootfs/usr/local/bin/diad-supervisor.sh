@@ -198,11 +198,13 @@ else
 fi
 
 # ---- (c) workspace 1: EXACTLY ONE DIAD AGENT window, focused ----
-# PROMPT-2 S1.1 — never launch GUI and TUI together; WS1 agent windows == 1
-# always. If an agent window already exists, do nothing (no duplicates).
-# Daemon healthy → GUI via the shim (brave --app=…:7860), verify the window
-# maps within 3 s, retry ONCE, then TUI fallback with the reason logged.
-# Daemon down → foot diad-agent --tui directly.
+# RBRO-004 WP-03 — spawn-once policy. The GUI is spawned ONLY when the
+# daemon health check passed (FALLBACK=0). One spawn + one retry (3 s
+# verify each); if the window still does not map, the TUI takes over once.
+# Any count of "unknown" (sway IPC down) is treated as "window present" —
+# the supervisor never spawns a duplicate it cannot see. The GUI never
+# runs together with the TUI; the user can re-open via Super+Shift+A
+# (sway), the open_agent tool, or TUI F9.
 launch_agent_tui() {
     foot --app-id=foot --title "DIAD AGENT" -e diad-agent --tui >/dev/null 2>&1 &
     log "supervisor: TUI fallback opened on workspace 1"
@@ -211,29 +213,28 @@ launch_agent_gui() {
     brave --app=http://127.0.0.1:7860 >/dev/null 2>&1 &
 }
 
-if [[ $(agent_window_count) -gt 0 ]]; then
-    log "supervisor: agent window already present — skipping WS1 launch (no duplicates)"
+agent_cnt=$(count_or_unknown agent_window_count)
+if [[ ${agent_cnt} != "0" ]]; then
+    log "supervisor: agent window already present (count=${agent_cnt}) — skipping WS1 launch"
 elif [[ ${FALLBACK} -eq 1 ]]; then
     launch_agent_tui
 else
     launch_agent_gui
     sleep 3
-    if [[ $(agent_window_count) -gt 0 ]]; then
+    if [[ $(count_or_unknown agent_window_count) != "0" ]]; then
         log "supervisor: DIAD AGENT GUI verified on workspace 1"
     else
         log "supervisor: GUI window not mapped after 3 s — retrying once"
         launch_agent_gui
         sleep 3
-        if [[ $(agent_window_count) -gt 0 ]]; then
+        if [[ $(count_or_unknown agent_window_count) != "0" ]]; then
             log "supervisor: DIAD AGENT GUI verified on workspace 1 (retry)"
         else
             log "supervisor: GUI failed twice — engaging TUI fallback (reason in daemon.log)"
             # PROMPT-2 S4.3 — persist the exact reason for the next GUI start
-            # (read + cleared via GET/DELETE /api/v1/gui/fallback) and send a
-            # live notification now.
+            # (read + cleared via GET/DELETE /api/v1/gui/fallback).
             reason="GUI failed twice: Brave flatpak + chromium shim could not open a window for http://127.0.0.1:7860 — TUI fallback engaged"
             printf '%s\n' "${reason}" > "${DIAD_HOME}/.gui-fallback-reason"
-            notify-send "DIAD AGENT: GUI failed — TUI engaged" "${reason}" -u critical 2>/dev/null || true
             tail -n 10 "${DIAD_HOME}/daemon.log" >> "${LOG_FILE}" 2>&1 || true
             launch_agent_tui
         fi
