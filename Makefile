@@ -65,7 +65,7 @@ iso: gui
 	cp $(TARGET_DIR)/release/$(BINARY) $(ISO_DIR)/airootfs/usr/local/bin/$(BINARY)
 	chmod +x $(ISO_DIR)/airootfs/usr/local/bin/$(BINARY)
 	@echo "  [3/5] Validating nftables rules (build-time gate)..."
-	@nft -cf $(ISO_DIR)/airootfs/etc/nftables.conf && echo "  nftables.conf OK" || (echo "  ERROR: nftables.conf failed validation" && exit 1)
+	@sudo nft -cf $(ISO_DIR)/airootfs/etc/nftables.conf && echo "  nftables.conf OK" || (echo "  ERROR: nftables.conf failed validation" && exit 1)
 	@echo "  [4/5] Assembling ISO with mkarchiso (this takes a while)..."
 	mkdir -p work out
 	sudo mkarchiso -v -w work -o out $(ISO_DIR)
