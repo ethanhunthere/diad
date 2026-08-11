@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { useStore } from "../stores/useStore";
-import { clock12 } from "../lib/format";
+import { useStore, sendMsg } from "../stores/useStore";
+import { clock12, nextId } from "../lib/format";
 
 /**
  * Top bar — wordmark, palette trigger, provider·model pill,
- * connection dot, GUI⇄TUI toggle, clock. Accepts an optional
- * hamburger slot, shown only at the TINY breakpoint (see CSS).
+ * connection dot, GUI⇄TUI toggle, power menu, clock. Accepts an
+ * optional hamburger slot, shown only at the TINY breakpoint (see CSS).
  */
 export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
   const provider = useStore((s) => s.provider);
@@ -26,6 +26,37 @@ export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
     const t = setInterval(() => setTime(clock12()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Power menu (RBRO-004 WP-06.6 — GUI ⇄ TUI parity: the same
+  // daemon slash commands the TUI accepts, always confirmed).
+  const [powerOpen, setPowerOpen] = useState(false);
+  const powerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!powerOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (powerRef.current && !powerRef.current.contains(e.target as Node)) {
+        setPowerOpen(false);
+      }
+    };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPowerOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [powerOpen]);
+
+  const powerAction = (action: "sleep" | "reboot" | "shutdown") => {
+    setPowerOpen(false);
+    if (!send) {
+      toast({ kind: "warn", title: "Daemon offline", message: "Cannot send power command while the daemon is disconnected.", ttl: 4000 });
+      return;
+    }
+    sendMsg({ type: "chat_send", id: nextId("power"), text: `/${action}` });
+  };
 
   const spawnTui = () => {
     if (send) send({ v: 1, type: "spawn_tui" });
@@ -101,6 +132,50 @@ export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
         <span className="font-mono text-[12px]">▮▯</span>
         TUI
       </button>
+
+      <div className="mx-1 h-4 w-px bg-border-strong" />
+
+      {/* Power menu — Sleep / Restart / Shutdown (confirmed daemon-side) */}
+      <div className="relative" ref={powerRef}>
+        <button
+          className={`btn-ghost h-7 px-2 text-[12px] ${powerOpen ? "text-copper-hover" : "text-dim hover:text-ink"}`}
+          onClick={() => setPowerOpen((o) => !o)}
+          title="Power (Sleep / Restart / Shutdown)"
+          aria-expanded={powerOpen}
+          aria-haspopup="menu"
+        >
+          ⏻
+        </button>
+        {powerOpen && (
+          <div
+            role="menu"
+            className="glass absolute right-0 top-9 z-40 w-40 overflow-hidden rounded-lg border border-border-subtle bg-surface-2/95 py-1 shadow-lg"
+          >
+            <button
+              role="menuitem"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] text-dim hover:bg-surface-3/80 hover:text-ink"
+              onClick={() => powerAction("sleep")}
+            >
+              <span className="w-4 text-center">☾</span> Sleep
+            </button>
+            <button
+              role="menuitem"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] text-dim hover:bg-surface-3/80 hover:text-ink"
+              onClick={() => powerAction("reboot")}
+            >
+              <span className="w-4 text-center">⟳</span> Restart
+            </button>
+            <div className="my-1 h-px bg-border-strong" />
+            <button
+              role="menuitem"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] text-danger hover:bg-danger/10 hover:text-danger"
+              onClick={() => powerAction("shutdown")}
+            >
+              <span className="w-4 text-center">⏻</span> Shutdown
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="mx-1 h-4 w-px bg-border-strong" />
 

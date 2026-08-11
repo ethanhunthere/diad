@@ -245,15 +245,33 @@ pub fn set_brightness(percent: u8) -> anyhow::Result<ToolResult> {
 // Power (systemctl)
 // ===========================================================================
 
+/// Map a power action word to the real `systemctl` verb.
+///
+/// Returns `None` for anything that is not a valid action.
+///
+/// THE LAW (RBRO-004 WP-06.6): every power surface — waybar buttons
+/// (`diad-power.sh`), the GUI top-bar menu and the TUI slash commands — must
+/// converge on the same `systemctl` verbs. `shutdown` maps to `poweroff`
+/// because `systemctl shutdown` is not a verb: the sudoers drop-in pins
+/// `/usr/bin/systemctl poweroff` (never `shutdown`).
+pub fn power_verb(action: &str) -> Option<&'static str> {
+    match action {
+        "shutdown" => Some("poweroff"),
+        "reboot" => Some("reboot"),
+        "suspend" => Some("suspend"),
+        _ => None,
+    }
+}
+
 /// Power action: "shutdown", "reboot", or "suspend".
 ///
 /// NOTE: The orchestrator MUST require explicit user confirmation in the TUI
 /// before this tool executes — it is a destructive system action.
 pub fn power(action: &str) -> anyhow::Result<ToolResult> {
-    match action {
-        "shutdown" | "reboot" | "suspend" => run_privileged(&["systemctl", action]),
-        other => Ok(ToolResult::err(format!(
-            "power: invalid action '{other}'. Valid actions: shutdown, reboot, suspend"
+    match power_verb(action) {
+        Some(verb) => run_privileged(&["systemctl", verb]),
+        None => Ok(ToolResult::err(format!(
+            "power: invalid action '{action}'. Valid actions: shutdown, reboot, suspend"
         ))),
     }
 }
@@ -303,6 +321,27 @@ mod tests {
     #[test]
     fn test_power_invalid_action() {
         let result = power("hack").unwrap();
+        assert!(!result.success);
+        assert!(result.error.unwrap().contains("invalid action"));
+    }
+
+    #[test]
+    fn test_power_verb_mapping() {
+        // THE LAW (RBRO-004 WP-06.6): shutdown must resolve to the real
+        // systemctl verb `poweroff` — `systemctl shutdown` is not a verb and
+        // is never allowed by the sudoers drop-in.
+        assert_eq!(power_verb("shutdown"), Some("poweroff"));
+        assert_eq!(power_verb("reboot"), Some("reboot"));
+        assert_eq!(power_verb("suspend"), Some("suspend"));
+        assert_eq!(power_verb("hack"), None);
+        assert_eq!(power_verb(""), None);
+        assert_eq!(power_verb("power"), None);
+    }
+
+    #[test]
+    fn test_power_rejects_unknown_without_sudo() {
+        // Never reaches run_privileged — validation returns early.
+        let result = power("--help").unwrap();
         assert!(!result.success);
         assert!(result.error.unwrap().contains("invalid action"));
     }

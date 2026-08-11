@@ -3058,7 +3058,7 @@ mod tests {
         let resp = app
             .oneshot(
                 axum::http::Request::builder()
-                    .uri("/assets/index-SSCwFkg3.js")
+                    .uri("/assets/index-BV-xNFif.js")
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -3073,7 +3073,7 @@ mod tests {
             .to_string();
         assert!(
             ct.contains("javascript"),
-            "/assets/index-SSCwFkg3.js must be javascript, got {ct}"
+            "/assets/index-BV-xNFif.js must be javascript, got {ct}"
         );
         let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
             .await

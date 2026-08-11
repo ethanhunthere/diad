@@ -315,7 +315,17 @@ async fn execute_tool_with_prompts(
         let label = match tc.name.as_str() {
             "power" => {
                 let action = params["action"].as_str().unwrap_or("").to_string();
-                format!("Run `systemctl {action}`? This will {action} the system.")
+                // THE LABEL MUST SHOW THE REAL VERB (RBRO-004 WP-06.6):
+                // `shutdown` executes as `systemctl poweroff` (sudoers pins
+                // poweroff), so the confirmation must say poweroff too.
+                let verb =
+                    crate::tools::hardware::device::power_verb(&action).unwrap_or(action.as_str());
+                let human = match verb {
+                    "poweroff" => "power off",
+                    "reboot" => "reboot",
+                    _ => "suspend",
+                };
+                format!("Run `systemctl {verb}`? This will {human} the system.")
             }
             "apply_system_updates" => {
                 "Run `pacman -Syu --noconfirm`? This will update all system packages.".to_string()

@@ -308,6 +308,18 @@ pub(crate) fn next_id(prefix: &str) -> String {
     format!("{prefix}-{n}")
 }
 
+/// RBRO-004 WP-06.6 — map a power slash command to the `device::power`
+/// action name. Mirrors `device::power_verb` (shutdown→poweroff) so the
+/// confirm label always shows the real systemctl verb.
+fn slash_power_action(cmd: &str) -> Option<&'static str> {
+    match cmd {
+        "/shutdown" => Some("shutdown"),
+        "/reboot" => Some("reboot"),
+        "/sleep" => Some("suspend"),
+        _ => None,
+    }
+}
+
 /// Convert an orchestrator `Event` into frontend messages through a `Conn`.
 ///
 /// Mirrors what the old monolithic TUI event loop did locally, but over WS.
@@ -536,11 +548,69 @@ pub(crate) async fn handle_chat_send(state: &DaemonState, conn: &Conn, id: Strin
 
     // Local slash commands never need a provider.
     let trimmed = text.trim();
-    if matches!(trimmed, "/help" | "/tools" | "/version") {
+    if matches!(
+        trimmed,
+        "/help" | "/tools" | "/version" | "/shutdown" | "/reboot" | "/sleep"
+    ) {
         let _ = conn.tx.try_send(ServerMsg::Token {
             id: id.clone(),
             text: String::new(),
         });
+
+        // RBRO-004 WP-06.6 — power slash commands always work, connected or
+        // not (THE LAW: same confirmed `device::power` flow as the offline
+        // router, converging on the same systemctl verbs as diad-power.sh).
+        if let Some(action) = slash_power_action(trimmed) {
+            let conn = conn.clone();
+            let state = state.clone();
+            let tx = conn.tx.clone();
+            let req_id = id.clone();
+            let action = action.to_string();
+            state.streaming.fetch_add(1, Ordering::SeqCst);
+            state.broadcast_status();
+            tokio::spawn(async move {
+                let verb = device::power_verb(&action).unwrap_or(&action);
+                let human = match verb {
+                    "poweroff" => "power off",
+                    "reboot" => "reboot",
+                    _ => "suspend",
+                };
+                let (reply_tx, mut reply_rx) = unbounded_channel::<bool>();
+                let cid = next_id("confirm");
+                conn.prompts.register_confirm(cid.clone(), reply_tx);
+                let _ = tx.try_send(ServerMsg::ConfirmRequest {
+                    id: cid,
+                    label: format!("Run `systemctl {verb}`? This will {human} the system."),
+                });
+                let confirmed = reply_rx.recv().await.unwrap_or(false);
+                if !confirmed {
+                    let _ = tx.try_send(ServerMsg::System {
+                        message: "[local] power action cancelled.".into(),
+                    });
+                } else if let Ok(result) = device::power(&action) {
+                    if result.success {
+                        let human = match verb {
+                            "poweroff" => "powering off",
+                            "reboot" => "rebooting",
+                            _ => "suspending",
+                        };
+                        let _ = tx.try_send(ServerMsg::System {
+                            message: format!("[tool] power ✓ — {human}"),
+                        });
+                    } else {
+                        let err = result.error.unwrap_or_default();
+                        let _ = tx.try_send(ServerMsg::System {
+                            message: format!("[tool] power ✗ {err}"),
+                        });
+                    }
+                }
+                end_turn(&state);
+                state.broadcast_status();
+                let _ = tx.try_send(ServerMsg::StreamDone { id: req_id });
+            });
+            return;
+        }
+
         let result = match trimmed {
             "/help" => crate::tools::help::show_help(),
             "/tools" => crate::tools::help::show_tool_list(),
@@ -856,13 +926,21 @@ pub(crate) async fn handle_chat_send(state: &DaemonState, conn: &Conn, id: Strin
                     let _ = tx.try_send(ServerMsg::System {
                         message: "[local] offline intent executed".into(),
                     });
-                    // Destructive — always confirm via the WS broker.
+                    // Destructive — always confirm via the WS broker. The
+                    // label shows the REAL systemctl verb (poweroff, never
+                    // shutdown — RBRO-004 WP-06.6).
                     let (reply_tx, mut reply_rx) = unbounded_channel::<bool>();
                     let cid = next_id("confirm");
                     conn.prompts.register_confirm(cid.clone(), reply_tx);
+                    let verb = device::power_verb(&action).unwrap_or(&action);
+                    let human = match verb {
+                        "poweroff" => "power off",
+                        "reboot" => "reboot",
+                        _ => "suspend",
+                    };
                     let _ = tx.try_send(ServerMsg::ConfirmRequest {
                         id: cid,
-                        label: format!("Run `systemctl {action}`? This will {action} the system."),
+                        label: format!("Run `systemctl {verb}`? This will {human} the system."),
                     });
                     let confirmed = reply_rx.recv().await.unwrap_or(false);
                     if !confirmed {
@@ -871,8 +949,13 @@ pub(crate) async fn handle_chat_send(state: &DaemonState, conn: &Conn, id: Strin
                         });
                     } else if let Ok(result) = device::power(&action) {
                         if result.success {
+                            let human = match verb {
+                                "poweroff" => "powering off",
+                                "reboot" => "rebooting",
+                                _ => "suspending",
+                            };
                             let _ = tx.try_send(ServerMsg::System {
-                                message: format!("[tool] power ✓ — system is {action}ing"),
+                                message: format!("[tool] power ✓ — {human}"),
                             });
                         } else {
                             let err = result.error.unwrap_or_default();
@@ -1831,5 +1914,31 @@ mod tests {
             DiadConfig::default().auto_save_interval
         );
         assert_eq!(cfg.max_history, DiadConfig::default().max_history);
+    }
+
+    /// RBRO-004 WP-06.6 — slash power commands map to device::power actions
+    /// (which in turn map to real systemctl verbs via device::power_verb).
+    #[test]
+    fn test_slash_power_action_mapping() {
+        assert_eq!(slash_power_action("/shutdown"), Some("shutdown"));
+        assert_eq!(slash_power_action("/reboot"), Some("reboot"));
+        assert_eq!(slash_power_action("/sleep"), Some("suspend"));
+        // Non-power slashes and junk are NOT power actions.
+        assert_eq!(slash_power_action("/help"), None);
+        assert_eq!(slash_power_action("/tools"), None);
+        assert_eq!(slash_power_action("shutdown"), None);
+        assert_eq!(slash_power_action(""), None);
+        assert_eq!(slash_power_action("rm -rf /"), None);
+    }
+
+    /// RBRO-004 WP-06.6 — the slash path converges on the same systemctl verb
+    /// the sudoers file pins (poweroff, never `shutdown`).
+    #[test]
+    fn test_slash_power_verbs_converge_with_sudoers() {
+        // device::power_verb maps the slash action to the verb that actually
+        // runs. `shutdown` must become `poweroff` (sudoers pins poweroff).
+        assert_eq!(device::power_verb("shutdown"), Some("poweroff"));
+        assert_eq!(device::power_verb("reboot"), Some("reboot"));
+        assert_eq!(device::power_verb("suspend"), Some("suspend"));
     }
 }

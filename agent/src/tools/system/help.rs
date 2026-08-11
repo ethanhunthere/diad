@@ -13,6 +13,9 @@ SLASH COMMANDS
   /help      Show this help text
   /tools     List every tool the agent can execute
   /version   Show DIAD version and build info
+  /shutdown  Power the system off (always asks for confirmation)
+  /reboot    Restart the system (always asks for confirmation)
+  /sleep     Suspend the system (always asks for confirmation)
   /model     Open the provider & model picker (or press F6)
   /connect            Set up an API key for the current provider (or press F5)
   /connect <name>     Set up an API key for any provider by name (kimi, deepseek,

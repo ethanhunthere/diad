@@ -1,6 +1,14 @@
+/* =============================================================================
+   DIAD waybar — glass pills (RBRO-004 WP-06.4).
+   Every module is a frosted-glass pill: rgba(20,16,13,0.65) + blur(20px) +
+   1px hairline border. Window controls fuse into one pill [–|□|×]; the power
+   trio sits to their right with an extra 6px breathing gap (suspend
+   margin-left 6px). Icons are Font Awesome 6 Free solid (font-weight 900).
+   ========================================================================== */
+
 * {
   font-family: "JetBrains Mono", monospace;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 #waybar {
@@ -8,70 +16,48 @@
   border: none;
 }
 
+/* ---- Glass pill base — shared by every module ------------------------ */
 #clock,
-#workspaces {
-  background: rgba(46, 32, 24, 0.65);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #eadbcf;
-  padding: 4px 14px;
-  margin: 6px 3px;
+#workspaces,
+#custom-suspend,
+#custom-reboot,
+#custom-power,
+#custom-winmin,
+#custom-winmax,
+#custom-winclose {
+  padding: 0 12px;
+  margin: 6px 0;
+  font-size: 14px;
+  color: #ede6de;
+  background: rgba(20, 16, 13, 0.65);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
 }
 
+/* ---- Workspaces ------------------------------------------------------- */
 #workspaces button {
   background: transparent;
   border: none;
-  color: #eadbcf;
-  padding: 0 10px;
-  border-radius: 12px;
+  color: #ede6de;
+  padding: 0 8px;
+  border-radius: 10px;
 }
 
+/* Active workspace: copper at 45% alpha — warm highlight on the glass. */
 #workspaces button.active {
-  background: #8b5e3c;
+  background: rgba(224, 149, 92, 0.45);
   color: #ffffff;
 }
 
 #workspaces button:hover {
-  background: rgba(139, 94, 60, 0.35);
+  background: rgba(255, 255, 255, 0.08);
 }
 
-/* MASTER FIX S3 — power buttons (sleep / restart / shutdown) */
-/* PROMPT-2 S3 — right-side pills share 6px gaps (margin 3+3) with the joined
-   window-control pill [–][□][×] directly to their left. */
-#custom-suspend,
-#custom-reboot,
-#custom-power {
-  background: rgba(46, 32, 24, 0.65);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #eadbcf;
-  padding: 4px 10px;
-  margin: 6px 3px;
-}
-
-#custom-suspend:hover,
-#custom-reboot:hover,
-#custom-power:hover {
-  background: rgba(139, 94, 60, 0.35);
-}
-
-/* Shutdown is the destructive one — tint it warm-red so it stands apart. */
-#custom-power {
-  color: #e06c75;
-}
-
-/* PROMPT-2 S3 — window-control pill [–][□][×]: three modules fused into one
-   rounded pill (winmin left cap, winmax center, winclose right cap) with
-   6px gaps to everything else. */
-#custom-winmin,
-#custom-winmax,
-#custom-winclose {
-  background: rgba(46, 32, 24, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #eadbcf;
-  padding: 4px 10px;
-}
-
+/* ---- Window-control pill [–|□|×] — one fused pill ---------------------
+   winmin left cap, winmax flat center, winclose right cap. Negative left
+   margins cancel waybar's 6px module spacing so the three fuse seamlessly;
+   the surrounding pills keep their normal 6px gaps. */
 #custom-winmin {
   border-radius: 12px 0 0 12px;
   margin: 6px 0 6px 3px;
@@ -79,24 +65,65 @@
 
 #custom-winmax {
   border-radius: 0;
-  margin: 6px 0;
+  margin: 6px 0 6px -6px;
 }
 
 #custom-winclose {
   border-radius: 0 12px 12px 0;
-  margin: 6px 3px 6px 0;
+  margin: 6px 0 6px -6px;
 }
 
 /* Hover tints: minimize dims, maximize warms to copper, close warns red. */
 #custom-winmin:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: #8a7f75;
 }
 
 #custom-winmax:hover {
-  background: rgba(139, 94, 60, 0.35);
+  background: #e0955c;
 }
 
 #custom-winclose:hover {
-  background: rgba(224, 122, 122, 0.3);
+  background: #e07a7a;
+}
+
+/* ---- Power pill (sleep / restart / shutdown) ---------------------------
+   suspend carries an extra 6px left margin so the power cluster breathes
+   apart from the window-control pill; power sits 3px off the screen edge. */
+#custom-suspend {
+  border-radius: 12px;
+  margin: 6px 0 6px 6px;
+}
+
+#custom-reboot {
+  border-radius: 12px;
+}
+
+#custom-power {
+  border-radius: 12px;
+  margin: 6px 3px 6px 0;
+}
+
+#custom-suspend:hover,
+#custom-reboot:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Shutdown is the destructive one — tint it warm-red so it stands apart. */
+#custom-power {
   color: #e07a7a;
+}
+
+#custom-power:hover {
+  background: rgba(224, 122, 122, 0.3);
+}
+
+/* ---- Font Awesome solid glyphs (otf-font-awesome, weight 900) --------- */
+#custom-suspend,
+#custom-reboot,
+#custom-power,
+#custom-winmin,
+#custom-winmax,
+#custom-winclose {
+  font-family: "Font Awesome 6 Free", "Font Awesome 5 Free";
+  font-weight: 900;
 }

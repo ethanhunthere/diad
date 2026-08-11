@@ -32,6 +32,13 @@ case "${action}" in
         ;;
 esac
 
+# RBRO-004 WP-06.5 — dry-run mode for QEMU / hardware validation:
+# prints exactly what would run, then exits without touching the system.
+if [ "${DIAD_POWER_DRYRUN:-}" = "1" ]; then
+    echo "WOULD: systemctl ${cmd#/usr/bin/systemctl }"
+    exit 0
+fi
+
 confirm() {
     if ! command -v wofi >/dev/null 2>&1; then
         return 0

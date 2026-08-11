@@ -61,32 +61,32 @@
     }
   },
   "custom/suspend": {
-    "format": "⏾",
+    "format": "\uf186",
     "tooltip": "Sleep",
     "on-click": "/usr/local/bin/diad-power.sh suspend"
   },
   "custom/reboot": {
-    "format": "↻",
+    "format": "\uf021",
     "tooltip": "Restart",
     "on-click": "/usr/local/bin/diad-power.sh reboot"
   },
   "custom/power": {
-    "format": "⏻",
+    "format": "\uf011",
     "tooltip": "Shutdown",
     "on-click": "/usr/local/bin/diad-power.sh power"
   },
   "custom/winmin": {
-    "format": "–",
+    "format": "\uf2d1",
     "tooltip": "Minimize",
     "on-click": "/usr/local/bin/diad-windowctl minimize"
   },
   "custom/winmax": {
-    "format": "□",
+    "format": "\uf2d0",
     "tooltip": "Maximize",
     "on-click": "/usr/local/bin/diad-windowctl maximize"
   },
   "custom/winclose": {
-    "format": "×",
+    "format": "\uf2d3",
     "tooltip": "Close",
     "on-click": "/usr/local/bin/diad-windowctl close"
   }
