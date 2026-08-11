@@ -74,7 +74,7 @@ client.urgent           #e06c75 #e06c75 #ffffff #e06c75 #e06c75
 # ---- Workspace Assignment ----
 # Workspace 1: DIAD AGENT GUI — Brave app window titled "DIAD AGENT"
 # (must precede the plain-Brave rule so the app window lands on ws1).
-# Workspace 2: Brave Browser
+# Workspace 2: DIAD Apps icon page + plain browser (RBRO-004 WP-04)
 # Workspace 3: DIAD Launchpad + chat apps (Telegram/Slack)
 #   - Launchpad rule must precede the generic-Brave rules so the app window
 #     (opened as `brave --app=http://127.0.0.1:7860/launch`) lands on ws3.
@@ -86,9 +86,15 @@ client.urgent           #e06c75 #e06c75 #ffffff #e06c75 #e06c75
 # zero; it never kills or caps. Do not assume such limits exist.
 assign [title="DIAD AGENT"] 1
 assign [app_id="foot"] 1
+assign [title="DIAD Apps"] 2
 assign [title="DIAD Launchpad"] 3
 assign [app_id="brave-browser"] 2
 assign [app_id="com.brave.Browser"] 2
+# The plain browser window opens as "New Tab" (map-time title); the DIAD
+# app-windows (GUI/Apps/Launchpad) map with URL titles and are handled by
+# the for_window rules above, so a generic chromium assign is deliberately
+# absent — it would steal the app-windows at map time (RBRO-004 WP-04).
+assign [app_id="chromium" title="New Tab"] 2
 assign [app_id="org.telegram.desktop"] 3
 assign [app_id="com.slack.Slack"] 3
 

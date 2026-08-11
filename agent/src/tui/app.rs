@@ -138,10 +138,12 @@ pub struct App {
     /// Set by the A7 parity slash commands (/trash, /clipboard, /nightlight,
     /// /dnd); the event loop forwards them to the daemon via the matching
     /// `ClientHandle` methods.
-    pub pending_action: Option<DesktopAction>,    /// Set by F9 (`open_agent`); the event loop re-opens the DIAD AGENT GUI.
+    pub pending_action: Option<DesktopAction>,
+    /// Set by F9 (`open_agent`); the event loop re-opens the DIAD AGENT GUI.
     /// RBRO-004 WP-03 — closing the agent window never auto-reopens it, but
     /// the user can always bring it back with F9 (or Super+Shift+A in sway).
-    pub open_gui_requested: bool,}
+    pub open_gui_requested: bool,
+}
 
 /// A7 parity actions the TUI can trigger (trash, clipboard history, night
 /// light, do-not-disturb) — resolved by the event loop in main.rs.

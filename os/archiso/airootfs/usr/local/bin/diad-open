@@ -1,0 +1,76 @@
+#!/usr/bin/env sh
+# =============================================================================
+# DIAD — app launcher for the icon pages and TUI (RBRO-004 WP-04/WP-05)
+# =============================================================================
+# One command for every app the icon pages (and the TUI) can open:
+#
+#   diad-open browser   → plain browser on workspace 2, MAXIMIZED; single
+#                         instance (repeat calls focus the existing window)
+#   diad-open telegram  → Telegram (flatpak if installed, else web app)
+#   diad-open slack     → Slack (flatpak if installed, else web app)
+#
+# The browser/chat windows land on their workspaces via the sway
+# assign/for_window rules (browser → 2, Telegram/Slack → 3), so this script
+# never hard-codes workspaces for the chat apps.
+#
+# THE LAW (GUI/TUI parity): the daemon's POST /api/v1/launch endpoint and
+# the TUI's /open command both exec this same script.
+# =============================================================================
+
+set -u
+
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+app="${1:-}"
+case "${app}" in
+    browser)
+        # Single instance on workspace 2. A plain browser window is any
+        # brave/chromium window whose title is NOT one of the DIAD app
+        # windows (agent GUI, apps icon page, launchpad).
+        win_id="$(swaymsg -t get_tree 2>/dev/null | jq -r '.. | objects |
+            select(.type? == "con"
+               and ((.app_id? // "") | test("brave|chromium"))
+               and (((.name? // "") | test("DIAD AGENT|DIAD Apps|DIAD Launchpad")) | not))
+            | .id' 2>/dev/null | head -n 1)"
+        if [ -n "${win_id}" ]; then
+            swaymsg "[con_id=${win_id}] focus" >/dev/null 2>&1
+            swaymsg workspace 2 >/dev/null 2>&1
+            swaymsg fullscreen enable >/dev/null 2>&1
+            exit 0
+        fi
+        swaymsg workspace 2 >/dev/null 2>&1
+        brave --new-window >/dev/null 2>&1 &
+        sleep 1
+        # The new window maps on workspace 2 (assign rule) and takes focus;
+        # maximize it.
+        swaymsg fullscreen enable >/dev/null 2>&1
+        exit 0
+        ;;
+    telegram)
+        if command -v flatpak >/dev/null 2>&1 \
+            && flatpak list --app --columns=application 2>/dev/null | grep -qx 'org.telegram.desktop'; then
+            exec flatpak run org.telegram.desktop
+        fi
+        # Web fallback (chromium always ships on the ISO).
+        exec chromium --app=https://web.telegram.org/k/ --no-first-run \
+            --no-default-browser-check --disable-background-networking \
+            --disable-component-update --disable-features=Translate,MediaRouter \
+            --metrics-recording-only --disable-breakpad
+        ;;
+    slack)
+        if command -v flatpak >/dev/null 2>&1 \
+            && flatpak list --app --columns=application 2>/dev/null | grep -qx 'com.slack.Slack'; then
+            exec flatpak run com.slack.Slack
+        fi
+        # Web fallback (chromium always ships on the ISO).
+        exec chromium --app=https://app.slack.com/client --no-first-run \
+            --no-default-browser-check --disable-background-networking \
+            --disable-component-update --disable-features=Translate,MediaRouter \
+            --metrics-recording-only --disable-breakpad
+        ;;
+    *)
+        notify-send "diad-open: unknown app '${app}' (browser|telegram|slack)" -u critical 2>/dev/null || true
+        exit 1
+        ;;
+esac

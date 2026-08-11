@@ -11,8 +11,8 @@
 #       on timeout log the daemon tail and set FALLBACK=1
 #   (c) workspace 1: daemon healthy → DIAD AGENT GUI (brave --app); otherwise
 #       foot diad-agent --tui (guaranteed surface either way)
-#   (d) workspace 2: browser respawn loop (5 s, quiet) — the brave shim
-#       resolves flatpak com.brave.Browser → chromium → notify-send
+#   (d) workspace 2: DIAD Apps icon page — spawn once, verify, one retry,
+#       NO respawn loop (RBRO-004 WP-04): the browser opens only on click
 #   (e) workspace 3: DIAD Launchpad respawn loop (5 s, quiet), only while the
 #       daemon serves it
 #   (f) first-run wizard (independent window — never blocks the boot)
@@ -66,23 +66,36 @@ daemon_healthy() {
     curl -sf http://127.0.0.1:7860/api/v1/status >/dev/null 2>&1
 }
 
-# Number of real browser windows on any workspace, EXCLUDING the DIAD AGENT
-# GUI and the DIAD Launchpad (both are also browser app-windows). Uses sway's
-# window tree when available; falls back to a process count pre-sway.
+# Number of real browser windows on any workspace, EXCLUDING the DIAD app
+# windows (agent GUI, DIAD Apps icon page, DIAD Launchpad — all are also
+# browser app-windows). Uses sway's window tree when available; falls back
+# to a process count pre-sway. (RBRO-004 WP-04: exclusion list updated.)
 browser_window_count() {
     if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
         swaymsg -t get_tree 2>/dev/null \
             | jq -r '.. | objects | select(.type? == "con" and (.app_id? // "" | test("brave|chromium"))) | (.name? // "")' 2>/dev/null \
-            | grep -cvE '^(DIAD AGENT|DIAD Launchpad)$' || true
+            | grep -cvE '^(DIAD AGENT|DIAD Apps|DIAD Launchpad)$' || true
     else
         pgrep -fc 'brave|chromium' 2>/dev/null || echo 0
+    fi
+}
+
+# The DIAD Apps icon page (workspace 2). Matches the document title AND the
+# map-time URL title, whichever sway currently reports (RBRO-004 WP-04).
+apps_page_count() {
+    if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
+        swaymsg -t get_tree 2>/dev/null \
+            | jq -r '.. | objects | select(.type? == "con" and ((.name? // "") | test("DIAD Apps|7860/apps"))) | .name' 2>/dev/null \
+            | wc -l
+    else
+        pgrep -fc -- '--app=http://127.0.0.1:7860/apps' 2>/dev/null || echo 0
     fi
 }
 
 launchpad_window_count() {
     if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
         swaymsg -t get_tree 2>/dev/null \
-            | jq -r '.. | objects | select(.type? == "con" and (.name? // "" == "DIAD Launchpad")) | .name' 2>/dev/null \
+            | jq -r '.. | objects | select(.type? == "con" and ((.name? // "") | test("DIAD Launchpad|7860/launch"))) | .name' 2>/dev/null \
             | wc -l
     else
         pgrep -fc -- '--app=http://127.0.0.1:7860/launch' 2>/dev/null || echo 0
@@ -266,20 +279,30 @@ if command -v swaymsg >/dev/null 2>&1; then
     fi
 fi
 
-# ---- (d) workspace 2: browser respawn loop (5 s, quiet) ----
-if browser_possible; then
-    (
-        brave --new-window >/dev/null 2>&1 &
-        while true; do
-            if [[ $(browser_window_count) -eq 0 ]]; then
-                brave --new-window >/dev/null 2>&1 &
-            fi
-            sleep 5
-        done
-    ) >> "${LOG_FILE}" 2>&1 &
-    log "supervisor: browser respawn loop started (workspace 2)"
+# ---- (d) workspace 2: DIAD Apps icon page (RBRO-004 WP-04) ----
+# EXACTLY ONE icon page at boot: spawn, verify, one retry — NO respawn
+# loop. The page is a launcher; the browser opens ONLY on click
+# (POST /api/v1/launch). This kills the old WS2 flood: the browser is no
+# longer auto-spawned every 5 s while a window "was missing".
+if daemon_healthy; then
+    spawn_apps_page() {
+        brave --app=http://127.0.0.1:7860/apps >/dev/null 2>&1 &
+    }
+    spawn_apps_page
+    sleep 3
+    if [[ $(count_or_unknown apps_page_count) != "0" ]]; then
+        log "supervisor: DIAD Apps icon page verified on workspace 2"
+    else
+        spawn_apps_page
+        sleep 3
+        if [[ $(count_or_unknown apps_page_count) != "0" ]]; then
+            log "supervisor: DIAD Apps icon page verified on workspace 2 (retry)"
+        else
+            log "supervisor: DIAD Apps icon page did not map — browser opens on click only"
+        fi
+    fi
 else
-    log "supervisor: no browser available (flatpak brave not installed, chromium missing)"
+    log "supervisor: daemon down — DIAD Apps icon page skipped"
 fi
 
 # ---- (e) workspace 3: DIAD Launchpad respawn loop (5 s, quiet) ----

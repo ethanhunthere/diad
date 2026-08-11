@@ -228,6 +228,12 @@ pub fn api_router() -> Router<Arc<DaemonState>> {
             "/gui/fallback",
             get(api_gui_fallback).delete(api_gui_fallback_clear),
         )
+        // RBRO-004 WP-04/WP-05 — app launcher for the icon pages and TUI.
+        // POST /launch opens an app via the diad-open shim; GET
+        // /launch/status tells the pages what to render and when the
+        // launchpad may auto-close.
+        .route("/launch", post(api_launch))
+        .route("/launch/status", get(api_launch_status))
         // Chat
         .route("/chat", post(api_chat))
         // Providers
@@ -404,6 +410,128 @@ async fn api_gui_fallback() -> Response {
 async fn api_gui_fallback_clear() -> Response {
     let _ = std::fs::remove_file(gui_fallback_path());
     Json(json!({ "ok": true })).into_response()
+}
+
+// ---------------------------------------------------------------------------
+// RBRO-004 WP-04/WP-05 — app launcher (icon pages + TUI parity)
+// ---------------------------------------------------------------------------
+
+/// `POST /api/v1/launch` — open an app through the `diad-open` shim.
+///
+/// Body: `{"app": "browser" | "telegram" | "slack"}`. The daemon spawns
+/// `diad-open <app>` detached so it never blocks on the browser; the sway
+/// assign/for_window rules route the window to the right workspace. With
+/// `DIAD_OPEN_DRYRUN=1` nothing is spawned (test hook — the sandbox has no
+/// sway/browser).
+async fn api_launch(Json(req): Json<Value>) -> Response {
+    let app = match req.get("app").and_then(Value::as_str) {
+        Some(a) if matches!(a, "browser" | "telegram" | "slack") => a.to_string(),
+        _ => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "unknown app: expected browser|telegram|slack",
+            );
+        }
+    };
+    if std::env::var_os("DIAD_OPEN_DRYRUN").is_some() {
+        return Json(json!({ "ok": true, "app": app, "dry_run": true })).into_response();
+    }
+    match std::process::Command::new("diad-open").arg(&app).spawn() {
+        Ok(_) => Json(json!({ "ok": true, "app": app })).into_response(),
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("failed to spawn diad-open {app}: {e}"),
+        ),
+    }
+}
+
+/// `GET /api/v1/launch/status` — what the icon pages render.
+///
+/// Returns the default browser label ("brave" when the flatpak is present,
+/// else "chromium" — chromium always ships on the ISO), which chat apps are
+/// installed, and which are currently open (parsed from the sway tree). The
+/// launchpad auto-closes once both chat apps are open (WP-05).
+async fn api_launch_status() -> Response {
+    let (browser, installed, open) = blocking(move || {
+        let apps = flatpak_app_ids();
+        let browser = if apps.iter().any(|a| a == "com.brave.Browser") {
+            "brave"
+        } else {
+            "chromium"
+        };
+        let installed = json!({
+            "telegram": apps.iter().any(|a| a == "org.telegram.desktop"),
+            "slack": apps.iter().any(|a| a == "com.slack.Slack"),
+        });
+        (browser.to_string(), installed, open_chat_apps())
+    })
+    .await
+    .unwrap_or_else(|_| {
+        (
+            "chromium".to_string(),
+            json!({ "telegram": false, "slack": false }),
+            Vec::new(),
+        )
+    });
+    Json(json!({ "browser": browser, "installed": installed, "open": open })).into_response()
+}
+
+/// Installed flatpak application IDs (fast local DB read — never network).
+fn flatpak_app_ids() -> Vec<String> {
+    let out = std::process::Command::new("flatpak")
+        .args(["list", "--app", "--columns=application"])
+        .output();
+    match out {
+        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout)
+            .lines()
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty())
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// Chat apps currently open, read from the sway tree. Safe when swaymsg is
+/// missing or IPC is dead: returns an empty list, so the launchpad stays
+/// open instead of closing on a false positive.
+fn open_chat_apps() -> Vec<String> {
+    let out = std::process::Command::new("swaymsg")
+        .args(["-t", "get_tree"])
+        .output();
+    match out {
+        Ok(o) if o.status.success() => parse_open_from_bytes(&o.stdout),
+        _ => Vec::new(),
+    }
+}
+
+/// Extract open chat apps from a sway `get_tree` document.
+fn parse_open_from_bytes(bytes: &[u8]) -> Vec<String> {
+    let Ok(tree) = serde_json::from_slice::<Value>(bytes) else {
+        return Vec::new();
+    };
+    let mut open = Vec::new();
+    let mut stack = vec![tree];
+    while let Some(node) = stack.pop() {
+        if let Some(children) = node.get("nodes").and_then(Value::as_array) {
+            stack.extend(children.iter().cloned());
+        }
+        if let Some(children) = node.get("floating_nodes").and_then(Value::as_array) {
+            stack.extend(children.iter().cloned());
+        }
+        let app_id = node.get("app_id").and_then(Value::as_str).unwrap_or("");
+        let name = node.get("name").and_then(Value::as_str).unwrap_or("");
+        if (app_id == "org.telegram.desktop" || (app_id == "chromium" && name.contains("Telegram")))
+            && !open.iter().any(|a| a == "telegram")
+        {
+            open.push("telegram".to_string());
+        }
+        if (app_id == "com.slack.Slack" || (app_id == "chromium" && name.contains("Slack")))
+            && !open.iter().any(|a| a == "slack")
+        {
+            open.push("slack".to_string());
+        }
+    }
+    open
 }
 
 async fn api_stats(State(state): State<Arc<DaemonState>>) -> Json<Value> {
@@ -2670,5 +2798,253 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    // RBRO-004 WP-04 — /api/v1/launch + /launch/status.
+
+    #[tokio::test]
+    async fn test_launch_dry_run_ok() {
+        // DIAD_OPEN_DRYRUN=1 is the test hook: nothing is spawned, the
+        // endpoint acknowledges and returns the app name.
+        unsafe { std::env::set_var("DIAD_OPEN_DRYRUN", "1") };
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/launch")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        serde_json::to_vec(&json!({ "app": "browser" })).unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        let v: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(v["app"], "browser");
+        assert_eq!(v["dry_run"], true);
+        std::env::remove_var("DIAD_OPEN_DRYRUN");
+    }
+
+    #[tokio::test]
+    async fn test_launch_unknown_app_400() {
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/launch")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        serde_json::to_vec(&json!({ "app": "minecraft" })).unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_launch_status_shape() {
+        // No sway / no flatpak in the test sandbox: the endpoint must still
+        // answer with a well-formed document (browser falls back to
+        // "chromium", installed false, open empty).
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/launch/status")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        let v: Value = serde_json::from_slice(&body).unwrap();
+        assert!(v["browser"].is_string());
+        assert!(v["installed"]["telegram"].is_boolean());
+        assert!(v["installed"]["slack"].is_boolean());
+        assert!(v["open"].is_array());
+    }
+
+    #[tokio::test]
+    async fn test_open_chat_apps_parses_sway_tree() {
+        // Sway tree snippet: telegram open (flatpak), slack closed, a
+        // chromium "Slack" web window counts as slack.
+        let tree = json!({
+            "nodes": [{
+                "app_id": null,
+                "name": "root",
+                "nodes": [
+                    { "app_id": "org.telegram.desktop", "name": "Telegram", "nodes": [] },
+                    { "app_id": "chromium", "name": "Slack", "nodes": [], "floating_nodes": [] },
+                    { "app_id": "chromium", "name": "DIAD Launchpad", "nodes": [] }
+                ],
+                "floating_nodes": []
+            }]
+        });
+        // Feed the tree through the same predicate by rendering it back to
+        // JSON bytes and calling the parser directly.
+        let raw = serde_json::to_vec(&tree).unwrap();
+        let mut open = parse_open_from_bytes(&raw);
+        open.sort();
+        assert_eq!(open, vec!["slack", "telegram"]);
+    }
+
+    // RBRO-004 WP-04 — static icon pages must NEVER fall back to the SPA:
+    // /apps and /apps.html serve apps.html (real title, text/html), the SPA
+    // assets keep their content types, and unknown paths fall back to the
+    // SPA (client-side routing) as text/html.
+
+    #[tokio::test]
+    async fn test_apps_page_serves_standalone_html() {
+        let app = crate::core::server::router(test_state());
+        let resp = app
+            .clone()
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/apps")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let status = resp.status();
+        let ct = resp
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_string();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        assert_eq!(status, StatusCode::OK);
+        assert!(
+            ct.starts_with("text/html"),
+            "/apps must be text/html, got {ct}"
+        );
+        let text = String::from_utf8_lossy(&body).to_string();
+        assert!(
+            text.contains("DIAD Apps"),
+            "/apps must contain the DIAD Apps title, got: {text}"
+        );
+        assert!(
+            !text.contains("DIAD AGENT"),
+            "/apps must not serve the SPA (DIAD AGENT), got: {text}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_apps_html_path_serves_standalone_html() {
+        let app = crate::core::server::router(test_state());
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/apps.html")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let status = resp.status();
+        let ct = resp
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_string();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        assert_eq!(status, StatusCode::OK);
+        assert!(
+            ct.starts_with("text/html"),
+            "/apps.html must be text/html, got {ct}"
+        );
+        let text = String::from_utf8_lossy(&body).to_string();
+        assert!(
+            text.contains("DIAD Apps"),
+            "/apps.html must serve the standalone page, got: {text}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_spa_assets_keep_content_type() {
+        let app = crate::core::server::router(test_state());
+        // The SPA's hashed JS bundle must keep its real content type and
+        // not be swallowed by an octet-stream fallback.
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/assets/index-SSCwFkg3.js")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let ct = resp
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_string();
+        assert!(
+            ct.contains("javascript"),
+            "/assets/index-SSCwFkg3.js must be javascript, got {ct}"
+        );
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        assert!(
+            body.len() > 1000,
+            "JS bundle must be the real bundle, got {} bytes",
+            body.len()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_unknown_static_path_falls_back_to_spa() {
+        let app = crate::core::server::router(test_state());
+        // Unknown paths fall back to the SPA (client-side routing) and must
+        // be served as text/html — never octet-stream.
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/no-such-file.xyz")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let ct = resp
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_string();
+        assert!(
+            ct.starts_with("text/html"),
+            "SPA fallback must be text/html, got {ct}"
+        );
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        let text = String::from_utf8_lossy(&body).to_string();
+        assert!(
+            text.contains("DIAD AGENT"),
+            "SPA fallback must serve the DIAD AGENT app, got: {text}"
+        );
     }
 }

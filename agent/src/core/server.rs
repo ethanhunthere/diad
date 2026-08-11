@@ -8,7 +8,7 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Router;
@@ -150,21 +150,37 @@ async fn index_html() -> impl IntoResponse {
     )
 }
 
-async fn static_handler(State(_state): State<Arc<DaemonState>>, path: String) -> Response {
+async fn static_handler(
+    State(_state): State<Arc<DaemonState>>,
+    Path(path): Path<String>,
+) -> Response {
     let clean = path.trim_start_matches('/');
-    let asset = Assets::get(clean).or_else(|| Assets::get("index.html"));
+    // /apps and /launch are standalone icon pages (RBRO-004 WP-04/WP-05):
+    // resolve them to their own .html files and NEVER fall back to the SPA.
+    // Serving the SPA here was the root cause of the workspace floods — the
+    // pages must keep their real titles for the sway assign rules to match.
+    let (asset_name, asset) = match clean {
+        "apps" => ("apps.html", Assets::get("apps.html")),
+        "launch" => ("launch.html", Assets::get("launch.html")),
+        _ => match Assets::get(clean) {
+            Some(file) => (clean, Some(file)),
+            // Unknown path → SPA fallback (client-side routing). Serve it
+            // under the index.html name so the content type is correct.
+            None => ("index.html", Assets::get("index.html")),
+        },
+    };
     match asset {
         Some(file) => {
             // Hashed build assets are content-addressed: cache for a year
             // (spec 6.6). Everything else revalidates.
-            let cache = if clean.starts_with("assets/") {
+            let cache = if asset_name.starts_with("assets/") {
                 "public, max-age=31536000, immutable"
             } else {
                 "public, max-age=300"
             };
             (
                 [
-                    ("Content-Type", content_type(clean)),
+                    ("Content-Type", content_type(asset_name)),
                     ("Cache-Control", cache),
                 ],
                 file.data.into_owned(),
