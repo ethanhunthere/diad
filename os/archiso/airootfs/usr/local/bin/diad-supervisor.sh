@@ -18,6 +18,9 @@
 #   (f) first-run wizard (independent window — never blocks the boot)
 #   (g) steady state: waybar/mako/cliphist watchdogs (10 s) + daemon health
 #       (restart max 2, then TUI fallback) + periodic log rotation
+#   (h) RBRO-004 WP-08 flood backstop in steady state: workspace limits
+#       (WS1 agent ≤ 8, WS2 apps ≤ 2, WS3 launchpad ≤ 2); excess windows
+#       move to the sway scratchpad + one rate-limited toast
 #
 # Every step degrades without blocking the desktop (`set -uo pipefail`).
 # =============================================================================
@@ -117,6 +120,55 @@ enforce_launchpad_close() {
         && [[ $(count_or_unknown launchpad_window_count) != "0" ]]; then
         swaymsg '[title="DIAD Launchpad"] kill' >/dev/null 2>&1
         log "supervisor: both chats open — launchpad closed"
+    fi
+}
+
+# ---- RBRO-004 WP-08 — workspace limits watcher (flood backstop) ----
+# The boot chain guarantees exactly one surface per workspace (1/1/1);
+# this caps any RUNTIME flood — repeated Super+Shift+A opens, a blocked
+# launchpad window.close(), a respawn bug — by moving the excess windows
+# to the sway scratchpad (never killed; Super+Shift+M restores them) and
+# showing ONE rate-limited toast. The focused window is never touched.
+WS1_LIMIT=8   # DIAD AGENT windows on workspace 1
+WS2_LIMIT=2   # DIAD Apps icon pages on workspace 2
+WS3_LIMIT=2   # DIAD Launchpad windows on workspace 3
+LIMIT_TOAST_MIN=60   # seconds between toasts per workspace
+
+# con_ids of matching windows on workspace $1 that exceed the $3 cap.
+# Tree order keeps the primary window; the focused window is never moved.
+excess_window_ids() {
+    local ws_num="$1" name_test="$2" cap="$3"
+    swaymsg -t get_tree 2>/dev/null \
+        | jq -r --arg num "${ws_num}" --arg test "${name_test}" --argjson cap "${cap}" '
+            .. | objects | select(.type? == "workspace" and ((.num // -1) | tostring) == $num)
+            | [ .. | objects | select(.type? == "con" or .type? == "floating_con")
+                  | select((.name? // "") | test($test))
+                  | select(.focused? != true)
+                  | .id ]
+            | .[($cap - 1):][]' 2>/dev/null
+}
+
+# Move every excess window on the workspace to the scratchpad, then toast
+# (rate-limited). $1=workspace num, $2=surface label, $3=name test, $4=cap.
+enforce_workspace_limit() {
+    local ws_num="$1" surface="$2" name_test="$3" cap="$4" id excess marker now last
+    excess=$(excess_window_ids "${ws_num}" "${name_test}" "${cap}")
+    if [[ -z "${excess}" ]]; then
+        return 0
+    fi
+    for id in ${excess}; do
+        swaymsg "[con_id=${id}] move scratchpad" >/dev/null 2>&1
+    done
+    log "supervisor: workspace ${ws_num} ${surface} over cap ${cap} — $(echo "${excess}" | wc -w) excess window(s) moved to scratchpad"
+    marker="${DIAD_HOME}/.limit-toast-ws${ws_num}"
+    now=$(date +%s)
+    last=0
+    [[ -f "${marker}" ]] && last=$(cat "${marker}" 2>/dev/null || echo 0)
+    if [[ $((now - last)) -ge ${LIMIT_TOAST_MIN} ]]; then
+        printf '%s' "${now}" > "${marker}"
+        notify-send "DIAD: workspace ${ws_num} capped at ${cap} ${surface}" \
+            "Extra windows moved to the scratchpad (Super+Shift+M to restore)." \
+            -u normal
     fi
 }
 
@@ -370,6 +422,13 @@ while true; do
     # the backstop in case the page's window.close() was blocked.
     if daemon_healthy; then
         enforce_launchpad_close
+    fi
+    # RBRO-004 WP-08 — flood backstop: cap DIAD surfaces per workspace.
+    # Excess windows go to the scratchpad (recoverable), one toast max/min.
+    if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
+        enforce_workspace_limit 1 "agent windows" 'DIAD AGENT|7860' ${WS1_LIMIT}
+        enforce_workspace_limit 2 "apps icon pages" 'DIAD Apps|7860/apps' ${WS2_LIMIT}
+        enforce_workspace_limit 3 "launchpad windows" 'DIAD Launchpad|7860/launch' ${WS3_LIMIT}
     fi
     # Daemon health: restart max 2 times, then hand workspace 1 to the TUI.
     # A 30 s grace window after each restart stops the 10 s poll from
