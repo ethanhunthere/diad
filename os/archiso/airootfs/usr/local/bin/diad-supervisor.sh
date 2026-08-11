@@ -114,6 +114,47 @@ agent_window_count() {
     fi
 }
 
+# Fail-safe count wrapper: when sway IPC is unavailable the window count is
+# UNKNOWN — and unknown is treated as "window present", so the supervisor
+# NEVER auto-spawns a duplicate (a boot can only lose a surface, never
+# flood). The sway-ready wait below keeps this path exceptional.
+count_or_unknown() {
+    if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
+        "$@"
+    else
+        echo "unknown"
+    fi
+}
+
+# Wait up to 5 s for sway IPC to answer the window tree. Every spawn /
+# count decision below runs only after this, so window counts are real.
+sway_ready=0
+for _ in $(seq 1 10); do
+    if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
+        sway_ready=1
+        break
+    fi
+    sleep 0.5
+done
+if [[ ${sway_ready} -eq 0 ]]; then
+    log "supervisor: sway IPC unavailable after 5 s — assuming windows present (no auto-spawn)"
+fi
+
+# One-shot diagnostics window (RBRO-004 WP-02/WP-07). Opened at most once
+# per session, marker-gated, and only after the daemon restart limit is
+# reached. Shows the daemon log tail — the single allowed error surface.
+show_diagnostics() {
+    if [[ -f "${DIAD_HOME}/.diagnostics-shown" ]]; then
+        log "supervisor: diagnostics already shown — skipping (never auto-reopened)"
+        return
+    fi
+    touch "${DIAD_HOME}/.diagnostics-shown"
+    foot --app-id=foot --title "DIAD diagnostics" \
+        -e sh -c 'echo "DIAD diagnostics — daemon.log tail:"; tail -n 20 "${HOME}/.diad/daemon.log" 2>/dev/null; echo; echo "Press Enter to close."; read _' \
+        >/dev/null 2>&1 &
+    log "supervisor: diagnostics window opened (once per session)"
+}
+
 # =============================================================================
 log "supervisor: session start"
 rotate_logs
@@ -271,6 +312,9 @@ while true; do
     # Daemon health: restart max 2 times, then hand workspace 1 to the TUI.
     # A 30 s grace window after each restart stops the 10 s poll from
     # counting a slow start-up as another failure.
+    # RBRO-004 WP-02 crash guard: the TUI fallback is opened only if no
+    # agent window exists yet (never a second one), and the ONE allowed
+    # error surface (a diagnostics foot, WP-07) appears exactly once.
     if [[ ${FALLBACK} -eq 0 ]] && ! daemon_healthy; then
         if [[ ${DAEMON_RESTARTS} -lt 2 ]]; then
             DAEMON_RESTARTS=$((DAEMON_RESTARTS + 1))
@@ -278,8 +322,12 @@ while true; do
             log "supervisor: daemon unhealthy — restart ${DAEMON_RESTARTS}/2"
             nohup diad-agent --daemon >> "${DIAD_HOME}/daemon.log" 2>&1 &
         elif [[ $(date +%s) -ge ${DAEMON_GRACE_UNTIL} ]]; then
-            log "supervisor: daemon restart limit reached — TUI fallback"
-            foot --app-id=foot --title "DIAD AGENT" -e diad-agent --tui >/dev/null 2>&1 &
+            log "supervisor: daemon restart limit reached — no further retries"
+            show_diagnostics
+            if [[ $(count_or_unknown agent_window_count) -le 0 ]]; then
+                log "supervisor: opening TUI fallback (only agent surface)"
+                foot --app-id=foot --title "DIAD AGENT" -e diad-agent --tui >/dev/null 2>&1 &
+            fi
             FALLBACK=1
         fi
     fi
