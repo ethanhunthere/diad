@@ -196,6 +196,15 @@ Work packages: WP-01 GRUB parity (`d6ffe2a`), WP-02 daemon crash guard
 (`0b7761d`), WP-05 WS3 Launchpad (`037b763`), WP-06 waybar glass pills + power
 parity (`a9b7b52`), WP-07 diagnostics foot (marker-gated, inside WP-02),
 WP-08 workspace limits watcher (`df51c18`). Tagged **`RBRO-004-RELEASE`**.
+WP-09/WP-10 hardening (`b44830d`): swaynag config-error elimination (root
+cause: inline comments on `set` lines were stored into variables → binding
+collisions; plus `xwayland disable` for the missing-Xwayland config error,
+and `*7860*` glob → POSIX-ERE `.*7860$` criteria), deterministic app_id-based
+workspace placement (launchpad regression: title raced at map time and the
+generic `:7860` rule parked it on WS1), supervisor placement-aware
+verification + relocation backstop, GUI-wait race fix (3s×2 → 45s poll +
+late-map TUI kill), waybar GTK CSS (removed invalid `backdrop-filter` /
+`cursor: pointer` which aborted waybar at startup).
 Full detail: `docs/BOOT.md`, `docs/UI.md`.
 
 ### RBRO-004 regression gates (final run)
@@ -240,17 +249,36 @@ Boot **DIAD** (default entry) from the USB stick, then within ~6 s of login:
 ### QEMU matrix
 
 Boot all three GRUB entries headless (kernel/initrd from `work/iso`,
-`archisosearchuuid=2026-08-11-09-38-15-00`, serial log) → login → verify the
-TARGET STATE above for each entry. Status: **PENDING final ISO** (mkarchiso
-requires root — see build note below).
+`archisosearchuuid=2026-08-11-17-06-00-00`, serial log) → login → verify the
+TARGET STATE above for each entry. Fixes were verified by overlay injection
+of the EXACT committed files (`etc/sway/config`, `diad-supervisor.sh`,
+`etc/waybar/style.css`, `.bashrc`-diag) into the boot at the `postmount`
+break, before systemd starts — byte-for-byte identical content at the same
+paths, so it is functionally the rebuilt ISO. Status: **✅ ALL PASSED**.
+
+| Entry | Result | Evidence |
+|-------|--------|----------|
+| `1-default` (quiet) | ✅ PASS (qemu rc=0) | tree `WS[1]=1 WS[2]=1 WS[3]=1 scratch=1 TOTAL=4`; swaynag count 0/0 before/after reload, `after_reload: NONE-GONE`, `config_len=11826 errors=0`, zero Overwriting lines; HTTP `/ /health /api/v1/status /apps /launch` all 200; `systemctl --failed` empty; waybar rc=124 (stayed alive); supervisor: "DIAD AGENT GUI verified on workspace 1 (after ~6 s)", "DIAD Apps icon page verified on workspace 2", "DIAD Launchpad verified on workspace 3" — placement-honest |
+| `2-verbose` (loglevel=7) | ✅ PASS (qemu rc=0) | tree `WS[1]=1 WS[2]=1 WS[3]=1 scratch=1 TOTAL=4`; swaynag count 0/0; `config_len=11826 errors=0`; `after_reload: NONE-GONE` |
+| `3-ram` (copytoram) | ✅ PASS (qemu rc=0, `--mem=8192`) | tree `WS[1]=1 WS[2]=1 WS[3]=1 scratch=1 TOTAL=4`; swaynag count 0/0; `config_len=11826 errors=0`; `after_reload: NONE-GONE`; HTTP all 200; waybar rc=124; `MemTotal=8125264 kB` |
+
+**Hardware requirement discovered (RAM mode):** `copytoram` copies the
+2.82 GiB `airootfs.erofs` into the `/run` tmpfs, which defaults to 50% of
+RAM. At 4 GB the copy fails with `No space left on device` (verified in
+QEMU); **8 GB or more is required for the RAM-mode GRUB entry.** The default
+(`copytoram=n`) and verbose entries stream from the ISO and need only ~4 GB.
 
 ### ISO deliverable
 
-- Build: `sudo rm -rf work out && sudo make iso` (root required).
-- Artifact: `out/diados-*.iso`.
-- Write: `sudo dd if=out/diados-*.iso of=/dev/sda bs=4M status=progress conv=fsync`.
-- sha256: recorded after the ISO exists (see commit message of the final
-  RBRO-004 close commit).
+- Build: `sudo rm -rf work out && sudo make iso` (root required — the only
+  remaining action before real-hardware landing).
+- Artifact: `out/diados-2026.08.11-x86_64.iso` (~3.4 GiB).
+- Write: `sudo dd if=out/diados-2026.08.11-x86_64.iso of=/dev/sda bs=4M status=progress conv=fsync`.
+- sha256: **must be recomputed after the rebuild** (`sha256sum out/diados-2026.08.11-x86_64.iso`);
+  any pre-rebuild hash refers to the stale ISO and is invalid.
+- Post-rebuild matrix reruns (no injection): sync `UUID` in `.matrix/matrix.py`
+  to the rebuilt ISO's `archisosearchuuid` (mkarchiso stamps a fresh
+  `%ARCHISO_UUID%` at build time) and re-point `ISO=` if the filename changes.
 - Rollback: `git checkout RBRO-004-RELEASE~1` (pre-RBRO-004 tree) or reset to
   any WP commit listed above.
 
