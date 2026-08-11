@@ -18,7 +18,8 @@
     "tooltip": false,
     "persistent-workspaces": {
       "1": [],
-      "2": []
+      "2": [],
+      "3": []
     }
   },
   "custom/suspend": {

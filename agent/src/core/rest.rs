@@ -2945,6 +2945,78 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_launch_page_serves_standalone_html() {
+        let app = crate::core::server::router(test_state());
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/launch")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let status = resp.status();
+        let ct = resp
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_string();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        assert_eq!(status, StatusCode::OK);
+        assert!(
+            ct.starts_with("text/html"),
+            "/launch must be text/html, got {ct}"
+        );
+        let text = String::from_utf8_lossy(&body).to_string();
+        assert!(
+            text.contains("DIAD Launchpad"),
+            "/launch must contain the DIAD Launchpad title, got: {text}"
+        );
+        assert!(
+            !text.contains("DIAD AGENT"),
+            "/launch must not serve the SPA (DIAD AGENT), got: {text}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_launch_html_path_serves_standalone_html() {
+        let app = crate::core::server::router(test_state());
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/launch.html")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let status = resp.status();
+        let ct = resp
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_string();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        assert_eq!(status, StatusCode::OK);
+        assert!(
+            ct.starts_with("text/html"),
+            "/launch.html must be text/html, got {ct}"
+        );
+        let text = String::from_utf8_lossy(&body).to_string();
+        assert!(
+            text.contains("DIAD Launchpad"),
+            "/launch.html must serve the standalone page, got: {text}"
+        );
+    }
+
+    #[tokio::test]
     async fn test_apps_html_path_serves_standalone_html() {
         let app = crate::core::server::router(test_state());
         let resp = app

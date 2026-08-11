@@ -136,6 +136,11 @@ bindsym $mod+b exec $browser
 # user can always bring it back with Super+Shift+A).
 bindsym $mod+Shift+a exec brave --app=http://127.0.0.1:7860
 
+# RBRO-004 WP-05 — user relaunch of the DIAD Launchpad (workspace 3; the
+# supervisor spawns it once at boot and it auto-closes when both chats
+# open — Super+Shift+L brings it back anytime).
+bindsym $mod+Shift+l exec brave --app=http://127.0.0.1:7860/launch
+
 # Switch workspaces
 bindsym $mod+1 workspace number 1
 bindsym $mod+2 workspace number 2

@@ -102,6 +102,24 @@ launchpad_window_count() {
     fi
 }
 
+# RBRO-004 WP-05 — both chat apps open? The launchpad should then vanish.
+# Uses the daemon's own sway-tree parse (open[]), so this works even before
+# the local sway IPC answers. 0/1 exit for if/then.
+launchpad_should_close() {
+    curl -sf http://127.0.0.1:7860/api/v1/launch/status 2>/dev/null \
+        | jq -e '(.open | index("telegram")) and (.open | index("slack"))' >/dev/null 2>&1
+}
+
+# Enforcement backstop for the launchpad's own window.close(): when both
+# chats are open and the page is somehow still mapped, close it from sway.
+enforce_launchpad_close() {
+    if launchpad_should_close \
+        && [[ $(count_or_unknown launchpad_window_count) != "0" ]]; then
+        swaymsg '[title="DIAD Launchpad"] kill' >/dev/null 2>&1
+        log "supervisor: both chats open — launchpad closed"
+    fi
+}
+
 # The brave shim always exists on the ISO; it can only actually open a
 # browser if flatpak com.brave.Browser OR chromium is present (S1 fallback).
 browser_possible() {
@@ -305,16 +323,31 @@ else
     log "supervisor: daemon down — DIAD Apps icon page skipped"
 fi
 
-# ---- (e) workspace 3: DIAD Launchpad respawn loop (5 s, quiet) ----
-(
-    while true; do
-        if daemon_healthy && [[ $(launchpad_window_count) -eq 0 ]]; then
-            brave --app=http://127.0.0.1:7860/launch >/dev/null 2>&1 &
+# ---- (e) workspace 3: DIAD Launchpad (RBRO-004 WP-05) ----
+# EXACTLY ONE launchpad at boot: spawn, verify, one retry — NO respawn
+# loop. The page opens Telegram/Slack on click (POST /api/v1/launch) and
+# closes itself once BOTH chats are open. The steady-state loop below is
+# the enforcement backstop (window.close() can be blocked by the browser).
+if daemon_healthy; then
+    spawn_launchpad() {
+        brave --app=http://127.0.0.1:7860/launch >/dev/null 2>&1 &
+    }
+    spawn_launchpad
+    sleep 3
+    if [[ $(count_or_unknown launchpad_window_count) != "0" ]]; then
+        log "supervisor: DIAD Launchpad verified on workspace 3"
+    else
+        spawn_launchpad
+        sleep 3
+        if [[ $(count_or_unknown launchpad_window_count) != "0" ]]; then
+            log "supervisor: DIAD Launchpad verified on workspace 3 (retry)"
+        else
+            log "supervisor: DIAD Launchpad did not map — chat opens on click only"
         fi
-        sleep 5
-    done
-) >> "${LOG_FILE}" 2>&1 &
-log "supervisor: launchpad respawn loop started (workspace 3)"
+    fi
+else
+    log "supervisor: daemon down — DIAD Launchpad skipped"
+fi
 
 # ---- (g) steady state: waybar/mako/cliphist watchdogs + daemon health
 #          (restart max 2, then TUI fallback) + periodic log rotation ----
@@ -332,6 +365,11 @@ while true; do
     if ! pgrep -f "wl-paste --watch" >/dev/null 2>&1; then
         log "supervisor: cliphist watcher not running — relaunching"
         wl-paste --watch cliphist store >/dev/null 2>&1 &
+    fi
+    # RBRO-004 WP-05 — launchpad self-closes when both chats open; this is
+    # the backstop in case the page's window.close() was blocked.
+    if daemon_healthy; then
+        enforce_launchpad_close
     fi
     # Daemon health: restart max 2 times, then hand workspace 1 to the TUI.
     # A 30 s grace window after each restart stops the 10 s poll from

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DIAD Launchpad</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --bg-deep: #12121f;
+    --panel: #241d16;
+    --copper: #8b5e3c;
+    --copper-bright: #b5794f;
+    --text: #ede6de;
+    --text-dim: #a89a8a;
+    --border: rgba(255, 255, 255, 0.07);
+    --ok: #7fb87f;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: radial-gradient(1200px 700px at 50% -10%, #2b2233 0%, var(--bg) 55%, var(--bg-deep) 100%);
+    color: var(--text);
+    font-family: "Noto Sans", "DejaVu Sans", sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+  }
+  .shell { text-align: center; padding: 24px; }
+  h1 {
+    font-size: 26px; font-weight: 300; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px;
+  }
+  .tagline { font-size: 13px; color: var(--text-dim); margin-bottom: 40px; }
+  .row { display: flex; gap: 28px; justify-content: center; flex-wrap: wrap; }
+  .card {
+    display: inline-flex; flex-direction: column; align-items: center; gap: 14px;
+    width: 190px; padding: 30px 20px; border-radius: 18px; cursor: pointer;
+    background: linear-gradient(180deg, rgba(139, 94, 60, 0.16), rgba(139, 94, 60, 0.05));
+    border: 1px solid var(--border);
+    transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--copper-bright); background: linear-gradient(180deg, rgba(139, 94, 60, 0.28), rgba(139, 94, 60, 0.10)); }
+  .card:active { transform: translateY(0); }
+  .card svg { width: 58px; height: 58px; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45)); }
+  .label { font-size: 19px; font-weight: 600; letter-spacing: 0.04em; }
+  .sub { font-size: 12px; color: var(--text-dim); min-height: 16px; }
+  .sub.ok { color: var(--ok); }
+  .status { margin-top: 26px; font-size: 12px; color: var(--copper-bright); min-height: 16px; }
+  .hint { margin-top: 10px; font-size: 11px; color: var(--text-dim); }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <h1>DIAD Launchpad</h1>
+    <div class="tagline">Open a chat — the launchpad closes itself when both are up</div>
+    <div class="row">
+      <!-- Telegram -->
+      <div class="card" id="tg" role="button" tabindex="0" data-app="telegram">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="32" cy="32" r="28" fill="#2AABEE"/>
+          <path d="M46.5 20.5 41.8 43.1c-.3 1.4-1.1 1.7-2.3 1.1l-6.3-4.7-3 2.9c-.3.3-.6.6-1.2.6l.4-6.1 11.2-10.1c.5-.4-.1-.6-.7-.2L23.9 34l-6-1.9c-1.3-.4-1.3-1.3.3-2l23.5-9.1c1.1-.4 2 .2 1.8 1.6z" fill="#fff"/>
+        </svg>
+        <div class="label">Telegram</div>
+        <div class="sub" id="tg-sub">detecting…</div>
+      </div>
+      <!-- Slack -->
+      <div class="card" id="sl" role="button" tabindex="0" data-app="slack">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M27 10a4.5 4.5 0 1 0-9 0v13h9V10zm-4.5 0a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" fill="#36C5F0"/>
+          <path d="M17 22.5H4A4.5 4.5 0 1 0 4 31h13a4.5 4.5 0 1 0 0-8.5zm0 4.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" fill="#36C5F0"/>
+          <path d="M37 31a4.5 4.5 0 1 0 9 0V18h-9v13zm4.5-4.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" fill="#2EB67D"/>
+          <path d="M47 31h13a4.5 4.5 0 1 1-9 0H47zm4.5-2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" fill="#2EB67D"/>
+          <path d="M37 37a4.5 4.5 0 1 0 9 0V24h-9v13zm4.5-4.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" fill="#ECB22E"/>
+          <path d="M27 37H14a4.5 4.5 0 1 0 9 0h4zm-4.5 4.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" fill="#ECB22E"/>
+          <path d="M17 31H4a4.5 4.5 0 1 0 9 0h4zm-4.5 4.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" fill="#E01E5A"/>
+          <path d="M27 41a4.5 4.5 0 1 0 9 0H27v-9a4.5 4.5 0 1 0-9 0h9zm4.5-4.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" fill="#E01E5A"/>
+        </svg>
+        <div class="label">Slack</div>
+        <div class="sub" id="sl-sub">detecting…</div>
+      </div>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="hint">Super+Shift+L to reopen · both chat apps must be installed to auto-close</div>
+  </div>
+  <script>
+    const cards = { telegram: document.getElementById("tg"), slack: document.getElementById("sl") };
+    const subs = { telegram: document.getElementById("tg-sub"), slack: document.getElementById("sl-sub") };
+    const status = document.getElementById("status");
+
+    function poll() {
+      fetch("/api/v1/launch/status", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((s) => {
+          for (const app of ["telegram", "slack"]) {
+            const sub = subs[app];
+            const inst = s.installed && s.installed[app];
+            const open = (s.open || []).includes(app);
+            sub.textContent = open ? "open ✓" : (inst ? "installed" : "not installed");
+            sub.className = "sub" + (open ? " ok" : "");
+          }
+          // Auto-close once both chats are open (RBRO-004 WP-05).
+          const both = (s.open || []).includes("telegram") && (s.open || []).includes("slack");
+          if (both) { setTimeout(() => window.close(), 300); }
+        })
+        .catch(() => {});
+    }
+    poll();
+    setInterval(poll, 2000);
+
+    async function openApp(app) {
+      status.textContent = "Opening " + app + "…";
+      try {
+        const r = await fetch("/api/v1/launch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ app }),
+        });
+        const j = await r.json();
+        status.textContent = r.ok ? "Opening " + app + " (workspace 3)" : (j.error || "Failed to launch");
+      } catch (e) {
+        status.textContent = "Launch failed";
+      }
+    }
+    for (const app of Object.keys(cards)) {
+      const c = cards[app];
+      c.addEventListener("click", () => openApp(app));
+      c.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openApp(app); } });
+    }
+  </script>
+</body>
+</html>
