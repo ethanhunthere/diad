@@ -105,6 +105,64 @@ launchpad_window_count() {
     fi
 }
 
+# RBRO-004 WP-10 — count matching windows that are actually ON workspace
+# $1. The *_window_count functions above only prove a window EXISTS
+# somewhere in the tree — a window can map onto the wrong workspace (the
+# launchpad once landed on workspace 1 when the generic :7860 rule beat
+# the title rules at map time), so "verified" must mean "on the right
+# workspace", not merely "present". Returns 0 when sway IPC is down.
+count_on_workspace() {
+    local ws_num="$1" name_test="$2" out
+    if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
+        out=$(swaymsg -t get_tree 2>/dev/null \
+            | jq -r --arg ws "${ws_num}" --arg test "${name_test}" '
+                .. | objects | select(.type? == "workspace" and ((.num // -1) | tostring) == $ws)
+                | [ .. | objects | select(.type? == "con" and ((.name? // "") | test($test))) | .name ] | length' 2>/dev/null)
+        echo "${out:-0}"
+    else
+        echo 0
+    fi
+}
+
+# RBRO-004 WP-10 — move a window back onto its assigned workspace if it
+# mapped there but ended up elsewhere (map-time title race backstop). The
+# app_id is deterministic (set from --app= URL at window creation), so it
+# is the safest criterion for the relocation.
+relocate_to_workspace() {
+    local app_id_re="$1" ws_num="$2"
+    swaymsg "[app_id=\"${app_id_re}\"] move to workspace ${ws_num}" >/dev/null 2>&1
+}
+
+# RBRO-004 WP-10 — honest placement verification: returns 0 (OK) if a
+# window matching $2 is present AND on workspace $1, 1 otherwise. Also
+# attempts relocation when the window exists but is misplaced. When sway
+# IPC is down, count_or_unknown returns "unknown" (assume present) — we
+# return 0 so the caller NEVER respawns a duplicate.
+verify_on_workspace() {
+    local ws_num="$1" name_test="$2" app_id_re="$3"
+    local present ws_ok
+    present=$(count_or_unknown "$4")
+    ws_ok=$(count_on_workspace "${ws_num}" "${name_test}")
+    if [[ "${present}" == "unknown" ]]; then
+        return 0
+    fi
+    if [[ "${present}" != "0" ]] && [[ "${ws_ok}" != "0" ]]; then
+        return 0
+    fi
+    if [[ "${present}" != "0" ]]; then
+        relocate_to_workspace "${app_id_re}" "${ws_num}"
+        sleep 1
+        ws_ok=$(count_on_workspace "${ws_num}" "${name_test}")
+        if [[ "${ws_ok}" != "0" ]]; then
+            log "supervisor: window relocated to workspace ${ws_num}"
+            return 0
+        fi
+        log "supervisor: window present but NOT on workspace ${ws_num} — placement failed"
+        return 1
+    fi
+    return 1
+}
+
 # RBRO-004 WP-05 — both chat apps open? The launchpad should then vanish.
 # Uses the daemon's own sway-tree parse (open[]), so this works even before
 # the local sway IPC answers. 0/1 exit for if/then.
@@ -194,6 +252,21 @@ agent_window_count() {
     else
         # Pre-sway fallback: only the TUI process can exist yet.
         pgrep -fc 'diad-agent --tui' 2>/dev/null || echo 0
+    fi
+}
+
+# RBRO-004 WP-09 — count ONLY the GUI variant (a chromium/brave app-window
+# titled "DIAD AGENT"/"7860"), never the foot TUI. Lets the late-map guard
+# distinguish "the GUI finally arrived" from "the TUI is still up" so
+# workspace 1 keeps exactly one agent surface. Returns 0 while sway IPC is
+# down (conservative: the guard must never act on a blind count).
+agent_gui_count() {
+    if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
+        swaymsg -t get_tree 2>/dev/null \
+            | jq -r '.. | objects | select(.type? == "con" and (.app_id? // "" | test("chromium|brave")) and (.name? // "" | test("7860|DIAD AGENT"))) | .name' 2>/dev/null \
+            | wc -l
+    else
+        echo 0
     fi
 }
 
@@ -303,24 +376,46 @@ elif [[ ${FALLBACK} -eq 1 ]]; then
     launch_agent_tui
 else
     launch_agent_gui
-    sleep 3
-    if [[ $(count_or_unknown agent_window_count) != "0" ]]; then
-        log "supervisor: DIAD AGENT GUI verified on workspace 1"
-    else
-        log "supervisor: GUI window not mapped after 3 s — retrying once"
-        launch_agent_gui
+    # RBRO-004 WP-09 — a browser cold start (chromium first-run, flatpak
+    # Brave) routinely needs well over 6 s to map its first window, so the
+    # old 3 s x 2 check raced it and produced a GUI+TUI double window on
+    # workspace 1. Poll up to 45 s (3 s x 15) before falling back.
+    mapped=""
+    for attempt in $(seq 1 15); do
         sleep 3
         if [[ $(count_or_unknown agent_window_count) != "0" ]]; then
-            log "supervisor: DIAD AGENT GUI verified on workspace 1 (retry)"
-        else
-            log "supervisor: GUI failed twice — engaging TUI fallback (reason in daemon.log)"
-            # PROMPT-2 S4.3 — persist the exact reason for the next GUI start
-            # (read + cleared via GET/DELETE /api/v1/gui/fallback).
-            reason="GUI failed twice: Brave flatpak + chromium shim could not open a window for http://127.0.0.1:7860 — TUI fallback engaged"
-            printf '%s\n' "${reason}" > "${DIAD_HOME}/.gui-fallback-reason"
-            tail -n 10 "${DIAD_HOME}/daemon.log" >> "${LOG_FILE}" 2>&1 || true
-            launch_agent_tui
+            mapped=${attempt}
+            break
         fi
+    done
+    if [[ -n "${mapped}" ]]; then
+        log "supervisor: DIAD AGENT GUI verified on workspace 1 (after ~$((mapped * 3)) s)"
+    else
+        log "supervisor: GUI not mapped after 45 s — engaging TUI fallback (reason in daemon.log)"
+        # PROMPT-2 S4.3 — persist the exact reason for the next GUI start
+        # (read + cleared via GET/DELETE /api/v1/gui/fallback).
+        reason="GUI not mapped after 45 s: Brave flatpak + chromium shim could not open a window for http://127.0.0.1:7860 — TUI fallback engaged"
+        printf '%s\n' "${reason}" > "${DIAD_HOME}/.gui-fallback-reason"
+        tail -n 10 "${DIAD_HOME}/daemon.log" >> "${LOG_FILE}" 2>&1 || true
+        launch_agent_tui
+        # RBRO-004 WP-09 — late-map guard: the browser can still map AFTER
+        # the TUI took over (slow cold start). When the GUI finally appears,
+        # close the TUI so workspace 1 keeps EXACTLY ONE agent surface
+        # (GUI XOR TUI, per TARGET STATE). The guard never acts on a blind
+        # count: it uses agent_gui_count (0 while sway IPC is down).
+        (
+            for _ in $(seq 1 20); do        # watch up to 100 s
+                sleep 5
+                if [[ $(agent_gui_count) != "0" ]]; then
+                    swaymsg '[app_id="foot" title="DIAD AGENT"] kill' >/dev/null 2>&1
+                    log "supervisor: GUI mapped late — TUI closed (exactly one agent window)"
+                    break
+                fi
+                if ! pgrep -f 'diad-agent --tui' >/dev/null 2>&1; then
+                    break   # TUI gone (user closed it) — nothing to clean up
+                fi
+            done
+        ) &
     fi
 fi
 
@@ -360,12 +455,12 @@ if daemon_healthy; then
     }
     spawn_apps_page
     sleep 3
-    if [[ $(count_or_unknown apps_page_count) != "0" ]]; then
+    if verify_on_workspace 2 'DIAD Apps|7860/apps' 'chrome-127\.0\.0\.1__apps-Default' apps_page_count; then
         log "supervisor: DIAD Apps icon page verified on workspace 2"
     else
         spawn_apps_page
         sleep 3
-        if [[ $(count_or_unknown apps_page_count) != "0" ]]; then
+        if verify_on_workspace 2 'DIAD Apps|7860/apps' 'chrome-127\.0\.0\.1__apps-Default' apps_page_count; then
             log "supervisor: DIAD Apps icon page verified on workspace 2 (retry)"
         else
             log "supervisor: DIAD Apps icon page did not map — browser opens on click only"
@@ -386,12 +481,12 @@ if daemon_healthy; then
     }
     spawn_launchpad
     sleep 3
-    if [[ $(count_or_unknown launchpad_window_count) != "0" ]]; then
+    if verify_on_workspace 3 'DIAD Launchpad|7860/launch' 'chrome-127\.0\.0\.1__launch-Default' launchpad_window_count; then
         log "supervisor: DIAD Launchpad verified on workspace 3"
     else
         spawn_launchpad
         sleep 3
-        if [[ $(count_or_unknown launchpad_window_count) != "0" ]]; then
+        if verify_on_workspace 3 'DIAD Launchpad|7860/launch' 'chrome-127\.0\.0\.1__launch-Default' launchpad_window_count; then
             log "supervisor: DIAD Launchpad verified on workspace 3 (retry)"
         else
             log "supervisor: DIAD Launchpad did not map — chat opens on click only"

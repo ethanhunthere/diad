@@ -1,9 +1,11 @@
 /* =============================================================================
    DIAD waybar — glass pills (RBRO-004 WP-06.4).
-   Every module is a frosted-glass pill: rgba(20,16,13,0.65) + blur(20px) +
-   1px hairline border. Window controls fuse into one pill [–|□|×]; the power
-   trio sits to their right with an extra 6px breathing gap (suspend
-   margin-left 6px). Icons are Font Awesome 6 Free solid (font-weight 900).
+   Every module is a frosted-glass pill: rgba(20,16,13,0.65) + 1px hairline
+   border. (GTK CSS — waybar — has no `backdrop-filter`; blur must come from
+   the translucent alpha alone. An invalid property aborts waybar at startup.)
+   Window controls fuse into one pill [–|□|×]; the power trio sits to their
+   right with an extra 6px breathing gap (suspend margin-left 6px). Icons are
+   Font Awesome 6 Free solid (font-weight 900).
    ========================================================================== */
 
 * {
@@ -30,9 +32,7 @@
   font-size: 14px;
   color: #ede6de;
   background: rgba(20, 16, 13, 0.65);
-  backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  cursor: pointer;
 }
 
 /* ---- Workspaces ------------------------------------------------------- */

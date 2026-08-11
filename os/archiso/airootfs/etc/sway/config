@@ -11,13 +11,28 @@
 exec gnome-keyring-daemon --start --components=secrets
 
 # ---- Variables ----
-set $mod Mod4         # Super key
-set $term foot         # Terminal emulator
-set $browser brave     # Browser
+# NOTE: sway's config parser does NOT strip inline comments — the rest of
+# the line after 'set' becomes the variable VALUE. Never write
+# `set $mod Mod4  # comment` — the comment would be stored in $mod and
+# every `bindsym $mod+X` would collide on combo `Mod4` (RBRO-004 WP-10).
+set $mod Mod4
+set $term foot
+set $browser brave
 
 # ---- Output Configuration ----
 # Default: use the first enabled output with preferred mode
 output * bg #1a1a2e solid_color
+
+# ---- Xwayland ----
+# DIAD is a pure-Wayland system (chromium, foot, mako, waybar, grim, slurp
+# all speak Wayland; there are no X11 apps). Xwayland is deliberately NOT
+# installed in the ISO, and sway's default is `xwayland enable` — leaving
+# it enabled makes sway fail to start Xwayland at every config load (boot
+# AND reload), which it reports as a config error and surfaces as a swaynag
+# popup ("There are errors in your config file"). RBRO-004 WP-10:
+# disabling Xwayland eliminates that error at the root — no error, no
+# swaynag, zero popups.
+xwayland disable
 
 # ---- Input Configuration ----
 # Keyboard layout
@@ -55,9 +70,41 @@ default_floating_border normal
 # loads it is the document title (DIAD AGENT) — both rules cover the two
 # states. The /apps and /launch app-windows must be matched FIRST so the
 # generic :7860 rule never pulls them onto workspace 1.
-for_window [app_id="chromium" title="*7860/launch*"] move to workspace 3
-for_window [app_id="chromium" title="*7860/apps*"] move to workspace 2
-for_window [app_id="chromium" title="*7860*"] focus, move to workspace 1
+# NOTE: sway criteria values are POSIX-EXTENDED REGEX, not globs — the
+# patterns must be ".*7860.*", never "*7860*" (that fails to compile and
+# sways falls back to swaynag). app_id at map time is the chromium profile
+# window id "chrome-127.0.0.1__-Default", so the regex must accept it.
+# RBRO-004 WP-10: the generic :7860 rule anchors at the URL END
+# (".*7860$") so it can NEVER swallow the /apps or /launch app-windows:
+# their URL titles (…/apps, …/launch) do not end in "7860", so only the
+# two specific rules above move them — even when chromium maps the URL
+# title before the page's document title replaces it (a boot race that
+# once parked the Apps page on workspace 1).
+# RBRO-004 WP-10 (hardened): the title is STILL racy — a fresh app-window
+# can map showing ONLY the bare origin "127.0.0.1:7860" before the
+# /launch or /apps navigation lands, and the generic title rule above
+# (.*7860$) then swallows the launchpad onto workspace 1 (observed:
+# WS1=agent+launchpad, no WS3 at all). app_id is set from the --app= URL
+# at window creation and NEVER races, so each DIAD window also matches a
+# deterministic app_id rule (both always target the SAME workspace):
+#   chrome-127.0.0.1__-Default       (agent GUI, workspace 1)
+#   chrome-127.0.0.1__apps-Default   (apps icon page, workspace 2)
+#   chrome-127.0.0.1__launch-Default (launchpad, workspace 3)
+# ORDER MATTERS: sway runs EVERY matching for_window handler in config
+# order and the LAST matching command wins. The generic title rule
+# (.*7860$) matches the bare-origin map title of ALL THREE app-windows,
+# so the deterministic app_id rules MUST come after it — otherwise the
+# generic rule would drag the launchpad/apps windows back onto workspace 1.
+# NOTE: the generic rule carries NO `focus` — the agent GUI is focused by
+# its own app_id rule below; a bare `focus` here would steal focus to the
+# launchpad/apps windows at map time and leave the user staring at
+# workspace 3 instead of the agent on workspace 1.
+for_window [app_id="chrome-.*" title=".*7860/launch.*"] move to workspace 3
+for_window [app_id="chrome-.*" title=".*7860/apps.*"] move to workspace 2
+for_window [app_id="chrome-.*" title=".*7860$"] move to workspace 1
+for_window [app_id="chrome-127\.0\.0\.1__launch-Default"] move to workspace 3
+for_window [app_id="chrome-127\.0\.0\.1__apps-Default"] move to workspace 2
+for_window [app_id="chrome-127\.0\.0\.1__-Default"] focus, move to workspace 1
 for_window [app_id="foot"] focus, move to workspace 1
 focus_follows_mouse no
 
@@ -173,14 +220,14 @@ bindsym $mod+Right focus right
 bindsym $mod+Shift+h move left
 bindsym $mod+Shift+j move down
 bindsym $mod+Shift+k move up
-bindsym $mod+Shift+l move right
+# NOTE: $mod+Shift+l (move right) is intentionally NOT bound — $mod+Shift+l
+# is the DIAD Launchpad relaunch (RBRO-004 WP-05). move right lives on
+# $mod+Shift+Right, mirroring focus-right on $mod+Right.
+bindsym $mod+Shift+Right move right
 
 # Split layout
 bindsym $mod+v split vertical
 bindsym $mod+s split horizontal
-
-# Fullscreen
-bindsym $mod+f fullscreen
 
 # Floating toggle
 bindsym $mod+Shift+space floating toggle
