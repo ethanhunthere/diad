@@ -68,9 +68,11 @@ iso: gui
 	@sudo nft -cf $(ISO_DIR)/airootfs/etc/nftables.conf && echo "  nftables.conf OK" || (echo "  ERROR: nftables.conf failed validation" && exit 1)
 	@echo "  [4/5] Assembling ISO with mkarchiso (this takes a while)..."
 	mkdir -p work out
-	sudo mkarchiso -v -w work -o out $(ISO_DIR)
+	# sudo's env_reset strips SOURCE_DATE_EPOCH, so mkarchiso would fall back
+	# to today's date (and the ISO name would drift). Pass it through explicitly.
+	sudo env SOURCE_DATE_EPOCH="$(SOURCE_DATE_EPOCH)" mkarchiso -v -w work -o out $(ISO_DIR)
 	@echo "  [5/5] Done."
-	@echo "ISO built: out/$(ISO_NAME)-*.iso"
+	@echo "ISO built: out/$(ISO_NAME)-$(shell date -u -d @$(SOURCE_DATE_EPOCH) +%Y.%m.%d)-x86_64.iso"
 
 iso-clean:
 	sudo rm -rf work out

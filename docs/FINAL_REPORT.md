@@ -249,12 +249,14 @@ Boot **DIAD** (default entry) from the USB stick, then within ~6 s of login:
 ### QEMU matrix
 
 Boot all three GRUB entries headless (kernel/initrd from `work/iso`,
-`archisosearchuuid=2026-08-11-17-06-00-00`, serial log) → login → verify the
-TARGET STATE above for each entry. Fixes were verified by overlay injection
-of the EXACT committed files (`etc/sway/config`, `diad-supervisor.sh`,
-`etc/waybar/style.css`, `.bashrc`-diag) into the boot at the `postmount`
-break, before systemd starts — byte-for-byte identical content at the same
-paths, so it is functionally the rebuilt ISO. Status: **✅ ALL PASSED**.
+serial log) → login → verify the TARGET STATE above for each entry.
+Pre-rebuild verification used overlay injection of the EXACT committed files
+(`etc/sway/config`, `diad-supervisor.sh`, `etc/waybar/style.css`,
+`.bashrc`-diag) into the boot at the `postmount` break, before systemd
+starts — byte-for-byte identical content at the same paths, functionally the
+rebuilt ISO. **Post-rebuild (2026-08-12) the matrix was rerun with NO
+injection on the actual ISO** (`diados-2026.08.12-x86_64.iso`,
+`archisosearchuuid=2026-08-12-06-36-07-00`). Status: **✅ ALL PASSED**.
 
 | Entry | Result | Evidence |
 |-------|--------|----------|
@@ -270,19 +272,24 @@ QEMU); **8 GB or more is required for the RAM-mode GRUB entry.** The default
 
 ### ISO deliverable
 
-- Build: `sudo rm -rf work out && sudo make iso` (root required — the only
-  remaining action before real-hardware landing). The Makefile pins
-  `SOURCE_DATE_EPOCH` (F-23 reproducibility, default `BUILD_DATE=2026-01-01`),
-  so the rebuild produces:
-  - Artifact: `out/diados-2026.01.01-x86_64.iso` (~3.4 GiB)
-  - `archisosearchuuid=2026-01-01-00-00-00-00` (mkarchiso derives both from
-    the epoch — see `profiledef.sh` / `mkarchiso` `iso_uuid`)
-- Write: `sudo dd if=out/diados-2026.01.01-x86_64.iso of=/dev/sda bs=4M status=progress conv=fsync`.
-- sha256: **must be computed on the rebuilt ISO** (`sha256sum out/diados-2026.01.01-x86_64.iso`);
-  any pre-rebuild hash refers to the stale ISO and is invalid.
-- Post-rebuild matrix reruns (no injection): `.matrix/matrix.py` is already
-  synced to the rebuilt artifact (`ISO=out/diados-2026.01.01-x86_64.iso`,
-  `UUID="2026-01-01-00-00-00-00"`).
+- Build: `sudo rm -rf work out && sudo make iso` (root required). Done on
+  **2026-08-12**.
+- **Built artifact: `out/diados-2026.08.12-x86_64.iso`** (3.4 GiB,
+  `archisosearchuuid=2026-08-12-06-36-07-00`).
+  - Naming note: the Makefile pins `SOURCE_DATE_EPOCH` (F-23 reproducibility,
+    default `BUILD_DATE=2026-01-01`) so the *intended* name is
+    `diados-2026.01.01-x86_64.iso`, but the first rebuild was made before the
+    Makefile fix: sudo's `env_reset` stripped the variable, so `profiledef.sh`
+    fell back to today's date. **Makefile fixed** (mkarchiso now invoked as
+    `sudo env SOURCE_DATE_EPOCH=... mkarchiso`) — future rebuilds get the
+    pinned name. The `2026.08.12` ISO is byte-current and fully verified.
+- **sha256: `5547c7ad65d96fa7bc2aeb61bc0a427836fd413983ee6052d147fd180f367560`**
+  (computed on the rebuilt ISO, 2026-08-12).
+- Write: `sudo dd if=out/diados-2026.08.12-x86_64.iso of=/dev/sda bs=4M status=progress conv=fsync`.
+- Post-rebuild matrix reruns (no injection): `.matrix/matrix.py` synced to the
+  rebuilt artifact (`ISO=out/diados-2026.08.12-x86_64.iso`,
+  `UUID="2026-08-12-06-36-07-00"`). Rerun: `python3 .matrix/matrix.py {entry}
+  --full-session` (add `--mem=8192` for `3-ram`).
 - Rollback: `git checkout RBRO-004-RELEASE~1` (pre-RBRO-004 tree) or reset to
   any WP commit listed above.
 
