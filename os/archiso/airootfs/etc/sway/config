@@ -18,7 +18,7 @@ set $ws1 "1: DIAD AGENT"
 set $ws2 "2: BROWSER"
 set $ws3 "3: COMMS"
 
-# ---- Output & Background ----
+# ---- Output & Background (DIAD Agent emblem reveals when windows close) ----
 output * bg /usr/share/backgrounds/diad/wallpaper.png fill #0d0e15
 
 # ---- Input Configuration ----
@@ -90,15 +90,9 @@ for_window [app_id="chrome-.*" title=".*7860$"] focus, move to workspace $ws1
 for_window [app_id="chromium" title="^DIAD AGENT.*$"] focus, move to workspace $ws1
 for_window [app_id="foot"] focus, move to workspace $ws1
 
-# ---- Status Bar ----
-bar {
-    position top
-    swaybar_command /usr/local/bin/diad-waybar
-}
-
-# ---- Autostart ----
-exec mako
+# ---- Autostart Services ----
 exec /usr/local/bin/diad-waybar
+exec mako
 exec diad-supervisor.sh
 
 # ---- Keybindings ----

@@ -25,24 +25,27 @@
       "default": "◈"
     },
     "persistent_workspaces": {
-      "1: DIAD AGENT": [],
-      "2: BROWSER": [],
-      "3: COMMS": []
+      "1: DIAD AGENT": ["*"],
+      "2: BROWSER": ["*"],
+      "3: COMMS": ["*"]
     }
   },
   "custom/wifi": {
     "format": "",
     "tooltip": "Wi-Fi Networks",
-    "on-click": "/usr/local/bin/diad-wifi.sh"
+    "on-click": "/usr/local/bin/diad-wifi.sh",
+    "interval": "once"
   },
   "custom/reboot": {
     "format": "",
     "tooltip": "Restart",
-    "on-click": "/usr/local/bin/diad-power.sh reboot"
+    "on-click": "/usr/local/bin/diad-power.sh reboot",
+    "interval": "once"
   },
   "custom/power": {
     "format": "",
     "tooltip": "Shutdown",
-    "on-click": "/usr/local/bin/diad-power.sh power"
+    "on-click": "/usr/local/bin/diad-power.sh power",
+    "interval": "once"
   }
 }

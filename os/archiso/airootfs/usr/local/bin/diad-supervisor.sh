@@ -346,30 +346,22 @@ if command -v diad-agent >/dev/null 2>&1; then
     nohup diad-agent --daemon >> "${DIAD_HOME}/daemon.log" 2>&1 &
     log "supervisor: DIAD daemon starting (pid $!)"
     
-    # Fast-poll for daemon readiness (up to 3 seconds, 0.1s steps)
+    # Fast-poll for daemon readiness (up to 2 seconds, 0.05s steps)
     healthy=0
-    for _ in $(seq 1 30); do
+    for _ in $(seq 1 40); do
         if daemon_healthy; then
             healthy=1
             break
         fi
-        sleep 0.1
+        sleep 0.05
     done
 
     if [[ ${healthy} -eq 1 ]]; then
         log "supervisor: DIAD daemon healthy on 127.0.0.1:7860"
         
-        # Workspace 1: DIAD AGENT Desktop Hub
+        # Workspace 1: DIAD AGENT Hub (instant boot)
         brave --app=http://127.0.0.1:7860 >/dev/null 2>&1 &
         log "supervisor: DIAD AGENT Hub spawned on workspace 1"
-
-        # Workspace 2: Web Browser Desktop Hub (Apps page)
-        brave --app=http://127.0.0.1:7860/apps >/dev/null 2>&1 &
-        log "supervisor: Browser Hub spawned on workspace 2"
-
-        # Workspace 3: Communications Desktop Hub (Telegram & Slack)
-        brave --app=http://127.0.0.1:7860/launch >/dev/null 2>&1 &
-        log "supervisor: Communications Hub spawned on workspace 3"
     else
         log "supervisor: DIAD daemon failed to respond — engaging TUI fallback"
         FALLBACK=1

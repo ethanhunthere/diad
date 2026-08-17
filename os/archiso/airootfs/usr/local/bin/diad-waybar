@@ -2,6 +2,10 @@
 # =============================================================================
 # DIAD — Waybar Launch Wrapper
 # =============================================================================
-set -euo pipefail
+set -uo pipefail
+
+# Ensure single instance
+pkill -x waybar 2>/dev/null || true
+sleep 0.05
 
 exec /usr/bin/waybar -c /etc/waybar/config -s /etc/waybar/style.css

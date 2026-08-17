@@ -8,7 +8,6 @@ import type { ChatMessage } from "../lib/types";
 import { ToolCallCard } from "../components/ToolCallCard";
 import { EditDiffCard } from "../components/EditDiffCard";
 import { ChatInput } from "../components/ChatInput";
-import { DiadLogo } from "../components/DiadLogo";
 
 function MessageBubble({ m }: { m: ChatMessage }) {
   const [copied, setCopied] = useState(false);
@@ -174,10 +173,9 @@ export function ChatPanel() {
         className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5"
       >
         {messages.length === 0 && (
-          <div className="flex h-full flex-col items-center justify-center gap-4 text-center max-w-md mx-auto px-4 animate-fade-in my-auto">
-            <DiadLogo size={52} showWordmark={true} />
-            <p className="text-[13.5px] text-slate-400 font-sans tracking-wide">
-              Type an intent or question below to begin.
+          <div className="flex h-full flex-col items-center justify-center text-center px-4 my-auto">
+            <p className="text-[14px] text-slate-500 font-mono">
+              Ready · Type an intent or command below
             </p>
           </div>
         )}
