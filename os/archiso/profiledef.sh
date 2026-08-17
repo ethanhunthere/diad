@@ -88,6 +88,8 @@ file_permissions=(
     ["/usr/lib/systemd/system-preset/00-diad.preset"]="0:0:644"
     ["/usr/share/systemd/diad.preset"]="0:0:644"
     ["/usr/share/glib-2.0/schemas/99_diad_dark.gschema.override"]="0:0:644"
+    ["/usr/share/backgrounds/diad/wallpaper.png"]="0:0:644"
+    ["/usr/share/backgrounds/diad/wallpaper.svg"]="0:0:644"
 
     # --- initramfs (archiso hooks) ---
     ["/etc/mkinitcpio.conf.d/archiso.conf"]="0:0:644"
@@ -128,6 +130,7 @@ file_permissions=(
     ["/usr/local/bin/diad-telegram"]="0:0:755"
     ["/usr/local/bin/diad-slack"]="0:0:755"
     ["/usr/local/bin/diad-workspace-jump.sh"]="0:0:755"
+    ["/usr/local/bin/diad-waybar"]="0:0:755"
     ["/etc/wofi/style.css"]="0:0:644"
     ["/usr/local/bin/brave"]="0:0:755"
 )

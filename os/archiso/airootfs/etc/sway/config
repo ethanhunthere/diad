@@ -19,7 +19,7 @@ set $ws2 "2: BROWSER"
 set $ws3 "3: COMMS"
 
 # ---- Output & Background ----
-output * bg #0d0e15 solid_color
+output * bg /usr/share/backgrounds/diad/wallpaper.png fill #0d0e15
 
 # ---- Input Configuration ----
 input * {
@@ -78,6 +78,7 @@ assign [app_id="org.gnome.Epiphany"] $ws2
 for_window [app_id="chrome-127\.0\.0\.1__apps-Default"] move to workspace $ws2
 for_window [app_id="chrome-.*" title=".*7860/apps.*"] move to workspace $ws2
 for_window [app_id="chromium" title="^DIAD Apps.*$"] move to workspace $ws2
+for_window [app_id="chromium" title="^(?!.*DIAD).*$"] move to workspace $ws2
 
 # Workspace 1: DIAD AGENT (GUI & TUI)
 assign [title="^DIAD AGENT.*$"] $ws1
@@ -91,11 +92,13 @@ for_window [app_id="foot"] focus, move to workspace $ws1
 
 # ---- Status Bar ----
 bar {
-    swaybar_command waybar -c /etc/waybar/config -s /etc/waybar/style.css
+    position top
+    swaybar_command /usr/local/bin/diad-waybar
 }
 
 # ---- Autostart ----
 exec mako
+exec /usr/local/bin/diad-waybar
 exec diad-supervisor.sh
 
 # ---- Keybindings ----
@@ -114,12 +117,13 @@ bindsym $mod+1 workspace $ws1
 bindsym $mod+2 workspace $ws2
 bindsym $mod+3 workspace $ws3
 
-bindsym F1 workspace $ws1
-bindsym F2 workspace $ws2
-bindsym F3 workspace $ws3
+bindsym F1 workspace $ws1; exec /usr/local/bin/brave --app=http://127.0.0.1:7860
+bindsym F2 workspace $ws2; exec /usr/local/bin/brave --app=http://127.0.0.1:7860/apps
+bindsym F3 workspace $ws3; exec /usr/local/bin/brave --app=http://127.0.0.1:7860/launch
 bindsym F5 exec /usr/local/bin/brave --app=http://127.0.0.1:7860
 
 # Direct app shortcuts
+bindsym $mod+a exec /usr/local/bin/brave --app=http://127.0.0.1:7860
 bindsym $mod+b exec /usr/local/bin/brave
 bindsym $mod+t exec /usr/local/bin/diad-telegram
 bindsym $mod+s exec /usr/local/bin/diad-slack
