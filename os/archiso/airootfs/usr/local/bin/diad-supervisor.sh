@@ -318,10 +318,6 @@ show_diagnostics() {
 log "supervisor: session start"
 rotate_logs
 
-# ---- (0) Start waybar immediately so topbar & workspaces are visible at boot ----
-if ! pgrep -x waybar >/dev/null 2>&1; then
-    waybar -c /etc/waybar/config -s /etc/waybar/style.css >/dev/null 2>&1 &
-fi
 
 # ---- (a) idempotent setup in background (never blocks session start) ----
 (
