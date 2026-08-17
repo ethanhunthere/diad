@@ -364,15 +364,15 @@ if command -v diad-agent >/dev/null 2>&1; then
         log "supervisor: DIAD daemon healthy on 127.0.0.1:7860"
         
         # Workspace 1: DIAD AGENT Desktop Hub
-        brave --app=http://127.0.0.1:7860/workspace/1 >/dev/null 2>&1 &
+        brave --app=http://127.0.0.1:7860 >/dev/null 2>&1 &
         log "supervisor: DIAD AGENT Hub spawned on workspace 1"
 
-        # Workspace 2: Web Browser Desktop Hub
-        brave --app=http://127.0.0.1:7860/workspace/2 >/dev/null 2>&1 &
+        # Workspace 2: Web Browser Desktop Hub (Apps page)
+        brave --app=http://127.0.0.1:7860/apps >/dev/null 2>&1 &
         log "supervisor: Browser Hub spawned on workspace 2"
 
         # Workspace 3: Communications Desktop Hub (Telegram & Slack)
-        brave --app=http://127.0.0.1:7860/workspace/3 >/dev/null 2>&1 &
+        brave --app=http://127.0.0.1:7860/launch >/dev/null 2>&1 &
         log "supervisor: Communications Hub spawned on workspace 3"
     else
         log "supervisor: DIAD daemon failed to respond — engaging TUI fallback"
@@ -395,7 +395,7 @@ fi
 
 # ---- end-of-boot: focus workspace 1 on primary output ----
 if command -v swaymsg >/dev/null 2>&1; then
-    swaymsg workspace "1: DIAD AGENT" >/dev/null 2>&1 || swaymsg workspace 1 >/dev/null 2>&1
+    swaymsg workspace number 1 >/dev/null 2>&1
     output_name="$(swaymsg -t get_outputs 2>/dev/null | jq -r '.[0].name // empty' 2>/dev/null)"
     if [[ -n "${output_name}" ]]; then
         swaymsg focus output "${output_name}" >/dev/null 2>&1

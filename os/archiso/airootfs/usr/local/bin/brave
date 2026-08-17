@@ -1,68 +1,56 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DIAD — Universal Lightweight Browser Launcher (2040 Edition)
+# DIAD — Universal Browser Launcher Shim
+# =============================================================================
+# One command (`brave`) for every DIAD launch site:
+#   - DIAD AGENT GUI app window (workspace 1)
+#   - DIAD Apps icon page / plain browser (workspace 2)
+#   - DIAD Launchpad (workspace 3)
+#
+# Primary engine: Chromium (installed in ISO package set)
+# Flatpak fallback: Brave Browser (installed by first-run wizard if requested)
 # =============================================================================
 set -uo pipefail
 
-target_url=""
 is_app_window=false
-
-while [ $# -gt 0 ]; do
-    case "$1" in
-        --app=*)
-            is_app_window=true
-            target_url="${1#--app=}"
-            shift
-            ;;
-        --app)
-            is_app_window=true
-            if [ $# -gt 1 ] && [[ "$2" =~ ^https?:// ]]; then
-                target_url="$2"
-                shift 2
-            else
-                shift
-            fi
-            ;;
-        http://*|https://*)
-            target_url="$1"
-            shift
-            ;;
-        *)
-            shift
-            ;;
+for a in "$@"; do
+    case "$a" in
+        --app=*) is_app_window=true ;;
     esac
 done
 
-if [ -z "$target_url" ]; then
-    target_url="https://duckduckgo.com"
+# Wayland flags for Chromium
+WAYLAND_FLAGS="--ozone-platform-hint=auto --ozone-platform=wayland --enable-features=UseOzonePlatform,WaylandWindowDecorations"
+if [ "$(id -u)" = "0" ]; then
+    WAYLAND_FLAGS="${WAYLAND_FLAGS} --no-sandbox"
 fi
 
-# 1. Epiphany (GNOME WebKitGTK — ultra-lightweight Wayland engine)
-if command -v epiphany >/dev/null 2>&1; then
-    exec /usr/bin/epiphany --new-window "${target_url}"
+if [ "$is_app_window" = true ]; then
+    # Speed flags: silent, no-first-run, no background network, no updates.
+    APP_FLAGS="--no-first-run --no-default-browser-check --disable-sync \
+--disable-background-networking --disable-component-update \
+--disable-features=Translate,MediaRouter --metrics-recording-only --disable-breakpad"
+else
+    APP_FLAGS=""
 fi
 
-# 2. Chromium (Fallback)
+# 1. Flatpak Brave (if user installed it via first-run wizard)
+if command -v flatpak >/dev/null 2>&1 \
+    && flatpak list --app --columns=application 2>/dev/null | grep -qx 'com.brave.Browser'; then
+    # shellcheck disable=SC2086
+    exec /usr/bin/flatpak run com.brave.Browser $APP_FLAGS "$@"
+fi
+
+# 2. Chromium (built into the ISO)
 if command -v chromium >/dev/null 2>&1; then
-    WAYLAND_FLAGS="--ozone-platform-hint=auto --ozone-platform=wayland --enable-features=UseOzonePlatform,WaylandWindowDecorations"
-    if [ "$(id -u)" = "0" ]; then
-        WAYLAND_FLAGS="$WAYLAND_FLAGS --no-sandbox"
-    fi
-    if [ "$is_app_window" = true ]; then
-        exec /usr/bin/chromium $WAYLAND_FLAGS --app="${target_url}"
-    else
-        exec /usr/bin/chromium $WAYLAND_FLAGS "${target_url}"
-    fi
+    # shellcheck disable=SC2086
+    exec /usr/bin/chromium ${WAYLAND_FLAGS} $APP_FLAGS "$@"
 fi
 
-# 3. Brave Flatpak (if installed)
-if command -v flatpak >/dev/null 2>&1 && flatpak list --app --columns=application 2>/dev/null | grep -qx 'com.brave.Browser'; then
-    if [ "$is_app_window" = true ]; then
-        exec /usr/bin/flatpak run com.brave.Browser --app="${target_url}"
-    else
-        exec /usr/bin/flatpak run com.brave.Browser "${target_url}"
-    fi
+# 3. Epiphany (Fallback if installed)
+if command -v epiphany >/dev/null 2>&1; then
+    exec /usr/bin/epiphany "$@"
 fi
 
-notify-send "DIAD" "No browser available" -u critical 2>/dev/null || true
+notify-send "DIAD" "No browser available (chromium missing)" -u critical 2>/dev/null || true
 exit 1

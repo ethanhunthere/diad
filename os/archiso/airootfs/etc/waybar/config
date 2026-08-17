@@ -1,7 +1,7 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 28,
+  "height": 30,
   "exclusive": true,
   "spacing": 4,
   "modules-left": ["clock"],
@@ -9,38 +9,40 @@
   "modules-right": ["custom/wifi", "custom/reboot", "custom/power"],
   "clock": {
     "format": "{:%H:%M}",
+    "tooltip-format": "{:%Y-%m-%d}",
     "interval": 10
   },
   "sway/workspaces": {
     "disable-scroll": true,
-    "all-outputs": false,
+    "all-outputs": true,
     "format": "{icon}",
     "format-icons": {
+      "1": "◈ DIAD AGENT",
+      "2": "🌐 BROWSER",
+      "3": "💬 COMMS",
       "1: DIAD AGENT": "◈ DIAD AGENT",
       "2: BROWSER": "🌐 BROWSER",
       "3: COMMS": "💬 COMMS",
-      "1": "◈ DIAD AGENT",
-      "2": "🌐 BROWSER",
-      "3": "💬 COMMS"
+      "default": "◈"
     },
     "persistent-workspaces": {
-      "1: DIAD AGENT": [],
-      "2: BROWSER": [],
-      "3: COMMS": []
+      "1": [],
+      "2": [],
+      "3": []
     }
   },
   "custom/wifi": {
-    "format": "\uf1eb",
+    "format": "",
     "tooltip": "Wi-Fi Networks",
     "on-click": "/usr/local/bin/diad-wifi.sh"
   },
   "custom/reboot": {
-    "format": "\uf021",
+    "format": "",
     "tooltip": "Restart",
     "on-click": "/usr/local/bin/diad-power.sh reboot"
   },
   "custom/power": {
-    "format": "\uf011",
+    "format": "",
     "tooltip": "Power & Session",
     "on-click": "/usr/local/bin/diad-power.sh"
   }
