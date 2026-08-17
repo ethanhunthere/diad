@@ -143,11 +143,15 @@ if [ "$sec_type" = "Open" ] || [ -z "$sec_type" ]; then
 else
     # Prompt password
     pass=$(wofi --dmenu --password --insensitive --style /etc/wofi/style.css --width 420 --height 180 --prompt "Enter password for $clean_ssid" 2>/dev/null || true)
-    [ -z "$pass" ] && exit 0
+    if [ -z "$pass" ]; then
+        exit 0
+    fi
     notify-send "DIAD Network" "Authenticating with $clean_ssid..." -i network-wireless
     if nmcli dev wifi connect "$clean_ssid" password "$pass"; then
         notify-send "DIAD Network" "Successfully connected to $clean_ssid" -i network-wireless
     else
         notify-send "DIAD Network" "Authentication failed for $clean_ssid" -u critical -i network-wireless-offline
+        # Launch nmtui fallback for manual connection
+        foot --app-id=foot --title "Wi-Fi Connections" -e nmtui >/dev/null 2>&1 &
     fi
 fi

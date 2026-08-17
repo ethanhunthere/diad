@@ -146,13 +146,6 @@ export function ChatPanel() {
     sendMsg({ type: "chat_send", id: nextId("chat"), text: trimmed });
   };
 
-  const STARTER_PROMPTS = [
-    { label: "📡 Manage Wi-Fi & Network", prompt: "Show available Wi-Fi networks and connect to the internet", desc: "Hardware wireless scanning & config" },
-    { label: "⚡ System Health & Tuning", prompt: "Run full hardware diagnostics: CPU, RAM, battery, thermal, and storage", desc: "Inspect and optimize OS performance" },
-    { label: "🦀 Build & Code Applications", prompt: "Help me design and implement high-performance code in this project", desc: "Autonomous AI coding & refactoring" },
-    { label: "📂 Explore & Organize Files", prompt: "List files in the workspace and show recent project changes", desc: "Workspace navigation & file management" },
-  ];
-
   return (
     <div className="flex h-full flex-col bg-obsidian">
       {/* Top chat action bar if messages exist */}
@@ -181,42 +174,11 @@ export function ChatPanel() {
         className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5"
       >
         {messages.length === 0 && (
-          <div className="flex h-full flex-col items-center justify-center gap-6 text-center max-w-xl mx-auto px-4 animate-fade-in my-auto">
-            <DiadLogo size={56} showWordmark={false} />
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-100 font-mono">
-                DIAD 2040 AUTONOMOUS CORE
-              </h1>
-              <p className="mt-2 text-[14.5px] text-slate-400 max-w-md mx-auto leading-relaxed">
-                Intent-driven operating system intelligence. Code, configure hardware, and automate your computer with AI.
-              </p>
-            </div>
-
-            {/* Quick starter cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mt-2 text-left">
-              {STARTER_PROMPTS.map((item, idx) => (
-                <button
-                  key={idx}
-                  className="rounded-xl border border-border-subtle bg-surface-2/80 p-4 hover:border-amber-500/60 hover:bg-surface-3/90 hover:shadow-xl hover:shadow-amber-950/20 transition-all group"
-                  onClick={() => {
-                    send(item.prompt);
-                  }}
-                >
-                  <div className="text-[14px] font-semibold text-slate-200 group-hover:text-amber-400 transition-colors">
-                    {item.label}
-                  </div>
-                  <div className="text-[12px] text-slate-400 mt-1">
-                    {item.desc}
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-[12px] text-slate-500">
-              <span className="kbd bg-surface-2 border border-border-subtle px-2 py-1 rounded text-slate-400">F5 TUI Mode</span>
-              <span className="kbd bg-surface-2 border border-border-subtle px-2 py-1 rounded text-slate-400">Ctrl+K Commands</span>
-              <span className="kbd bg-surface-2 border border-border-subtle px-2 py-1 rounded text-slate-400">F6 Model</span>
-            </div>
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-center max-w-md mx-auto px-4 animate-fade-in my-auto">
+            <DiadLogo size={52} showWordmark={true} />
+            <p className="text-[13.5px] text-slate-400 font-sans tracking-wide">
+              Type an intent or question below to begin.
+            </p>
           </div>
         )}
         {messages.map((m) => (

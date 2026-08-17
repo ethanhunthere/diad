@@ -66,6 +66,8 @@ file_permissions=(
     ["/etc/waybar/config.compact"]="0:0:644"
     ["/etc/waybar/config.full"]="0:0:644"
     ["/etc/waybar/style.css"]="0:0:644"
+    ["/etc/xdg/waybar/config"]="0:0:644"
+    ["/etc/xdg/waybar/style.css"]="0:0:644"
     ["/etc/diad/sway-overrides.conf"]="0:0:644"
 
     # --- systemd units / drop-ins ---

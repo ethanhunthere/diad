@@ -91,7 +91,7 @@ for_window [app_id="foot"] focus, move to workspace $ws1
 
 # ---- Status Bar ----
 bar {
-    swaybar_command waybar
+    swaybar_command waybar -c /etc/waybar/config -s /etc/waybar/style.css
 }
 
 # ---- Autostart ----

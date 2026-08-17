@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, CornerDownLeft, Terminal } from "lucide-react";
+import { Send, CornerDownLeft } from "lucide-react";
 import { useStore } from "../stores/useStore";
 
 const SLASH_COMMANDS: { cmd: string; desc: string }[] = [
@@ -24,7 +24,6 @@ export function ChatInput({
   const input = useStore((s) => s.input);
   const setInput = useStore((s) => s.setInput);
   const streaming = useStore((s) => s.streaming);
-  const sendWs = useStore((s) => s.send);
   const ref = useRef<HTMLTextAreaElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuIdx, setMenuIdx] = useState(0);
@@ -94,10 +93,6 @@ export function ChatInput({
     ref.current?.focus();
   };
 
-  const toggleTui = () => {
-    if (sendWs) sendWs({ v: 1, type: "spawn_tui" });
-  };
-
   return (
     <div className="relative border-t border-border-subtle/80 bg-surface/80 backdrop-blur-xl px-5 py-3.5 shadow-2xl">
       {/* "/" command menu */}
@@ -151,26 +146,11 @@ export function ChatInput({
           <Send size={18} />
         </button>
       </div>
-      <div className="mt-2 flex items-center gap-3 text-[11.5px] text-slate-400 font-mono">
+      <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500 font-mono">
         <span className="flex items-center gap-1">
-          <CornerDownLeft size={11} className="inline text-amber-400" /> Enter to send
+          <CornerDownLeft size={11} className="text-amber-400" /> Enter to send
         </span>
-        <span className="text-slate-600">·</span>
-        <span>Shift+Enter for newline</span>
-        <span className="text-slate-600">·</span>
-        <button
-          onClick={toggleTui}
-          className="flex items-center gap-1 text-slate-300 hover:text-amber-400 transition-colors"
-          title="Open TUI Terminal (F5)"
-        >
-          <Terminal size={12} className="text-amber-400" />
-          <span>F5 TUI Terminal</span>
-        </button>
-        {!disabled && (
-          <span className="ml-auto text-slate-500 hidden sm:inline">
-            Ctrl+K Commands · F6 Model
-          </span>
-        )}
+        <span>/ for commands · F5 terminal</span>
       </div>
     </div>
   );
