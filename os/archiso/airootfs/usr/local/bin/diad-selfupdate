@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DIAD least-privilege wrapper: agent self-update (audit F-12 / phase A1)
+# DIAD least-privilege wrapper: agent self-update (audit F-12 / phase A1 / R-3)
 # -----------------------------------------------------------------------------
 # Collapses wget + sha256sum + install + rm into ONE validated operation.
-# Previously these were four separate wildcard sudoers entries — including
-# `rm` and `wget` with open arguments.
 #
-# Usage: sudo DIAD_CONFIRM=selfupdate diad-selfupdate URL CHECKSUM_URL
+# Usage: sudo diad-selfupdate [--confirm=selfupdate] URL CHECKSUM_URL
 # The downloaded binary MUST match the sidecar sha256 or nothing is installed.
 #
 set -u
@@ -22,8 +20,13 @@ fail() {
     exit 2
 }
 
-[[ $# -eq 2 ]] || fail "usage: diad-selfupdate URL CHECKSUM_URL"
-[[ "${DIAD_CONFIRM:-}" == "selfupdate" ]] || fail "missing DIAD_CONFIRM=selfupdate marker"
+if [[ "${1:-}" == "--confirm=selfupdate" ]]; then
+    shift
+elif [[ "${DIAD_CONFIRM:-}" != "selfupdate" ]]; then
+    fail "missing --confirm=selfupdate flag"
+fi
+
+[[ $# -eq 2 ]] || fail "usage: diad-selfupdate [--confirm=selfupdate] URL CHECKSUM_URL"
 [[ "$1" =~ $URL_RE ]] || fail "invalid URL: $1"
 [[ "$2" =~ $URL_RE ]] || fail "invalid checksum URL: $2"
 

@@ -54,6 +54,7 @@ export function CommandPalette() {
       { id: "v-terminal", label: "Go to Terminal", icon: TerminalSquare, run: () => setView("terminal") },
       { id: "v-agents", label: "Go to Agents", icon: Bot, run: () => setView("agents") },
       { id: "v-settings", label: "Go to Settings", icon: Settings2, run: () => setView("settings") },
+      { id: "v-personalize", label: "Personalization Studio (/tuicolor, Fonts, Themes)", hint: "GUI & TUI Colors", icon: Settings2, run: () => setView("settings") },
       { id: "v-clipboard", label: "Go to Clipboard History", icon: ClipboardCopy, run: () => setView("clipboard") },
       { id: "v-trash", label: "Go to Trash", icon: Trash2, run: () => setView("trash") },
       { id: "c-clear", label: "Clear chat", icon: Wrench, run: () => useStore.setState({ messages: [] }) },
@@ -72,7 +73,7 @@ export function CommandPalette() {
         }
       },
     }));
-    const slashItems: PaletteItem[] = ["/help", "/tools", "/version", "/model", "/wifi"].map((c) => ({
+    const slashItems: PaletteItem[] = ["/help", "/tools", "/version", "/model", "/wifi", "/tuicolor", "/theme", "/personalize"].map((c) => ({
       id: `s-${c}`,
       label: c,
       hint: "send command",

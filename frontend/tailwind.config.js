@@ -4,30 +4,29 @@ export default {
   theme: {
     extend: {
       colors: {
-        // COPPER OBSIDIAN — DIAD AGENT design system
-        obsidian: "#0B0908", // app background
-        surface: "#14100D", // raised surfaces
-        "surface-2": "#1B1511", // hover / elevated
-        "surface-3": "#221B15", // active
-        copper: "#C87F4A", // primary accent
-        "copper-hover": "#E0955C",
-        "copper-dim": "#8A5A33",
-        ink: "#EDE6DE", // primary text
-        dim: "#8A7F75", // secondary text
-        faint: "#5C534A", // tertiary text / icons
-        success: "#6FBF8B",
-        warn: "#E0B060",
-        danger: "#E07A7A",
-        "border-subtle": "rgba(255,255,255,0.06)",
-        "border-strong": "rgba(255,255,255,0.12)",
+        obsidian: "rgb(var(--bg-obsidian-rgb) / <alpha-value>)",
+        surface: "rgb(var(--bg-surface-rgb) / <alpha-value>)",
+        "surface-2": "rgb(var(--bg-surface-2-rgb) / <alpha-value>)",
+        "surface-3": "rgb(var(--bg-surface-3-rgb) / <alpha-value>)",
+        copper: "rgb(var(--accent-rgb) / <alpha-value>)",
+        "copper-hover": "rgb(var(--accent-hover-rgb) / <alpha-value>)",
+        "copper-dim": "rgb(var(--accent-dim-rgb) / <alpha-value>)",
+        ink: "rgb(var(--text-ink-rgb) / <alpha-value>)",
+        dim: "rgb(var(--text-dim-rgb) / <alpha-value>)",
+        faint: "rgb(var(--text-faint-rgb) / <alpha-value>)",
+        success: "rgb(var(--success-rgb) / <alpha-value>)",
+        warn: "rgb(var(--warn-rgb) / <alpha-value>)",
+        danger: "rgb(var(--danger-rgb) / <alpha-value>)",
+        "border-subtle": "var(--border-subtle, rgba(255,255,255,0.08))",
+        "border-strong": "var(--border-strong, rgba(255,255,255,0.16))",
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
         mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
       borderRadius: {
-        panel: "12px",
-        control: "8px",
+        panel: "var(--radius-panel, 12px)",
+        control: "var(--radius-control, 8px)",
       },
       backdropBlur: {
         glass: "20px",

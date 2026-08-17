@@ -48,12 +48,12 @@ pub fn check_system_updates() -> anyhow::Result<ToolResult> {
     )))
 }
 
-/// Apply all system updates (`sudo pacman -Syu --noconfirm`).
+/// Apply all system updates (`sudo diad-pacman update`).
 ///
 /// The orchestrator requires an explicit user confirmation (y/N) before this
 /// tool executes — see `CONFIRM_TOOLS` in `orchestrator/agent.rs`.
 pub fn apply_system_updates() -> anyhow::Result<ToolResult> {
-    exec::run_privileged(&["pacman", "-Syu", "--noconfirm"])
+    exec::run_privileged(&["/usr/local/bin/diad-pacman", "update"])
 }
 
 // ===========================================================================
@@ -101,13 +101,12 @@ pub fn check_agent_updates() -> anyhow::Result<ToolResult> {
 /// overridden at build time via `DIAD_AGENT_DOWNLOAD_URL`; the default points
 /// at the future `diados/diados` releases asset.
 ///
-/// # Supply-chain hardening (audit F-12 / phase A1)
+/// # Supply-chain hardening (audit F-12 / phase A1 / R-3)
 ///
 /// The whole operation (download + checksum fetch + digest verify + install +
 /// cleanup) runs inside the root-owned `/usr/local/bin/diad-selfupdate`
-/// wrapper, which is the ONLY sudoers entry for self-update — the old open
-/// `wget`/`sha256sum`/`install`/`rm` entries are gone. The wrapper refuses to
-/// install unless the `DIAD_CONFIRM=selfupdate` marker is present AND the
+/// wrapper, which is the ONLY sudoers entry for self-update. The wrapper refuses to
+/// install unless the `--confirm=selfupdate` marker is present AND the
 /// downloaded binary's SHA-256 matches the `.sha256` sidecar from the same
 /// HTTPS origin.
 pub fn apply_agent_updates() -> anyhow::Result<ToolResult> {
@@ -115,8 +114,10 @@ pub fn apply_agent_updates() -> anyhow::Result<ToolResult> {
         "https://api.github.com/repos/diados/diados/releases/latest/download/diad-agent",
     );
     let checksum_url = format!("{url}.sha256");
-    exec::run_privileged_env(
-        &["/usr/local/bin/diad-selfupdate", url, &checksum_url],
-        &[("DIAD_CONFIRM", "selfupdate")],
-    )
+    exec::run_privileged(&[
+        "/usr/local/bin/diad-selfupdate",
+        "--confirm=selfupdate",
+        url,
+        &checksum_url,
+    ])
 }

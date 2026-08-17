@@ -210,12 +210,18 @@ impl App {
 
     /// Handle a key event, mutating app state accordingly.
     pub fn handle_key_event(&mut self, key_event: KeyEvent) {
-        // Global action: F9 re-opens the DIAD AGENT GUI (RBRO-004 WP-03).
+        // Global action: F5 / F9 re-opens the DIAD AGENT GUI (RBRO-004 WP-03).
         // Checked before the per-mode dispatch so it works from every view.
-        if self.binding_is(&key_event, "open_agent") {
+        if self.binding_is(&key_event, "open_agent")
+            || key_event.code == crossterm::event::KeyCode::F(5)
+            || key_event.code == crossterm::event::KeyCode::F(9)
+        {
             self.open_gui_requested = true;
             self.messages
-                .push("[system] Opening DIAD AGENT GUI (F9)".into());
+                .push("[system] Opening DIAD AGENT GUI (F5)".into());
+            let _ = std::process::Command::new("brave")
+                .arg("--app=http://127.0.0.1:7860")
+                .spawn();
             return;
         }
         match self.mode {
@@ -497,6 +503,40 @@ impl App {
         // Handle /model — open the provider & model picker.
         if input == "/model" {
             self.open_provider_picker();
+            self.input_buffer.clear();
+            self.cursor_position = 0;
+            return;
+        }
+
+        // Handle /gui — launch GUI
+        if input == "/gui" {
+            self.open_gui_requested = true;
+            self.messages.push("[system] Launching DIAD AGENT GUI...".into());
+            let _ = std::process::Command::new("brave")
+                .arg("--app=http://127.0.0.1:7860")
+                .spawn();
+            self.input_buffer.clear();
+            self.cursor_position = 0;
+            return;
+        }
+
+        // Handle /tuicolor [theme] or /theme [theme] — TUI color personalization
+        if input == "/tuicolor" || input == "/theme" || input.starts_with("/tuicolor ") || input.starts_with("/theme ") {
+            let rest = if let Some(r) = input.strip_prefix("/tuicolor ") {
+                r.trim()
+            } else if let Some(r) = input.strip_prefix("/theme ") {
+                r.trim()
+            } else {
+                ""
+            };
+            if !rest.is_empty() {
+                self.config.theme = rest.to_string();
+                self.messages.push(format!("[system] TUI theme set to: {rest}"));
+            } else {
+                self.messages.push(format!("[system] Current TUI theme: {}", self.config.theme));
+                self.messages.push("[system] Available TUI themes: monochrome, slate, tokyo_night, catppuccin, nord, gruvbox, matrix".to_string());
+                self.messages.push("[system] Usage: /tuicolor <theme> or open GUI Settings -> Personalize for the live side-by-side studio.".to_string());
+            }
             self.input_buffer.clear();
             self.cursor_position = 0;
             return;
@@ -953,5 +993,14 @@ mod tests {
         // Invalid spec must not lock the user out — F2 still works.
         let f2 = KeyEvent::new(KeyCode::F(2), KeyModifiers::empty());
         assert!(app.binding_is(&f2, "file_tree"));
+    }
+
+    #[test]
+    fn test_tuicolor_slash_command() {
+        let mut app = App::new("anthropic".into(), DiadConfig::default());
+        app.input_buffer = "/tuicolor monochrome".into();
+        app.submit_input();
+        assert_eq!(app.config.theme, "monochrome");
+        assert!(app.messages.iter().any(|m| m.contains("TUI theme set to: monochrome")));
     }
 }

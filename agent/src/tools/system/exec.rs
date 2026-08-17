@@ -11,8 +11,42 @@
 //! [`ToolResult`]; non-zero exit codes become `ToolResult::err`.
 
 use std::process::Command;
+use std::time::Duration;
 
 use super::ToolResult;
+
+const DEFAULT_TIMEOUT_SECS: u64 = 30;
+
+/// Spawns and waits for a child process with a hard timeout, killing the process if it hangs.
+fn run_command_with_timeout(
+    mut cmd: Command,
+    timeout: Duration,
+) -> std::io::Result<std::process::Output> {
+    let mut child = cmd
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()?;
+
+    let start = std::time::Instant::now();
+    loop {
+        match child.try_wait()? {
+            Some(_status) => {
+                return child.wait_with_output();
+            }
+            None => {
+                if start.elapsed() >= timeout {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        format!("command execution timed out after {}s", timeout.as_secs()),
+                    ));
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+        }
+    }
+}
 
 /// Run a command as the current user.
 pub fn run(args: &[&str]) -> anyhow::Result<ToolResult> {
@@ -21,9 +55,9 @@ pub fn run(args: &[&str]) -> anyhow::Result<ToolResult> {
     }
 
     let program = args.first().copied().unwrap_or("?");
-    let output = Command::new(args[0])
-        .args(&args[1..])
-        .output()
+    let mut cmd = Command::new(args[0]);
+    cmd.args(&args[1..]);
+    let output = run_command_with_timeout(cmd, Duration::from_secs(DEFAULT_TIMEOUT_SECS))
         .map_err(|e| anyhow::anyhow!("Failed to run `{program}`: {e}"))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -85,10 +119,10 @@ pub fn run_privileged_env(args: &[&str], envs: &[(&str, &str)]) -> anyhow::Resul
         }
 
         let program = args.first().copied().unwrap_or("?");
-        let output = Command::new("sudo")
-            .args(args)
-            .envs(envs.iter().copied())
-            .output()
+        let mut cmd = Command::new("sudo");
+        cmd.args(args);
+        cmd.envs(envs.iter().copied());
+        let output = run_command_with_timeout(cmd, Duration::from_secs(DEFAULT_TIMEOUT_SECS))
             .map_err(|e| anyhow::anyhow!("Failed to run `sudo {program}`: {e}"))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();

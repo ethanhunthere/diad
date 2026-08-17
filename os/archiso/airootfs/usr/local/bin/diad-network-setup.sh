@@ -1,15 +1,7 @@
 #!/usr/bin/env bash
 #
-# DIAD — Network setup
+# DIAD — Network setup (Universal Hardware & Wi-Fi Stack)
 # =============================================================================
-# Runs once on first boot (marker-gated, idempotent):
-#   • Ensures NetworkManager is enabled and running.
-#   • Enables Wi-Fi MAC randomization (cloned-mac-address=random) and
-#     automatic reconnection on every existing Wi-Fi connection profile.
-#
-# Global scan-MAC randomization and the keyfile backend are configured in
-# /etc/NetworkManager/conf.d/diad.conf.
-#
 set -uo pipefail
 
 HOME_DIR="${HOME:-/home/diad}"
@@ -27,24 +19,33 @@ if [[ "${1:-}" != "--force" && -f "${MARKER}" ]]; then
     exit 0
 fi
 
-if ! command -v nmcli >/dev/null 2>&1; then
-    log "diad-network-setup: nmcli not available — skipping."
-    exit 0
-fi
+# ---- 1. Unblock all physical and kernel wireless switches ----
+rfkill unblock wifi 2>/dev/null || true
+rfkill unblock all 2>/dev/null || true
 
-# ---- Ensure NetworkManager is running ----
-sudo systemctl enable NetworkManager >/dev/null 2>&1 || true
-sudo systemctl start NetworkManager >/dev/null 2>&1 || true
-log "diad-network-setup: NetworkManager ensured."
+# ---- 2. Set regulatory domain to enable all 2.4GHz & 5GHz channels ----
+iw reg set US 2>/dev/null || true
 
-# ---- Harden existing Wi-Fi profiles ----
-for conn in $(nmcli -t -f NAME,TYPE connection show | awk -F: '$2 == "802-11-wireless" {print $1}'); do
-    sudo nmcli connection modify "${conn}" \
-        wifi.cloned-mac-address random \
-        connection.autoconnect yes >/dev/null 2>&1
-    log "diad-network-setup: hardened profile '${conn}' (random MAC + autoconnect)."
+# ---- 3. Ensure wpa_supplicant & NetworkManager are active ----
+systemctl start wpa_supplicant >/dev/null 2>&1 || true
+systemctl start NetworkManager >/dev/null 2>&1 || true
+sleep 0.5
+
+# ---- 4. Bring up wireless interfaces and mark managed ----
+nmcli radio wifi on >/dev/null 2>&1 || true
+for dev in $(nmcli -t -f DEVICE,TYPE dev 2>/dev/null | grep ':wifi' | cut -d: -f1); do
+    ip link set "$dev" up 2>/dev/null || true
+    nmcli dev set "$dev" managed yes 2>/dev/null || true
+    nmcli dev set "$dev" autoconnect yes 2>/dev/null || true
 done
 
+# ---- 5. Pre-warm Wi-Fi frequency scan in background ----
+(
+    sleep 1
+    nmcli dev wifi rescan >/dev/null 2>&1 || true
+) &
+
+log "diad-network-setup: NetworkManager, wpa_supplicant, and Wi-Fi devices initialized."
 touch "${MARKER}"
 log "diad-network-setup: complete."
 exit 0

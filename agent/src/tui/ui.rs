@@ -13,6 +13,21 @@ use ratatui::{
 
 use super::app::{App, AppMode};
 
+/// Compute accent color for the active TUI theme (/tuicolor).
+pub fn theme_accent_color(theme: &str) -> Color {
+    match theme.to_lowercase().as_str() {
+        "slate" => Color::Rgb(56, 189, 248),
+        "tokyo_night" | "cyber" => Color::Rgb(122, 162, 247),
+        "catppuccin" => Color::Rgb(203, 166, 247),
+        "nord" => Color::Rgb(136, 192, 208),
+        "gruvbox" => Color::Rgb(250, 189, 47),
+        "matrix" => Color::Rgb(34, 197, 94),
+        "copper" | "amber" => Color::Rgb(245, 158, 11),
+        "obsidian" => Color::Rgb(251, 191, 36),
+        _ => Color::Rgb(245, 158, 11), // 2040 cyber-amber default
+    }
+}
+
 /// Compute a color for the current provider badge.
 fn provider_color(provider: &str) -> Color {
     match provider.to_lowercase().as_str() {
@@ -95,6 +110,7 @@ pub fn render(frame: &mut Frame, app: &App) {
 
 /// Top bar: DIAD Agent title + active provider·model pill + connection status.
 fn render_top_bar(app: &App) -> Paragraph<'static> {
+    let accent = theme_accent_color(&app.config.theme);
     let status = if app.connected {
         "● CONNECTED"
     } else {
@@ -114,26 +130,32 @@ fn render_top_bar(app: &App) -> Paragraph<'static> {
 
     let line = Line::from(vec![
         Span::styled(
-            " DIAD Agent ",
-            Style::default().fg(Color::Black).bg(Color::Cyan).bold(),
+            " ◈ DIAD 2040 ",
+            Style::default().fg(Color::Black).bg(accent).bold(),
+        ),
+        Span::raw(" │ "),
+        Span::styled(
+            " [F5 GUI STUDIO] ",
+            Style::default().fg(Color::Black).bg(Color::Rgb(56, 189, 248)).bold(),
         ),
         Span::raw(" │ "),
         Span::styled(
             format!(" {provider_pill} "),
             Style::default()
                 .fg(Color::Black)
-                .bg(provider_color(&app.provider)),
+                .bg(provider_color(&app.provider))
+                .bold(),
         ),
         Span::raw(" │ "),
         Span::styled(
             format!(" {} ", app.mode),
-            Style::default().fg(Color::White).bg(Color::DarkGray),
+            Style::default().fg(Color::Rgb(248, 250, 252)).bg(Color::Rgb(30, 33, 48)),
         ),
         Span::raw(" │ "),
-        Span::styled(status, Style::default().fg(status_color)),
+        Span::styled(status, Style::default().fg(status_color).bold()),
     ]);
 
-    Paragraph::new(line).style(Style::default().bg(Color::Rgb(30, 30, 30)))
+    Paragraph::new(line).style(Style::default().bg(Color::Rgb(13, 14, 21)))
 }
 
 /// Bottom bar: input field with cursor (or masked secret/confirmation prompt).
@@ -217,24 +239,31 @@ fn render_bottom_bar(app: &App) -> Paragraph<'_> {
 
     let text = if app.input_buffer.is_empty() {
         if app.offline_flow == Some(super::app::OfflineFlow::WifiSelect) {
-            Line::from(vec![Span::styled(
-                " Type the Wi-Fi SSID to connect to, then press Enter (Esc to cancel):",
-                Style::default().fg(Color::Yellow).italic(),
-            )])
+            Line::from(vec![
+                Span::styled("✦ Wi-Fi ❯ ", Style::default().fg(Color::Rgb(245, 158, 11)).bold()),
+                Span::styled(
+                    "Type SSID name to connect, then press Enter (Esc to cancel)",
+                    Style::default().fg(Color::Rgb(251, 191, 36)),
+                ),
+            ])
         } else {
-            Line::from(vec![Span::styled(
-                " Type your intent here... (Ctrl+D to quit)",
-                Style::default().fg(Color::DarkGray).italic(),
-            )])
+            Line::from(vec![
+                Span::styled("✦ DIAD ❯ ", Style::default().fg(Color::Rgb(245, 158, 11)).bold()),
+                Span::styled(
+                    "Type intent or command... (e.g. 'connect wifi', 'make screen warmer', /help)",
+                    Style::default().fg(Color::Rgb(148, 163, 184)),
+                ),
+            ])
         }
     } else {
         // Build the input line with cursor indicator
         let mut spans: Vec<Span> = Vec::new();
+        spans.push(Span::styled("✦ DIAD ❯ ", Style::default().fg(Color::Rgb(245, 158, 11)).bold()));
         let input = &app.input_buffer;
 
         // Text before cursor
         if app.cursor_position > 0 {
-            spans.push(Span::raw(&input[..app.cursor_position]));
+            spans.push(Span::styled(&input[..app.cursor_position], Style::default().fg(Color::Rgb(248, 250, 252))));
         }
 
         // Cursor indicator
@@ -243,14 +272,15 @@ fn render_bottom_bar(app: &App) -> Paragraph<'_> {
         } else {
             ' '
         };
+        let accent = theme_accent_color(&app.config.theme);
         spans.push(Span::styled(
             cursor_char.to_string(),
-            Style::default().fg(Color::Black).bg(Color::Cyan),
+            Style::default().fg(Color::Black).bg(accent).bold(),
         ));
 
         // Text after cursor
         if app.cursor_position < input.len() {
-            spans.push(Span::raw(&input[app.cursor_position + 1..]));
+            spans.push(Span::styled(&input[app.cursor_position + 1..], Style::default().fg(Color::Rgb(248, 250, 252))));
         }
 
         Line::from(spans)
@@ -258,44 +288,63 @@ fn render_bottom_bar(app: &App) -> Paragraph<'_> {
 
     let block = Block::default()
         .borders(Borders::TOP)
-        .border_style(Style::default().fg(Color::DarkGray));
+        .border_style(Style::default().fg(Color::Rgb(35, 39, 56)));
 
     Paragraph::new(text)
         .block(block)
-        .style(Style::default().fg(Color::White))
+        .style(Style::default().bg(Color::Rgb(13, 14, 21)))
 }
 
 /// Chat view: message list (newest at bottom).
 fn render_chat_view(frame: &mut Frame, app: &App, area: Rect) {
     let visible = area.height.saturating_sub(2) as usize;
     let skip = app.messages.len().saturating_sub(visible);
+    let accent = theme_accent_color(&app.config.theme);
     let messages: Vec<ListItem> = app
         .messages
         .iter()
         .skip(skip)
         .map(|msg| {
-            let styled = if msg.starts_with("[You]") {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Cyan)))
-            } else if msg.starts_with("[Error]") {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Red)))
-            } else if msg.starts_with("[Tool Result]") {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Green)))
+            let styled = if let Some(content) = msg.strip_prefix("[You] ") {
+                Line::from(vec![
+                    Span::styled("◈ USER ", Style::default().fg(Color::Black).bg(accent).bold()),
+                    Span::raw(" "),
+                    Span::styled(content.to_string(), Style::default().fg(Color::Rgb(248, 250, 252)).bold()),
+                ])
+            } else if msg.starts_with("[You]") {
+                Line::from(Span::styled(msg.clone(), Style::default().fg(accent).bold()))
+            } else if let Some(content) = msg.strip_prefix("[Assistant] ") {
+                Line::from(vec![
+                    Span::styled("❖ DIAD AI ", Style::default().fg(Color::Black).bg(Color::Rgb(56, 189, 248)).bold()),
+                    Span::raw(" "),
+                    Span::styled(content.to_string(), Style::default().fg(Color::Rgb(248, 250, 252))),
+                ])
+            } else if let Some(content) = msg.strip_prefix("[Tool Result] ") {
+                Line::from(vec![
+                    Span::styled("✓ SUCCESS ", Style::default().fg(Color::Black).bg(Color::Rgb(52, 211, 153)).bold()),
+                    Span::raw(" "),
+                    Span::styled(content.to_string(), Style::default().fg(Color::Rgb(167, 243, 208))),
+                ])
+            } else if let Some(content) = msg.strip_prefix("[Error] ") {
+                Line::from(vec![
+                    Span::styled("✗ ERROR ", Style::default().fg(Color::White).bg(Color::Rgb(239, 68, 68)).bold()),
+                    Span::raw(" "),
+                    Span::styled(content.to_string(), Style::default().fg(Color::Rgb(254, 202, 202))),
+                ])
             } else if msg.starts_with("[tool]") {
                 // Dim system line for tool executions
                 Line::from(Span::styled(
                     msg.clone(),
-                    Style::default().fg(Color::Blue).italic(),
+                    Style::default().fg(Color::Rgb(56, 189, 248)).italic(),
                 ))
-            } else if msg.starts_with("[local]") {
+            } else if msg.starts_with("[local]") || msg.starts_with("[system]") {
                 // Dim system line for offline intent execution
                 Line::from(Span::styled(
                     msg.clone(),
-                    Style::default().fg(Color::DarkGray).italic(),
+                    Style::default().fg(Color::Rgb(148, 163, 184)).italic(),
                 ))
-            } else if msg.starts_with("[Assistant]") || msg.starts_with('[') {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::White)))
             } else {
-                Line::from(Span::raw(msg.clone()))
+                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Rgb(248, 250, 252))))
             };
             ListItem::new(styled)
         })
@@ -303,7 +352,7 @@ fn render_chat_view(frame: &mut Frame, app: &App, area: Rect) {
 
     let list = List::new(messages)
         .block(Block::default().borders(Borders::NONE))
-        .style(Style::default());
+        .style(Style::default().bg(Color::Rgb(13, 14, 21)));
 
     frame.render_widget(list, area);
 }

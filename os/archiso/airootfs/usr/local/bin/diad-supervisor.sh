@@ -76,10 +76,10 @@ daemon_healthy() {
 browser_window_count() {
     if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
         swaymsg -t get_tree 2>/dev/null \
-            | jq -r '.. | objects | select(.type? == "con" and (.app_id? // "" | test("brave|chromium"))) | (.name? // "")' 2>/dev/null \
+            | jq -r '.. | objects | select(.type? == "con" and (.app_id? // "" | test("epiphany|brave|chromium"))) | (.name? // "")' 2>/dev/null \
             | grep -cvE '^(DIAD AGENT|DIAD Apps|DIAD Launchpad)$' || true
     else
-        pgrep -fc 'brave|chromium' 2>/dev/null || echo 0
+        pgrep -fc 'epiphany|brave|chromium' 2>/dev/null || echo 0
     fi
 }
 
@@ -88,7 +88,7 @@ browser_window_count() {
 apps_page_count() {
     if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
         swaymsg -t get_tree 2>/dev/null \
-            | jq -r '.. | objects | select(.type? == "con" and ((.name? // "") | test("DIAD Apps|7860/apps"))) | .name' 2>/dev/null \
+            | jq -r '.. | objects | select(.type? == "con" and ((.name? // "") | test("DIAD Apps|DIAD Browser|7860/apps"))) | .name' 2>/dev/null \
             | wc -l
     else
         pgrep -fc -- '--app=http://127.0.0.1:7860/apps' 2>/dev/null || echo 0
@@ -233,6 +233,9 @@ enforce_workspace_limit() {
 # The brave shim always exists on the ISO; it can only actually open a
 # browser if flatpak com.brave.Browser OR chromium is present (S1 fallback).
 browser_possible() {
+    if command -v epiphany >/dev/null 2>&1; then
+        return 0
+    fi
     if command -v flatpak >/dev/null 2>&1 \
         && flatpak list --app --columns=application 2>/dev/null | grep -qx 'com.brave.Browser'; then
         return 0
@@ -247,7 +250,7 @@ browser_possible() {
 agent_window_count() {
     if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
         swaymsg -t get_tree 2>/dev/null \
-            | jq -r '.. | objects | select(.type? == "con" and (.name? // "" | test("7860|DIAD AGENT"))) | .name' 2>/dev/null \
+            | jq -r '.. | objects | select(.type? == "con" and (((.name? // "") | test("7860|DIAD AGENT|DIAD Agent|Web")) or ((.app_id? // "") | test("epiphany|org.gnome.Epiphany|diad-agent|chromium|brave")))) | .name' 2>/dev/null \
             | wc -l
     else
         # Pre-sway fallback: only the TUI process can exist yet.
@@ -255,7 +258,7 @@ agent_window_count() {
     fi
 }
 
-# RBRO-004 WP-09 — count ONLY the GUI variant (a chromium/brave app-window
+# RBRO-004 WP-09 — count ONLY the GUI variant (an epiphany/chromium/brave app-window
 # titled "DIAD AGENT"/"7860"), never the foot TUI. Lets the late-map guard
 # distinguish "the GUI finally arrived" from "the TUI is still up" so
 # workspace 1 keeps exactly one agent surface. Returns 0 while sway IPC is
@@ -263,7 +266,7 @@ agent_window_count() {
 agent_gui_count() {
     if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
         swaymsg -t get_tree 2>/dev/null \
-            | jq -r '.. | objects | select(.type? == "con" and (.app_id? // "" | test("chromium|brave")) and (.name? // "" | test("7860|DIAD AGENT"))) | .name' 2>/dev/null \
+            | jq -r '.. | objects | select(.type? == "con" and (.app_id? // "" | test("epiphany|org.gnome.Epiphany|chromium|brave"))) | .name' 2>/dev/null \
             | wc -l
     else
         echo 0
@@ -315,52 +318,26 @@ show_diagnostics() {
 log "supervisor: session start"
 rotate_logs
 
-# ---- (a) idempotent setup — run BEFORE the wizard so NetworkManager /
-#      power-profiles-daemon / displays are ready ----
-for script in diad-hardware-setup.sh diad-network-setup.sh diad-power-setup.sh \
-    diad-display-setup.sh diad-storage-setup.sh; do
-    if command -v "${script}" >/dev/null 2>&1; then
-        "${script}" >> "${LOG_FILE}" 2>&1 || log "supervisor: ${script} failed (non-fatal)"
-    else
-        log "supervisor: ${script} not found"
-    fi
-done
+# ---- (0) Start waybar immediately so topbar & workspaces are visible at boot ----
+if ! pgrep -x waybar >/dev/null 2>&1; then
+    waybar -c /etc/waybar/config -s /etc/waybar/style.css >/dev/null 2>&1 &
+fi
 
-# ---- (b) DIAD daemon ----
+# ---- (a) idempotent setup in background (never blocks session start) ----
+(
+    for script in diad-hardware-setup.sh diad-network-setup.sh diad-power-setup.sh \
+        diad-display-setup.sh diad-storage-setup.sh; do
+        if command -v "${script}" >/dev/null 2>&1; then
+            "${script}" >> "${LOG_FILE}" 2>&1 || true
+        fi
+    done
+) &
+
+# ---- (b) DIAD daemon & 3-Workspace Surface Initialization ----
 FALLBACK=0
 DAEMON_RESTARTS=0
 DAEMON_GRACE_UNTIL=0
-if command -v diad-agent >/dev/null 2>&1; then
-    nohup diad-agent --daemon >> "${DIAD_HOME}/daemon.log" 2>&1 &
-    log "supervisor: DIAD daemon starting (pid $!)"
-    healthy=0
-    for _ in $(seq 1 20); do            # max 10 s (20 x 0.5 s)
-        if daemon_healthy; then
-            healthy=1
-            break
-        fi
-        sleep 0.5
-    done
-    if [[ ${healthy} -eq 1 ]]; then
-        log "supervisor: DIAD daemon healthy on 127.0.0.1:7860"
-    else
-        log "supervisor: DIAD daemon not healthy after 10 s — TUI fallback"
-        tail -n 5 "${DIAD_HOME}/daemon.log" >> "${LOG_FILE}" 2>&1 || true
-        FALLBACK=1
-    fi
-else
-    log "supervisor: diad-agent not found — TUI fallback"
-    FALLBACK=1
-fi
 
-# ---- (c) workspace 1: EXACTLY ONE DIAD AGENT window, focused ----
-# RBRO-004 WP-03 — spawn-once policy. The GUI is spawned ONLY when the
-# daemon health check passed (FALLBACK=0). One spawn + one retry (3 s
-# verify each); if the window still does not map, the TUI takes over once.
-# Any count of "unknown" (sway IPC down) is treated as "window present" —
-# the supervisor never spawns a duplicate it cannot see. The GUI never
-# runs together with the TUI; the user can re-open via Super+Shift+A
-# (sway), the open_agent tool, or TUI F9.
 launch_agent_tui() {
     foot --app-id=foot --title "DIAD AGENT" -e diad-agent --tui >/dev/null 2>&1 &
     log "supervisor: TUI fallback opened on workspace 1"
@@ -369,131 +346,60 @@ launch_agent_gui() {
     brave --app=http://127.0.0.1:7860 >/dev/null 2>&1 &
 }
 
-agent_cnt=$(count_or_unknown agent_window_count)
-if [[ ${agent_cnt} != "0" ]]; then
-    log "supervisor: agent window already present (count=${agent_cnt}) — skipping WS1 launch"
-elif [[ ${FALLBACK} -eq 1 ]]; then
-    launch_agent_tui
-else
-    launch_agent_gui
-    # RBRO-004 WP-09 — a browser cold start (chromium first-run, flatpak
-    # Brave) routinely needs well over 6 s to map its first window, so the
-    # old 3 s x 2 check raced it and produced a GUI+TUI double window on
-    # workspace 1. Poll up to 45 s (3 s x 15) before falling back.
-    mapped=""
-    for attempt in $(seq 1 15); do
-        sleep 3
-        if [[ $(count_or_unknown agent_window_count) != "0" ]]; then
-            mapped=${attempt}
+if command -v diad-agent >/dev/null 2>&1; then
+    nohup diad-agent --daemon >> "${DIAD_HOME}/daemon.log" 2>&1 &
+    log "supervisor: DIAD daemon starting (pid $!)"
+    
+    # Fast-poll for daemon readiness (up to 3 seconds, 0.1s steps)
+    healthy=0
+    for _ in $(seq 1 30); do
+        if daemon_healthy; then
+            healthy=1
             break
         fi
+        sleep 0.1
     done
-    if [[ -n "${mapped}" ]]; then
-        log "supervisor: DIAD AGENT GUI verified on workspace 1 (after ~$((mapped * 3)) s)"
+
+    if [[ ${healthy} -eq 1 ]]; then
+        log "supervisor: DIAD daemon healthy on 127.0.0.1:7860"
+        
+        # Workspace 1: DIAD AGENT Desktop Hub
+        brave --app=http://127.0.0.1:7860/workspace/1 >/dev/null 2>&1 &
+        log "supervisor: DIAD AGENT Hub spawned on workspace 1"
+
+        # Workspace 2: Web Browser Desktop Hub
+        brave --app=http://127.0.0.1:7860/workspace/2 >/dev/null 2>&1 &
+        log "supervisor: Browser Hub spawned on workspace 2"
+
+        # Workspace 3: Communications Desktop Hub (Telegram & Slack)
+        brave --app=http://127.0.0.1:7860/workspace/3 >/dev/null 2>&1 &
+        log "supervisor: Communications Hub spawned on workspace 3"
     else
-        log "supervisor: GUI not mapped after 45 s — engaging TUI fallback (reason in daemon.log)"
-        # PROMPT-2 S4.3 — persist the exact reason for the next GUI start
-        # (read + cleared via GET/DELETE /api/v1/gui/fallback).
-        reason="GUI not mapped after 45 s: Brave flatpak + chromium shim could not open a window for http://127.0.0.1:7860 — TUI fallback engaged"
-        printf '%s\n' "${reason}" > "${DIAD_HOME}/.gui-fallback-reason"
-        tail -n 10 "${DIAD_HOME}/daemon.log" >> "${LOG_FILE}" 2>&1 || true
+        log "supervisor: DIAD daemon failed to respond — engaging TUI fallback"
+        FALLBACK=1
         launch_agent_tui
-        # RBRO-004 WP-09 — late-map guard: the browser can still map AFTER
-        # the TUI took over (slow cold start). When the GUI finally appears,
-        # close the TUI so workspace 1 keeps EXACTLY ONE agent surface
-        # (GUI XOR TUI, per TARGET STATE). The guard never acts on a blind
-        # count: it uses agent_gui_count (0 while sway IPC is down).
-        (
-            for _ in $(seq 1 20); do        # watch up to 100 s
-                sleep 5
-                if [[ $(agent_gui_count) != "0" ]]; then
-                    swaymsg '[app_id="foot" title="DIAD AGENT"] kill' >/dev/null 2>&1
-                    log "supervisor: GUI mapped late — TUI closed (exactly one agent window)"
-                    break
-                fi
-                if ! pgrep -f 'diad-agent --tui' >/dev/null 2>&1; then
-                    break   # TUI gone (user closed it) — nothing to clean up
-                fi
-            done
-        ) &
     fi
+else
+    log "supervisor: diad-agent not found — TUI fallback"
+    FALLBACK=1
+    launch_agent_tui
 fi
 
-# ---- (f) first-run wizard — GUI mode: onboarding is a GUI modal (existing
-#      browser wizard, localStorage-driven); TUI mode only: foot wizard.
-#      Never both (PROMPT-2 S1.2). ----
+# ---- (f) first-run wizard ----
 if [[ ! -f "${DIAD_HOME}/.first-run-complete" ]]; then
     if [[ ${FALLBACK} -eq 1 ]]; then
         log "supervisor: first-run wizard via foot (TUI mode)"
         foot --app-id=foot --title "DIAD Setup" -e diad-first-run.sh >/dev/null 2>&1 &
-    else
-        log "supervisor: first-run onboarding runs in the GUI — no foot wizard"
     fi
 fi
 
-# ---- end-of-boot: focus workspace 1 on the primary output (PROMPT-2 S1.3) —-
-#      the agent window is focused and visible WITHOUT any user click.
+# ---- end-of-boot: focus workspace 1 on primary output ----
 if command -v swaymsg >/dev/null 2>&1; then
-    swaymsg workspace 1 >/dev/null 2>&1
+    swaymsg workspace "1: DIAD AGENT" >/dev/null 2>&1 || swaymsg workspace 1 >/dev/null 2>&1
     output_name="$(swaymsg -t get_outputs 2>/dev/null | jq -r '.[0].name // empty' 2>/dev/null)"
     if [[ -n "${output_name}" ]]; then
         swaymsg focus output "${output_name}" >/dev/null 2>&1
-        log "supervisor: focus → workspace 1 on output ${output_name}"
-    else
-        log "supervisor: focus → workspace 1 (output query failed)"
     fi
-fi
-
-# ---- (d) workspace 2: DIAD Apps icon page (RBRO-004 WP-04) ----
-# EXACTLY ONE icon page at boot: spawn, verify, one retry — NO respawn
-# loop. The page is a launcher; the browser opens ONLY on click
-# (POST /api/v1/launch). This kills the old WS2 flood: the browser is no
-# longer auto-spawned every 5 s while a window "was missing".
-if daemon_healthy; then
-    spawn_apps_page() {
-        brave --app=http://127.0.0.1:7860/apps >/dev/null 2>&1 &
-    }
-    spawn_apps_page
-    sleep 3
-    if verify_on_workspace 2 'DIAD Apps|7860/apps' 'chrome-127\.0\.0\.1__apps-Default' apps_page_count; then
-        log "supervisor: DIAD Apps icon page verified on workspace 2"
-    else
-        spawn_apps_page
-        sleep 3
-        if verify_on_workspace 2 'DIAD Apps|7860/apps' 'chrome-127\.0\.0\.1__apps-Default' apps_page_count; then
-            log "supervisor: DIAD Apps icon page verified on workspace 2 (retry)"
-        else
-            log "supervisor: DIAD Apps icon page did not map — browser opens on click only"
-        fi
-    fi
-else
-    log "supervisor: daemon down — DIAD Apps icon page skipped"
-fi
-
-# ---- (e) workspace 3: DIAD Launchpad (RBRO-004 WP-05) ----
-# EXACTLY ONE launchpad at boot: spawn, verify, one retry — NO respawn
-# loop. The page opens Telegram/Slack on click (POST /api/v1/launch) and
-# closes itself once BOTH chats are open. The steady-state loop below is
-# the enforcement backstop (window.close() can be blocked by the browser).
-if daemon_healthy; then
-    spawn_launchpad() {
-        brave --app=http://127.0.0.1:7860/launch >/dev/null 2>&1 &
-    }
-    spawn_launchpad
-    sleep 3
-    if verify_on_workspace 3 'DIAD Launchpad|7860/launch' 'chrome-127\.0\.0\.1__launch-Default' launchpad_window_count; then
-        log "supervisor: DIAD Launchpad verified on workspace 3"
-    else
-        spawn_launchpad
-        sleep 3
-        if verify_on_workspace 3 'DIAD Launchpad|7860/launch' 'chrome-127\.0\.0\.1__launch-Default' launchpad_window_count; then
-            log "supervisor: DIAD Launchpad verified on workspace 3 (retry)"
-        else
-            log "supervisor: DIAD Launchpad did not map — chat opens on click only"
-        fi
-    fi
-else
-    log "supervisor: daemon down — DIAD Launchpad skipped"
 fi
 
 # ---- (g) steady state: waybar/mako/cliphist watchdogs + daemon health

@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DIAD least-privilege wrapper: disk clone (audit F-12 / phase A1)
+# DIAD least-privilege wrapper: disk clone (audit F-12 / phase A1 / R-3)
 # -----------------------------------------------------------------------------
 # The ONLY path to `dd` for the diad user. Validates every argument before
-# exec; exits 2 on any validation failure. Requires the DIAD_CONFIRM marker,
-# which the agent only sets after the user passes the CONFIRM gate.
+# exec; exits 2 on any validation failure. Requires the --confirm=clone-disk flag
+# in argv (or DIAD_CONFIRM=clone-disk env), which the agent only sets after
+# the user passes the CONFIRM gate.
 #
-# Usage: sudo DIAD_CONFIRM=clone-disk diad-clone-disk SRC DST
+# Usage: sudo diad-clone-disk [--confirm=clone-disk] SRC DST
 #
 set -u
 
@@ -17,8 +18,13 @@ fail() {
     exit 2
 }
 
-[[ $# -eq 2 ]] || fail "usage: diad-clone-disk SRC DST"
-[[ "${DIAD_CONFIRM:-}" == "clone-disk" ]] || fail "missing DIAD_CONFIRM=clone-disk marker"
+if [[ "${1:-}" == "--confirm=clone-disk" ]]; then
+    shift
+elif [[ "${DIAD_CONFIRM:-}" != "clone-disk" ]]; then
+    fail "missing --confirm=clone-disk flag"
+fi
+
+[[ $# -eq 2 ]] || fail "usage: diad-clone-disk [--confirm=clone-disk] SRC DST"
 [[ "$1" =~ $DEV_RE ]] || fail "invalid source device: $1"
 [[ "$2" =~ $DEV_RE ]] || fail "invalid destination device: $2"
 [[ "$1" != "$2" ]] || fail "source and destination are the same device"

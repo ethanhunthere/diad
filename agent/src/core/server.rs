@@ -25,13 +25,41 @@ use super::protocol::{Envelope, ServerMsg, PROTOCOL_VERSION};
 
 #[derive(RustEmbed)]
 #[folder = "../frontend/dist"]
-struct Assets;
+pub(crate) struct Assets;
+
+// ---------------------------------------------------------------------------
+// Security: Origin validation for control plane (P0-1 / R-1)
+// ---------------------------------------------------------------------------
+
+/// Validates whether an HTTP Origin header comes from an allowed local source.
+/// Non-browser clients (TUI, foot, supervisor, curl) send no Origin (None) -> allowed.
+/// Browser-originated requests must strictly match loopback port 7860.
+pub fn origin_allowed(headers: &axum::http::HeaderMap) -> bool {
+    match headers.get(axum::http::header::ORIGIN) {
+        None => true, // non-browser clients (TUI, curl, supervisor) send no Origin
+        Some(v) => matches!(
+            v.to_str().unwrap_or(""),
+            "http://127.0.0.1:7860"
+                | "http://localhost:7860"
+                | "https://127.0.0.1:7860"
+                | "https://localhost:7860"
+        ),
+    }
+}
 
 // ---------------------------------------------------------------------------
 // WebSocket handler
 // ---------------------------------------------------------------------------
 
-async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<DaemonState>>) -> Response {
+async fn ws_handler(
+    headers: axum::http::HeaderMap,
+    ws: WebSocketUpgrade,
+    State(state): State<Arc<DaemonState>>,
+) -> Response {
+    if !origin_allowed(&headers) {
+        tracing::warn!("rejected cross-origin WebSocket connection attempt");
+        return axum::http::StatusCode::FORBIDDEN.into_response();
+    }
     ws.on_upgrade(move |socket| handle_socket(socket, state))
 }
 

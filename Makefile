@@ -71,7 +71,17 @@ iso: gui
 	# sudo's env_reset strips SOURCE_DATE_EPOCH, so mkarchiso would fall back
 	# to today's date (and the ISO name would drift). Pass it through explicitly.
 	sudo env SOURCE_DATE_EPOCH="$(SOURCE_DATE_EPOCH)" mkarchiso -v -w work -o out $(ISO_DIR)
-	@echo "  [5/5] Done."
+	@echo "  [5/6] Enforcing ISO size invariant (<= 900 MB)..."
+	@ISO_BYTES=$$(stat -c %s out/*.iso 2>/dev/null | sort -n | tail -1 || echo 0); \
+	MAX_BYTES=$$((900 * 1024 * 1024)); \
+	ISO_MB=$$(( ISO_BYTES / 1024 / 1024 )); \
+	echo "  ISO size: $${ISO_MB}MB ($$ISO_BYTES bytes)"; \
+	if [ "$$ISO_BYTES" -gt "$$MAX_BYTES" ]; then \
+		echo "  ERROR: ISO size $${ISO_MB}MB exceeds 900MB invariant!" >&2; \
+		exit 1; \
+	fi; \
+	echo "  ISO size invariant verified: $${ISO_MB}MB <= 900MB."
+	@echo "  [6/6] Done."
 	@echo "ISO built: out/$(ISO_NAME)-$(shell date -u -d @$(SOURCE_DATE_EPOCH) +%Y.%m.%d)-x86_64.iso"
 
 iso-clean:

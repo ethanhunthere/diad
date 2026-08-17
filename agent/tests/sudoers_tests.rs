@@ -56,6 +56,8 @@ const WRAPPED_ONLY: &[&str] = &[
     "wget",
     "install",
     "sha256sum",
+    "pacman",
+    "kill",
 ];
 
 /// Wrapper scripts the agent tools invoke (or that replace a raw entry).
@@ -71,6 +73,8 @@ const WRAPPERS: &[&str] = &[
     "diad-selfupdate",
     "diad-umount",
     "diad-sysfs-write",
+    "diad-pacman",
+    "diad-killpid",
 ];
 
 /// Split the sudoers file into individual `path argv...` entries.

@@ -1,56 +1,68 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 # =============================================================================
-# DIAD — Browser launcher shim
+# DIAD — Universal Lightweight Browser Launcher (2040 Edition)
 # =============================================================================
-# One command (`brave`) for every DIAD launch site: the DIAD AGENT GUI app
-# window (workspace 1), the plain browser window (workspace 2), and the
-# launchpad (workspace 3). Resolved in this order (MASTER FIX S1 — a browser
-# is GUARANTEED on the ISO):
-#
-#   1. Flatpak Brave (com.brave.Browser) — installed by the first-run wizard
-#      when a network is available. Ships via Flathub because `brave-bin` is
-#      an AUR-only package that cannot be built inside mkarchiso.
-#   2. chromium — ships in the ISO package set, so a browser window can open
-#      even with no network and before the wizard runs.
-#   3. notify-send + exit 1 — never silent: the supervisor logs the failure
-#      and the user sees why nothing opened.
-#
-# `--app=<url>` arguments pass through unchanged (both Brave and Chromium
-# support chromeless app windows). `--new-window` also passes through.
-#
-# P3-S2.7 — speed flags: when a chromeless app window is requested
-# (`--app=`), strip the first-run wizard / background chatter so the app
-# window is usable immediately (no sync, no component updates, no metrics
-# noise, no first-run tab). Plain browser windows keep full functionality.
-# =============================================================================
+set -uo pipefail
 
-# Detect a chromeless app-window request (e.g. `brave --app=https://...`).
+target_url=""
 is_app_window=false
-for a in "$@"; do
-    case "$a" in
-        --app=*) is_app_window=true ;;
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --app=*)
+            is_app_window=true
+            target_url="${1#--app=}"
+            shift
+            ;;
+        --app)
+            is_app_window=true
+            if [ $# -gt 1 ] && [[ "$2" =~ ^https?:// ]]; then
+                target_url="$2"
+                shift 2
+            else
+                shift
+            fi
+            ;;
+        http://*|https://*)
+            target_url="$1"
+            shift
+            ;;
+        *)
+            shift
+            ;;
     esac
 done
 
-if [ "$is_app_window" = true ]; then
-    # Speed flags: silent, no-first-run, no background network, no updates.
-    APP_FLAGS="--no-first-run --no-default-browser-check --disable-sync \
---disable-background-networking --disable-component-update \
---disable-features=Translate,MediaRouter --metrics-recording-only --disable-breakpad"
-else
-    APP_FLAGS=""
+if [ -z "$target_url" ]; then
+    target_url="https://duckduckgo.com"
 fi
 
-if command -v flatpak >/dev/null 2>&1 \
-    && flatpak list --app --columns=application 2>/dev/null | grep -qx 'com.brave.Browser'; then
-    # shellcheck disable=SC2086  # word-splitting is intended for APP_FLAGS
-    exec /usr/bin/flatpak run com.brave.Browser $APP_FLAGS "$@"
+# 1. Epiphany (GNOME WebKitGTK — ultra-lightweight Wayland engine)
+if command -v epiphany >/dev/null 2>&1; then
+    exec /usr/bin/epiphany --new-window "${target_url}"
 fi
 
+# 2. Chromium (Fallback)
 if command -v chromium >/dev/null 2>&1; then
-    # shellcheck disable=SC2086  # word-splitting is intended for APP_FLAGS
-    exec /usr/bin/chromium $APP_FLAGS "$@"
+    WAYLAND_FLAGS="--ozone-platform-hint=auto --ozone-platform=wayland --enable-features=UseOzonePlatform,WaylandWindowDecorations"
+    if [ "$(id -u)" = "0" ]; then
+        WAYLAND_FLAGS="$WAYLAND_FLAGS --no-sandbox"
+    fi
+    if [ "$is_app_window" = true ]; then
+        exec /usr/bin/chromium $WAYLAND_FLAGS --app="${target_url}"
+    else
+        exec /usr/bin/chromium $WAYLAND_FLAGS "${target_url}"
+    fi
 fi
 
-notify-send "DIAD" "No browser available (Flatpak Brave not installed and chromium missing)" 2>/dev/null || true
+# 3. Brave Flatpak (if installed)
+if command -v flatpak >/dev/null 2>&1 && flatpak list --app --columns=application 2>/dev/null | grep -qx 'com.brave.Browser'; then
+    if [ "$is_app_window" = true ]; then
+        exec /usr/bin/flatpak run com.brave.Browser --app="${target_url}"
+    else
+        exec /usr/bin/flatpak run com.brave.Browser "${target_url}"
+    fi
+fi
+
+notify-send "DIAD" "No browser available" -u critical 2>/dev/null || true
 exit 1

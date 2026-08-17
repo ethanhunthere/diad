@@ -19,10 +19,9 @@ else
 fi
 install_dir="diados"
 
-# === Boot Modes ===
-# UEFI with GRUB (uefi.grub — the current boot mode name; the old
-# uefi-x64.grub.esp spelling is deprecated)
 bootmodes=("uefi.grub")
+airootfs_image_type="squashfs"
+airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '19' '-b' '256K')
 
 # === File Permissions ===
 # mkarchiso copies airootfs with --no-preserve=ownership,mode, so EVERY file
@@ -34,6 +33,11 @@ file_permissions=(
     # --- diad user ---
     ["/home/diad"]="1000:1000:755"
     ["/home/diad/.bashrc"]="1000:1000:644"
+    ["/home/diad/.bash_profile"]="1000:1000:644"
+    ["/home/diad/.config/foot/foot.ini"]="1000:1000:644"
+    ["/etc/skel/.bash_profile"]="0:0:644"
+    ["/etc/skel/.config/foot/foot.ini"]="0:0:644"
+    ["/etc/xdg/foot/foot.ini"]="0:0:644"
 
     # --- system identity ---
     ["/etc/passwd"]="0:0:644"
@@ -52,8 +56,10 @@ file_permissions=(
     # --- security / networking ---
     ["/etc/nftables.conf"]="0:0:600"
     ["/etc/NetworkManager/conf.d/diad.conf"]="0:0:600"
+    ["/etc/polkit-1/rules.d/00-diad-admin.rules"]="0:0:644"
 
     # --- display session ---
+    ["/etc/mako/config"]="0:0:644"
     ["/etc/sway/config"]="0:0:644"
     ["/etc/sway/conf.d/media-keys.conf"]="0:0:644"
     ["/etc/waybar/config"]="0:0:644"
@@ -63,8 +69,7 @@ file_permissions=(
     ["/etc/diad/sway-overrides.conf"]="0:0:644"
 
     # --- systemd units / drop-ins ---
-    # (autologin override deleted in MASTER FIX S2 — the login screen is
-    # mandatory; diad/diad default credentials, changed by the wizard)
+    ["/etc/systemd/system/getty@tty1.service.d/autologin.conf"]="0:0:644"
     ["/etc/systemd/system/diad-firewall.service"]="0:0:644"
     ["/etc/systemd/system/diad-perf-tier.service"]="0:0:644"
 
@@ -77,7 +82,10 @@ file_permissions=(
     ["/etc/zram-generator.conf"]="0:0:644"
     ["/etc/modprobe.d/diad-blacklist.conf"]="0:0:644"
     ["/etc/tmpfiles.d/diad-power.conf"]="0:0:644"
+    ["/etc/systemd/system-preset/00-diad.preset"]="0:0:644"
+    ["/usr/lib/systemd/system-preset/00-diad.preset"]="0:0:644"
     ["/usr/share/systemd/diad.preset"]="0:0:644"
+    ["/usr/share/glib-2.0/schemas/99_diad_dark.gschema.override"]="0:0:644"
 
     # --- initramfs (archiso hooks) ---
     ["/etc/mkinitcpio.conf.d/archiso.conf"]="0:0:644"
@@ -103,6 +111,8 @@ file_permissions=(
     ["/usr/local/bin/diad-open"]="0:0:755"
     ["/usr/local/bin/diad-set-password"]="0:0:755"
     ["/usr/local/bin/diad-sysfs-write"]="0:0:755"
+    ["/usr/local/bin/diad-pacman"]="0:0:755"
+    ["/usr/local/bin/diad-killpid"]="0:0:755"
     ["/usr/local/bin/diad-clone-disk"]="0:0:755"
     ["/usr/local/bin/diad-conf-write"]="0:0:755"
     ["/usr/local/bin/diad-format"]="0:0:755"
@@ -112,6 +122,11 @@ file_permissions=(
     ["/usr/local/bin/diad-resize-partition"]="0:0:755"
     ["/usr/local/bin/diad-selfupdate"]="0:0:755"
     ["/usr/local/bin/diad-umount"]="0:0:755"
+    ["/usr/local/bin/diad-wifi.sh"]="0:0:755"
+    ["/usr/local/bin/diad-telegram"]="0:0:755"
+    ["/usr/local/bin/diad-slack"]="0:0:755"
+    ["/usr/local/bin/diad-workspace-jump.sh"]="0:0:755"
+    ["/etc/wofi/style.css"]="0:0:644"
     ["/usr/local/bin/brave"]="0:0:755"
 )
 
@@ -130,7 +145,3 @@ buildmodes=("iso")
 # on any Arch machine, no host-specific repos).
 pacman_conf="pacman.conf"
 
-# === Custom airootfs modifications ===
-# Packages to install into the ISO
-# (Listed in packages.x86_64 in this profile directory)
-airootfs_image_type="erofs"

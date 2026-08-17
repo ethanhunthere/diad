@@ -40,7 +40,7 @@ else
     log "storage-setup: no DIAD-DATA partition — using local fallback at ${DATA_DIR}."
 fi
 
-# ---- Standard-folder symlinks ----
+# ---- Standard-folder symlinks & app storage ----
 for sub in Documents Downloads Pictures Music Videos; do
     if [[ ! -e "${HOME_DIR}/${sub}" ]]; then
         mkdir -p "${DATA_DIR}/${sub}"
@@ -48,6 +48,15 @@ for sub in Documents Downloads Pictures Music Videos; do
             && log "storage-setup: linked ~/${sub} → ${DATA_DIR}/${sub}"
     fi
 done
+
+# Persist isolated WebKit app profiles (Telegram, Slack) if DIAD-DATA is active
+if [[ -e /dev/disk/by-label/DIAD-DATA ]] && findmnt -rn "${DATA_DIR}" >/dev/null 2>&1; then
+    mkdir -p "${DATA_DIR}/diad-apps" "${HOME_DIR}/.local/share"
+    if [[ ! -L "${HOME_DIR}/.local/share/diad-apps" && ! -d "${HOME_DIR}/.local/share/diad-apps" ]]; then
+        ln -s "${DATA_DIR}/diad-apps" "${HOME_DIR}/.local/share/diad-apps" >/dev/null 2>&1 \
+            && log "storage-setup: linked ~/.local/share/diad-apps → ${DATA_DIR}/diad-apps"
+    fi
+fi
 
 log "storage-setup: complete."
 exit 0

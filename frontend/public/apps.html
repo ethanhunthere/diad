@@ -6,92 +6,180 @@
 <title>DIAD Apps</title>
 <style>
   :root {
-    --bg: #1a1a2e;
-    --bg-deep: #12121f;
-    --panel: #241d16;
-    --copper: #8b5e3c;
-    --copper-bright: #b5794f;
-    --text: #ede6de;
-    --text-dim: #a89a8a;
-    --border: rgba(255, 255, 255, 0.07);
+    --bg-base: #09090b;
+    --bg-surface: #141417;
+    --bg-surface-2: #202024;
+    --accent: #e4e4e7;
+    --accent-hover: #ffffff;
+    --text-main: #f4f4f5;
+    --text-muted: #a1a1aa;
+    --text-dim: #71717a;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-hover: rgba(255, 255, 255, 0.20);
+    --radius-card: 16px;
+    --radius-btn: 10px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; }
+  html, body { height: 100%; width: 100%; }
   body {
-    background: radial-gradient(1200px 700px at 50% -10%, #2b2233 0%, var(--bg) 55%, var(--bg-deep) 100%);
-    color: var(--text);
-    font-family: "Noto Sans", "DejaVu Sans", sans-serif;
-    display: flex; align-items: center; justify-content: center;
+    background-color: var(--bg-base);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
     user-select: none;
+    padding: 24px;
+    overflow-y: auto;
   }
-  .shell { text-align: center; padding: 24px; }
-  h1 {
-    font-size: 26px; font-weight: 300; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px;
+
+  /* Center Launch Container */
+  .main-container {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin: auto 0;
+    padding: 32px 24px;
   }
-  .tagline { font-size: 13px; color: var(--text-dim); margin-bottom: 40px; }
-  .launch {
-    display: inline-flex; flex-direction: column; align-items: center; gap: 16px;
-    padding: 34px 44px; border-radius: 18px; cursor: pointer;
-    background: linear-gradient(180deg, rgba(139, 94, 60, 0.16), rgba(139, 94, 60, 0.05));
+  .headline {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text-main);
+    margin-bottom: 8px;
+  }
+  .tagline {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 36px;
+  }
+
+  /* Big Launch Tile */
+  .launch-tile {
+    width: 100%;
+    max-width: 340px;
+    background: rgba(20, 20, 23, 0.7);
     border: 1px solid var(--border);
-    transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+    border-radius: var(--radius-card);
+    padding: 40px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    cursor: pointer;
+    transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+    outline: none;
   }
-  .launch:hover { transform: translateY(-2px); border-color: var(--copper-bright); background: linear-gradient(180deg, rgba(139, 94, 60, 0.28), rgba(139, 94, 60, 0.10)); }
-  .launch:active { transform: translateY(0); }
-  .launch svg { width: 64px; height: 64px; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45)); }
-  .label { font-size: 19px; font-weight: 600; letter-spacing: 0.04em; }
-  .sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; min-height: 16px; }
-  .status { margin-top: 26px; font-size: 12px; color: var(--copper-bright); min-height: 16px; }
+  .launch-tile:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-hover);
+    background: rgba(32, 32, 36, 0.85);
+  }
+  .launch-tile:active {
+    transform: translateY(0);
+  }
+  .icon-wrapper {
+    width: 72px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .icon-wrapper svg {
+    width: 38px;
+    height: 38px;
+    color: var(--accent);
+  }
+  .tile-title {
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .tile-sub {
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  .status-text {
+    margin-top: 24px;
+    font-size: 13px;
+    color: var(--text-muted);
+    min-height: 20px;
+  }
+
+  .footer {
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+    margin-top: 16px;
+  }
 </style>
 </head>
 <body>
-  <div class="shell">
-    <h1>DIAD Apps</h1>
+  <div class="main-container">
+    <div class="headline">Workspace 2 · Web</div>
     <div class="tagline">One tap to open the browser</div>
-    <div class="launch" id="launch" role="button" tabindex="0">
-      <!-- Browser icon (inline SVG — no font dependency) -->
-      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="32" cy="32" r="28" stroke="#b5794f" stroke-width="3"/>
-        <ellipse cx="32" cy="32" rx="13" ry="28" stroke="#b5794f" stroke-width="3"/>
-        <path d="M14 22h36M14 42h36" stroke="#b5794f" stroke-width="3"/>
-        <circle cx="32" cy="32" r="7" fill="#8b5e3c"/>
-      </svg>
-      <div class="label">Browser</div>
-      <div class="sub" id="sub">detecting…</div>
+
+    <div class="launch-tile" id="launch-btn" role="button" tabindex="0">
+      <div class="icon-wrapper">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="2" y1="12" x2="22" y2="12"></line>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+        </svg>
+      </div>
+      <div class="tile-title">Launch Browser</div>
+      <div class="tile-sub" id="browser-label">Chromium Engine · Hardware Accelerated</div>
     </div>
-    <div class="status" id="status"></div>
+
+    <div class="status-text" id="status"></div>
   </div>
+
+  <div class="footer">
+    Press Super+2 to switch to Workspace 2 · Super+B to open browser
+  </div>
+
   <script>
-    const launch = document.getElementById("launch");
-    const sub = document.getElementById("sub");
+    const launchBtn = document.getElementById("launch-btn");
+    const browserLabel = document.getElementById("browser-label");
     const status = document.getElementById("status");
 
-    // Label: Brave when the flatpak is installed, otherwise Chromium
-    // (chromium always ships on the ISO).
     fetch("/api/v1/launch/status", { cache: "no-store" })
       .then((r) => r.json())
       .then((s) => {
-        sub.textContent = s.browser === "brave" ? "Brave" : "Chromium";
+        if (s.browser === "brave") browserLabel.textContent = "Brave Browser · Private & Ad-Free";
+        else if (s.browser === "helium") browserLabel.textContent = "Helium Browser · Minimal & Fast";
+        else browserLabel.textContent = "Chromium Engine · Hardware Accelerated";
       })
-      .catch(() => { sub.textContent = "Chromium"; });
+      .catch(() => { browserLabel.textContent = "Chromium Engine"; });
 
     async function openBrowser() {
-      status.textContent = "Opening…";
+      status.textContent = "Opening browser…";
       try {
-        const r = await fetch("/api/v1/launch", {
+        await fetch("/api/v1/launch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ app: "browser" }),
         });
-        const j = await r.json();
-        status.textContent = r.ok ? "Browser opening (workspace 2)" : (j.error || "Failed to launch");
+        status.textContent = "Browser active on Workspace 2";
+        // Close launcher after browser opens
+        setTimeout(() => { window.close(); }, 600);
       } catch (e) {
-        status.textContent = "Launch failed";
+        status.textContent = "Failed to launch browser";
       }
     }
-    launch.addEventListener("click", openBrowser);
-    launch.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openBrowser(); } });
+
+    launchBtn.addEventListener("click", openBrowser);
+    launchBtn.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openBrowser();
+      }
+    });
   </script>
 </body>
 </html>

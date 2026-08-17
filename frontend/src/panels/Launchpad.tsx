@@ -1,19 +1,8 @@
 import { useEffect } from "react";
-import { ArrowUpRight, LayoutGrid, SquareTerminal, Globe } from "lucide-react";
+import { LayoutGrid, SquareTerminal, Globe, MessageSquare, MessagesSquare, Wifi } from "lucide-react";
 import { sendMsg } from "../stores/useStore";
+import { DiadLogo } from "../components/DiadLogo";
 
-/**
- * DIAD Launchpad (MASTER FIX S4/S5) — minimal app launcher.
- *
- * Served by the daemon's SPA fallback at `/launch` and opened on workspace 3
- * as `brave --app=http://127.0.0.1:7860/launch`. It sets `document.title` to
- * "DIAD Launchpad" so sway's `assign [title="DIAD Launchpad"] 3` rule (added
- * in S5, before the browser rule) pins it to workspace 3.
- *
- * It is intentionally tiny: a browser app-window cannot exec native
- * binaries, so launching happens through the daemon WebSocket
- * (`spawn_tui`) or by navigating the current window.
- */
 export function Launchpad() {
   useEffect(() => {
     document.title = "DIAD Launchpad";
@@ -26,49 +15,87 @@ export function Launchpad() {
     sendMsg({ type: "spawn_tui" });
   };
   const openBrowser = () => {
-    window.open("/", "_blank");
+    window.open("https://duckduckgo.com", "_blank");
+  };
+  const openTelegram = () => {
+    window.open("https://web.telegram.org/a/", "_blank");
+  };
+  const openSlack = () => {
+    window.open("https://app.slack.com/client", "_blank");
   };
 
   return (
-    <div className="flex h-full flex-col items-center justify-center bg-obsidian text-ink">
-      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-panel border border-copper/40 bg-copper/15 text-4xl text-copper-hover">
-        ◈
+    <div className="flex h-full flex-col items-center justify-center bg-obsidian text-slate-100 p-6">
+      <div className="mb-6 flex flex-col items-center">
+        <DiadLogo size={52} showWordmark={true} />
       </div>
-      <h1 className="text-xl font-semibold tracking-wide">DIAD Launchpad</h1>
-      <p className="mt-2 text-[12.5px] text-dim">Intent is the only interface.</p>
+      <h1 className="text-xl font-bold tracking-wide font-mono text-slate-100">DIAD OS APP LAUNCHPAD</h1>
+      <p className="mt-1.5 text-[13px] text-slate-400 font-sans">Autonomous Operating System · Workspace Navigation</p>
 
-      <div className="mt-10 grid grid-cols-3 gap-4">
+      <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-xl w-full">
         <button
-          className="flex w-36 flex-col items-center gap-2 rounded-panel border border-border-subtle bg-surface-2/50 px-4 py-5 text-[12.5px] transition-all duration-150 ease-out hover:border-copper/40 hover:bg-surface-2"
+          className="flex flex-col items-center gap-2.5 rounded-2xl border border-border-subtle bg-surface-2/80 p-5 text-[13px] font-semibold transition-all duration-200 hover:border-amber-500/60 hover:bg-surface-3/90 hover:shadow-xl hover:shadow-amber-950/20 group"
           onClick={openAgent}
-          title="Open the DIAD AGENT GUI"
+          title="Open the DIAD AI Studio"
         >
-          <LayoutGrid size={22} className="text-copper-hover" />
-          DIAD AGENT
-          <ArrowUpRight size={12} className="text-faint" />
+          <LayoutGrid size={24} className="text-amber-400 group-hover:scale-110 transition-transform" />
+          <span className="text-slate-200 group-hover:text-amber-400">DIAD Studio</span>
+          <span className="text-[11px] text-slate-500 font-normal">Workspace 1</span>
         </button>
+
         <button
-          className="flex w-36 flex-col items-center gap-2 rounded-panel border border-border-subtle bg-surface-2/50 px-4 py-5 text-[12.5px] transition-all duration-150 ease-out hover:border-copper/40 hover:bg-surface-2"
+          className="flex flex-col items-center gap-2.5 rounded-2xl border border-border-subtle bg-surface-2/80 p-5 text-[13px] font-semibold transition-all duration-200 hover:border-amber-500/60 hover:bg-surface-3/90 hover:shadow-xl hover:shadow-amber-950/20 group"
           onClick={openTerminal}
-          title="Open the terminal client (daemon spawns foot)"
+          title="Open TUI Terminal"
         >
-          <SquareTerminal size={22} className="text-copper-hover" />
-          Terminal
-          <ArrowUpRight size={12} className="text-faint" />
+          <SquareTerminal size={24} className="text-sky-400 group-hover:scale-110 transition-transform" />
+          <span className="text-slate-200 group-hover:text-sky-400">Terminal</span>
+          <span className="text-[11px] text-slate-500 font-normal">F5 / foot</span>
         </button>
+
         <button
-          className="flex w-36 flex-col items-center gap-2 rounded-panel border border-border-subtle bg-surface-2/50 px-4 py-5 text-[12.5px] transition-all duration-150 ease-out hover:border-copper/40 hover:bg-surface-2"
+          className="flex flex-col items-center gap-2.5 rounded-2xl border border-border-subtle bg-surface-2/80 p-5 text-[13px] font-semibold transition-all duration-200 hover:border-amber-500/60 hover:bg-surface-3/90 hover:shadow-xl hover:shadow-amber-950/20 group"
           onClick={openBrowser}
-          title="Open a new browser window"
+          title="Open Web Browser"
         >
-          <Globe size={22} className="text-copper-hover" />
-          Browser
-          <ArrowUpRight size={12} className="text-faint" />
+          <Globe size={24} className="text-emerald-400 group-hover:scale-110 transition-transform" />
+          <span className="text-slate-200 group-hover:text-emerald-400">Browser</span>
+          <span className="text-[11px] text-slate-500 font-normal">Workspace 2</span>
+        </button>
+
+        <button
+          className="flex flex-col items-center gap-2.5 rounded-2xl border border-border-subtle bg-surface-2/80 p-5 text-[13px] font-semibold transition-all duration-200 hover:border-amber-500/60 hover:bg-surface-3/90 hover:shadow-xl hover:shadow-amber-950/20 group"
+          onClick={openTelegram}
+          title="Open Telegram Web App"
+        >
+          <MessageSquare size={24} className="text-sky-400 group-hover:scale-110 transition-transform" />
+          <span className="text-slate-200 group-hover:text-sky-400">Telegram</span>
+          <span className="text-[11px] text-slate-500 font-normal">Workspace 3</span>
+        </button>
+
+        <button
+          className="flex flex-col items-center gap-2.5 rounded-2xl border border-border-subtle bg-surface-2/80 p-5 text-[13px] font-semibold transition-all duration-200 hover:border-amber-500/60 hover:bg-surface-3/90 hover:shadow-xl hover:shadow-amber-950/20 group"
+          onClick={openSlack}
+          title="Open Slack App"
+        >
+          <MessagesSquare size={24} className="text-purple-400 group-hover:scale-110 transition-transform" />
+          <span className="text-slate-200 group-hover:text-purple-400">Slack</span>
+          <span className="text-[11px] text-slate-500 font-normal">Workspace 3</span>
+        </button>
+
+        <button
+          className="flex flex-col items-center gap-2.5 rounded-2xl border border-border-subtle bg-surface-2/80 p-5 text-[13px] font-semibold transition-all duration-200 hover:border-amber-500/60 hover:bg-surface-3/90 hover:shadow-xl hover:shadow-amber-950/20 group"
+          onClick={() => { window.location.href = "/?view=settings"; }}
+          title="System Settings & Wi-Fi"
+        >
+          <Wifi size={24} className="text-amber-400 group-hover:scale-110 transition-transform" />
+          <span className="text-slate-200 group-hover:text-amber-400">Wi-Fi & Settings</span>
+          <span className="text-[11px] text-slate-500 font-normal">System Config</span>
         </button>
       </div>
 
-      <p className="mt-10 text-[10.5px] text-faint">
-        127.0.0.1:7860 · loopback only
+      <p className="mt-10 text-[11px] text-slate-500 font-mono">
+        127.0.0.1:7860 · DIAD 2040 Sovereign Loopback
       </p>
     </div>
   );

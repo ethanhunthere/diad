@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# =============================================================================
+# DIAD least-privilege wrapper: kill a process by numeric PID (audit R-2)
+# -----------------------------------------------------------------------------
+# Replaces raw `kill -9 *` wildcard in sudoers. Enforces:
+# - numeric PID only
+# - PID > 1 (never allow killing PID 1 / init)
+#
+# Usage: sudo diad-killpid PID
+#
+set -u
+
+fail() {
+    echo "diad-killpid: $*" >&2
+    exit 2
+}
+
+[[ $# -eq 1 ]] || fail "usage: diad-killpid PID"
+[[ "$1" =~ ^[0-9]+$ ]] || fail "invalid PID: $1 (must be numeric)"
+[[ "$1" -gt 1 ]] || fail "refusing to kill PID 1"
+
+exec /usr/bin/kill -9 "$1"

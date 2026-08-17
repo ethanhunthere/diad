@@ -1,15 +1,15 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 24,
-  "spacing": 4,
+  "height": 36,
+  "exclusive": true,
+  "spacing": 6,
   "modules-left": ["clock"],
   "modules-center": ["sway/workspaces"],
-  "modules-right": ["custom/winmin", "custom/winmax", "custom/winclose", "custom/suspend", "custom/reboot", "custom/power"],
+  "modules-right": ["custom/wifi", "custom/reboot", "custom/power"],
   "clock": {
     "format": "{:%H:%M}",
-    "interval": 10,
-    "tooltip": false
+    "interval": 10
   },
   "sway/workspaces": {
     "disable-scroll": true,
@@ -22,10 +22,10 @@
       "3": []
     }
   },
-  "custom/suspend": {
-    "format": "\uf186",
-    "tooltip": "Sleep",
-    "on-click": "/usr/local/bin/diad-power.sh suspend"
+  "custom/wifi": {
+    "format": "\uf1eb",
+    "tooltip": "Wi-Fi Networks",
+    "on-click": "/usr/local/bin/diad-wifi.sh"
   },
   "custom/reboot": {
     "format": "\uf021",
@@ -36,20 +36,5 @@
     "format": "\uf011",
     "tooltip": "Shutdown",
     "on-click": "/usr/local/bin/diad-power.sh power"
-  },
-  "custom/winmin": {
-    "format": "\uf2d1",
-    "tooltip": "Minimize",
-    "on-click": "/usr/local/bin/diad-windowctl minimize"
-  },
-  "custom/winmax": {
-    "format": "\uf2d0",
-    "tooltip": "Maximize",
-    "on-click": "/usr/local/bin/diad-windowctl maximize"
-  },
-  "custom/winclose": {
-    "format": "\uf2d3",
-    "tooltip": "Close",
-    "on-click": "/usr/local/bin/diad-windowctl close"
   }
 }

@@ -6,85 +6,207 @@
 <title>DIAD Launchpad</title>
 <style>
   :root {
-    --bg: #1a1a2e;
-    --bg-deep: #12121f;
-    --panel: #241d16;
-    --copper: #8b5e3c;
-    --copper-bright: #b5794f;
-    --text: #ede6de;
-    --text-dim: #a89a8a;
-    --border: rgba(255, 255, 255, 0.07);
-    --ok: #7fb87f;
+    --bg-base: #09090b;
+    --bg-surface: #141417;
+    --bg-surface-2: #202024;
+    --accent: #e4e4e7;
+    --accent-hover: #ffffff;
+    --text-main: #f4f4f5;
+    --text-muted: #a1a1aa;
+    --text-dim: #71717a;
+    --success: #34d399;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-hover: rgba(255, 255, 255, 0.20);
+    --radius-card: 16px;
+    --radius-btn: 10px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; }
+  html, body { height: 100%; width: 100%; }
   body {
-    background: radial-gradient(1200px 700px at 50% -10%, #2b2233 0%, var(--bg) 55%, var(--bg-deep) 100%);
-    color: var(--text);
-    font-family: "Noto Sans", "DejaVu Sans", sans-serif;
-    display: flex; align-items: center; justify-content: center;
+    background-color: var(--bg-base);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
     user-select: none;
+    padding: 24px;
+    overflow-y: auto;
   }
-  .shell { text-align: center; padding: 24px; }
-  h1 {
-    font-size: 26px; font-weight: 300; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px;
+
+  /* Center Launch Container */
+  .main-container {
+    width: 100%;
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin: auto 0;
+    padding: 32px 24px;
   }
-  .tagline { font-size: 13px; color: var(--text-dim); margin-bottom: 40px; }
-  .row { display: flex; gap: 28px; justify-content: center; flex-wrap: wrap; }
-  .card {
-    display: inline-flex; flex-direction: column; align-items: center; gap: 14px;
-    width: 190px; padding: 30px 20px; border-radius: 18px; cursor: pointer;
-    background: linear-gradient(180deg, rgba(139, 94, 60, 0.16), rgba(139, 94, 60, 0.05));
+  .headline {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text-main);
+    margin-bottom: 8px;
+  }
+  .tagline {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 36px;
+  }
+
+  /* Cards Grid */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 24px;
+    width: 100%;
+    max-width: 580px;
+  }
+  .app-card {
+    background: rgba(20, 20, 23, 0.7);
     border: 1px solid var(--border);
-    transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+    border-radius: var(--radius-card);
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
   }
-  .card:hover { transform: translateY(-2px); border-color: var(--copper-bright); background: linear-gradient(180deg, rgba(139, 94, 60, 0.28), rgba(139, 94, 60, 0.10)); }
-  .card:active { transform: translateY(0); }
-  .card svg { width: 58px; height: 58px; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45)); }
-  .label { font-size: 19px; font-weight: 600; letter-spacing: 0.04em; }
-  .sub { font-size: 12px; color: var(--text-dim); min-height: 16px; }
-  .sub.ok { color: var(--ok); }
-  .status { margin-top: 26px; font-size: 12px; color: var(--copper-bright); min-height: 16px; }
-  .hint { margin-top: 10px; font-size: 11px; color: var(--text-dim); }
+  .app-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-hover);
+    background: rgba(32, 32, 36, 0.85);
+  }
+  .app-icon {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .app-icon svg {
+    width: 52px;
+    height: 52px;
+  }
+  .app-name {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .app-status {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    min-height: 18px;
+  }
+  .app-status.active {
+    color: var(--success);
+    font-weight: 500;
+  }
+  .action-btn {
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: var(--radius-btn);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    outline: none;
+    transition: all 140ms ease;
+    margin-top: 4px;
+  }
+  .btn-primary {
+    background: #27272a;
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+  .btn-primary:hover {
+    background: #3f3f46;
+    border-color: rgba(255, 255, 255, 0.30);
+  }
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-main);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+  .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: var(--border-hover);
+  }
+  .action-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+    transform: none !important;
+  }
+
+  /* Status Banner */
+  .status-text {
+    margin-top: 24px;
+    font-size: 13px;
+    color: var(--text-muted);
+    min-height: 20px;
+  }
+
+  /* Footer */
+  .footer {
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+    margin-top: 16px;
+  }
 </style>
 </head>
 <body>
-  <div class="shell">
-    <h1>DIAD Launchpad</h1>
-    <div class="tagline">Open a chat — the launchpad closes itself when both are up</div>
-    <div class="row">
+  <div class="main-container">
+    <div class="headline">Workspace 3 · Communications</div>
+    <div class="tagline">Launch Telegram or Slack</div>
+
+    <div class="cards-grid">
       <!-- Telegram -->
-      <div class="card" id="tg" role="button" tabindex="0" data-app="telegram">
-        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="32" cy="32" r="28" fill="#2AABEE"/>
-          <path d="M46.5 20.5 41.8 43.1c-.3 1.4-1.1 1.7-2.3 1.1l-6.3-4.7-3 2.9c-.3.3-.6.6-1.2.6l.4-6.1 11.2-10.1c.5-.4-.1-.6-.7-.2L23.9 34l-6-1.9c-1.3-.4-1.3-1.3.3-2l23.5-9.1c1.1-.4 2 .2 1.8 1.6z" fill="#fff"/>
-        </svg>
-        <div class="label">Telegram</div>
-        <div class="sub" id="tg-sub">detecting…</div>
+      <div class="app-card" id="tg-card">
+        <div class="app-icon">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="32" cy="32" r="30" fill="#229ED9"/>
+            <path fill="#ffffff" fill-rule="evenodd" clip-rule="evenodd" d="M13.8 31.8c9.5-4.1 15.8-6.9 19-8.2 9.1-3.8 11-4.5 12.2-4.5.3 0 .9.1 1.3.4.4.3.5.8.5 1.1 0 .5-.1 1.8-.8 8.1-3 17.5-4.6 27.3-4.7 29.3-.1 1.9-.9 2.5-1.7 2.6-.8 0-1.9-.3-2.9-1-1.6-1-9.9-6.4-11.7-7.6-1.7-1.1-3.6-2.6-1.6-4.5 1.6-1.5 8.8-8.4 13.8-13.3 2.1-2 1.1-3.1-.2-2.2-.1 0-9.9 6.5-17 11.2-2 1.3-3.8 2-5.5 1.9-1.8-.1-5.3-1.1-7.9-1.9-3.1-1-5.7-1.6-5.5-3.4.1-.9 1.3-1.9 3.7-2.8z"/>
+          </svg>
+        </div>
+        <div class="app-name">Telegram</div>
+        <div class="app-status" id="tg-sub">Ready to Launch</div>
+        <button class="action-btn btn-primary" id="tg-btn" type="button" onclick="launchApp('telegram')">Open Telegram</button>
       </div>
+
       <!-- Slack -->
-      <div class="card" id="sl" role="button" tabindex="0" data-app="slack">
-        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M27 10a4.5 4.5 0 1 0-9 0v13h9V10zm-4.5 0a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" fill="#36C5F0"/>
-          <path d="M17 22.5H4A4.5 4.5 0 1 0 4 31h13a4.5 4.5 0 1 0 0-8.5zm0 4.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" fill="#36C5F0"/>
-          <path d="M37 31a4.5 4.5 0 1 0 9 0V18h-9v13zm4.5-4.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" fill="#2EB67D"/>
-          <path d="M47 31h13a4.5 4.5 0 1 1-9 0H47zm4.5-2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" fill="#2EB67D"/>
-          <path d="M37 37a4.5 4.5 0 1 0 9 0V24h-9v13zm4.5-4.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" fill="#ECB22E"/>
-          <path d="M27 37H14a4.5 4.5 0 1 0 9 0h4zm-4.5 4.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" fill="#ECB22E"/>
-          <path d="M17 31H4a4.5 4.5 0 1 0 9 0h4zm-4.5 4.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" fill="#E01E5A"/>
-          <path d="M27 41a4.5 4.5 0 1 0 9 0H27v-9a4.5 4.5 0 1 0-9 0h9zm4.5-4.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" fill="#E01E5A"/>
-        </svg>
-        <div class="label">Slack</div>
-        <div class="sub" id="sl-sub">detecting…</div>
+      <div class="app-card" id="sl-card">
+        <div class="app-icon">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M26.2 14.5C26.2 11.3 28.8 8.7 32 8.7C35.2 8.7 37.8 11.3 37.8 14.5V29H26.2V14.5Z" fill="#36C5F0"/>
+            <path d="M14.5 29C11.3 29 8.7 26.4 8.7 23.2C8.7 20 11.3 17.4 14.5 17.4C17.7 17.4 20.3 20 20.3 23.2V29H14.5Z" fill="#36C5F0"/>
+            <path d="M49.5 26.2C52.7 26.2 55.3 28.8 55.3 32C55.3 35.2 52.7 37.8 49.5 37.8H35V26.2H49.5Z" fill="#2EB67D"/>
+            <path d="M35 14.5C35 11.3 37.6 8.7 40.8 8.7C44 8.7 46.6 11.3 46.6 14.5C46.6 17.7 44 20.3 40.8 20.3H35V14.5Z" fill="#2EB67D"/>
+            <path d="M37.8 49.5C37.8 52.7 35.2 55.3 32 55.3C28.8 55.3 26.2 52.7 26.2 49.5V35H37.8V49.5Z" fill="#ECB22E"/>
+            <path d="M49.5 35C52.7 35 55.3 37.6 55.3 40.8C55.3 44 52.7 46.6 49.5 46.6C46.3 46.6 43.7 44 43.7 40.8V35H49.5Z" fill="#ECB22E"/>
+            <path d="M14.5 37.8C11.3 37.8 8.7 35.2 8.7 32C8.7 28.8 11.3 26.2 14.5 26.2H29V37.8H14.5Z" fill="#E01E5A"/>
+            <path d="M29 49.5C29 52.7 26.4 55.3 23.2 55.3C20 55.3 17.4 52.7 17.4 49.5C17.4 46.3 20 43.7 23.2 43.7H29V49.5Z" fill="#E01E5A"/>
+          </svg>
+        </div>
+        <div class="app-name">Slack</div>
+        <div class="app-status" id="sl-sub">Ready to Launch</div>
+        <button class="action-btn btn-primary" id="sl-btn" type="button" onclick="launchApp('slack')">Open Slack</button>
       </div>
     </div>
-    <div class="status" id="status"></div>
-    <div class="hint">Super+Shift+L to reopen · both chat apps must be installed to auto-close</div>
+
+    <div class="status-text" id="status"></div>
   </div>
+
+  <div class="footer">
+    Press Super+3 to switch to Workspace 3 · Super+Shift+L to relaunch
+  </div>
+
   <script>
-    const cards = { telegram: document.getElementById("tg"), slack: document.getElementById("sl") };
     const subs = { telegram: document.getElementById("tg-sub"), slack: document.getElementById("sl-sub") };
+    const btns = { telegram: document.getElementById("tg-btn"), slack: document.getElementById("sl-btn") };
     const status = document.getElementById("status");
 
     function poll() {
@@ -92,39 +214,41 @@
         .then((r) => r.json())
         .then((s) => {
           for (const app of ["telegram", "slack"]) {
-            const sub = subs[app];
-            const inst = s.installed && s.installed[app];
             const open = (s.open || []).includes(app);
-            sub.textContent = open ? "open ✓" : (inst ? "installed" : "not installed");
-            sub.className = "sub" + (open ? " ok" : "");
+            if (open) {
+              subs[app].textContent = "Active on Workspace 3 ✓";
+              subs[app].className = "app-status active";
+              btns[app].textContent = "Focus " + app.charAt(0).toUpperCase() + app.slice(1);
+              btns[app].className = "action-btn btn-secondary";
+            } else {
+              subs[app].textContent = "Ready to Launch";
+              subs[app].className = "app-status";
+              btns[app].textContent = "Open " + app.charAt(0).toUpperCase() + app.slice(1);
+              btns[app].className = "action-btn btn-primary";
+            }
           }
-          // Auto-close once both chats are open (RBRO-004 WP-05).
           const both = (s.open || []).includes("telegram") && (s.open || []).includes("slack");
-          if (both) { setTimeout(() => window.close(), 300); }
+          if (both) { setTimeout(() => window.close(), 500); }
         })
         .catch(() => {});
     }
     poll();
-    setInterval(poll, 2000);
+    setInterval(poll, 3000);
 
-    async function openApp(app) {
-      status.textContent = "Opening " + app + "…";
+    async function launchApp(app) {
+      const cap = app.charAt(0).toUpperCase() + app.slice(1);
+      status.textContent = "Opening " + cap + " on Workspace 3…";
       try {
-        const r = await fetch("/api/v1/launch", {
+        await fetch("/api/v1/launch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ app }),
         });
-        const j = await r.json();
-        status.textContent = r.ok ? "Opening " + app + " (workspace 3)" : (j.error || "Failed to launch");
+        status.textContent = cap + " active on Workspace 3";
+        setTimeout(poll, 800);
       } catch (e) {
-        status.textContent = "Launch failed";
+        status.textContent = "Failed to launch " + cap;
       }
-    }
-    for (const app of Object.keys(cards)) {
-      const c = cards[app];
-      c.addEventListener("click", () => openApp(app));
-      c.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openApp(app); } });
     }
   </script>
 </body>

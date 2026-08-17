@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# =============================================================================
+# DIAD least-privilege wrapper: pacman package operations (audit R-2)
+# -----------------------------------------------------------------------------
+# Replaces raw pacman wildcards in sudoers. Enforces:
+# - repo packages only (sanitizes against ^[a-z0-9][a-z0-9@._+-]*$)
+# - prevents local .pkg.tar.* file installations (privilege escalation defense)
+# - forbids removing essential system core packages (sudo, linux-lts, sway, diad-agent)
+#
+# Usage:
+#   sudo diad-pacman update
+#   sudo diad-pacman install PKG...
+#   sudo diad-pacman remove PKG...
+#
+set -u
+
+NAME_RE='^[a-z0-9][a-z0-9@._+-]*$'
+
+fail() {
+    echo "diad-pacman: $*" >&2
+    exit 2
+}
+
+case "${1:-}" in
+    update)
+        [[ $# -eq 1 ]] || fail "update takes no arguments"
+        exec /usr/bin/pacman -Syu --noconfirm
+        ;;
+    install)
+        shift
+        [[ $# -ge 1 ]] || fail "no packages specified for install"
+        for p in "$@"; do
+            [[ "$p" =~ $NAME_RE ]] || fail "invalid package name: $p"
+            [[ "$p" != /* && "$p" != ./* && ! "$p" =~ \.pkg\.tar ]] || fail "local package files not permitted: $p"
+        done
+        exec /usr/bin/pacman -S --noconfirm -- "$@"
+        ;;
+    remove)
+        shift
+        [[ $# -ge 1 ]] || fail "no packages specified for remove"
+        for p in "$@"; do
+            [[ "$p" =~ $NAME_RE ]] || fail "invalid package name: $p"
+            case "$p" in
+                sudo|linux-lts|sway|diad-agent|systemd|glibc)
+                    fail "refusing to remove critical system package: $p"
+                    ;;
+            esac
+        done
+        exec /usr/bin/pacman -R --noconfirm -- "$@"
+        ;;
+    *)
+        fail "invalid action '${1:-}'; expected update, install, or remove"
+        ;;
+esac

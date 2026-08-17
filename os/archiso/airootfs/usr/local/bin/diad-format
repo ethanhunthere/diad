@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DIAD least-privilege wrapper: format a device (audit F-12 / phase A1)
+# DIAD least-privilege wrapper: format a device (audit F-12 / phase A1 / R-3)
 # -----------------------------------------------------------------------------
 # The ONLY path to `mkfs` for the diad user. Destructive: requires the
-# DIAD_CONFIRM=format-device marker (set by the agent after the CONFIRM gate).
+# --confirm=format-device flag in argv (or DIAD_CONFIRM=format-device env).
 #
-# Usage: sudo DIAD_CONFIRM=format-device diad-format DEVICE FSTYPE
+# Usage: sudo diad-format [--confirm=format-device] DEVICE FSTYPE
 #
 set -u
 
@@ -16,8 +16,13 @@ fail() {
     exit 2
 }
 
-[[ $# -eq 2 ]] || fail "usage: diad-format DEVICE FSTYPE"
-[[ "${DIAD_CONFIRM:-}" == "format-device" ]] || fail "missing DIAD_CONFIRM=format-device marker"
+if [[ "${1:-}" == "--confirm=format-device" ]]; then
+    shift
+elif [[ "${DIAD_CONFIRM:-}" != "format-device" ]]; then
+    fail "missing --confirm=format-device flag"
+fi
+
+[[ $# -eq 2 ]] || fail "usage: diad-format [--confirm=format-device] DEVICE FSTYPE"
 [[ "$1" =~ $DEV_RE ]] || fail "invalid device: $1"
 
 case "$2" in

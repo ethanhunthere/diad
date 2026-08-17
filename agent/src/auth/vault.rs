@@ -42,7 +42,12 @@ impl Vault {
     /// lazy and would always succeed). If the probe fails, falls back to
     /// in-memory storage and logs a prominent warning.
     pub fn new() -> anyhow::Result<Self> {
-        let service = "diad-agent".to_string();
+        Self::new_with_service("diad-agent")
+    }
+
+    /// Create a new Vault instance with a custom service name namespace.
+    pub fn new_with_service(service: impl Into<String>) -> anyhow::Result<Self> {
+        let service = service.into();
         let backend = match Self::probe_keyring(&service) {
             true => {
                 tracing::info!("Vault: using OS keyring ({service})");
@@ -186,15 +191,15 @@ mod tests {
     use super::*;
 
     // Both tests touch the real secret service over D-Bus; serialize them
-    // so parallel test threads cannot race the keyring (observed flake).
+    // and use unique service namespaces so parallel test threads cannot race.
     static KEYRING_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     #[test]
     fn test_vault_roundtrip() {
         let _guard = KEYRING_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        // Works on both backends: with a keyring present it stores/retrieves
-        // via libsecret; in CI without one it uses the memory fallback.
-        let vault = Vault::new().expect("vault must construct even without a keyring");
+        let service = format!("diad-test-{}", uuid::Uuid::new_v4());
+        let vault =
+            Vault::new_with_service(&service).expect("vault must construct even without a keyring");
         vault.store_token("gemini", "sk-test").unwrap();
         assert_eq!(vault.get_token("gemini").as_deref(), Some("sk-test"));
         assert!(vault
@@ -207,7 +212,8 @@ mod tests {
     #[test]
     fn test_vault_new_never_fails() {
         let _guard = KEYRING_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        // The live-ISO fallback must never make construction fail.
-        let _ = Vault::new().expect("Vault::new must return Ok even with no secret service");
+        let service = format!("diad-test-{}", uuid::Uuid::new_v4());
+        let _ = Vault::new_with_service(&service)
+            .expect("Vault::new must return Ok even with no secret service");
     }
 }

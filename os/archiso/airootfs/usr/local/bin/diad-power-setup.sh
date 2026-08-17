@@ -29,13 +29,10 @@ if [[ "${1:-}" != "--force" && -f "${MARKER}" ]]; then
     exit 0
 fi
 
-# ---- TLP: ensure installed, but keep it inactive (PPD is the manager) ----
-if ! pacman -Q tlp >/dev/null 2>&1; then
-    sudo pacman -S --noconfirm tlp >/dev/null 2>&1 || log "diad-power-setup: tlp install failed (non-fatal)."
-fi
+# ---- TLP: ensure masked (power-profiles-daemon is active manager) ----
 sudo systemctl disable tlp >/dev/null 2>&1 || true
 sudo systemctl mask tlp >/dev/null 2>&1 || true
-log "diad-power-setup: tlp installed but masked (power-profiles-daemon active)."
+log "diad-power-setup: tlp masked (power-profiles-daemon active)."
 
 # ---- power-profiles-daemon ----
 sudo systemctl enable --now power-profiles-daemon >/dev/null 2>&1 \

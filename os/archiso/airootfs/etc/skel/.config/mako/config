@@ -1,0 +1,36 @@
+# mako — DIAD OS Notification Daemon (2040 Titanium Obsidian Edition)
+font=Inter 10
+
+background-color=#0d0e15ea
+text-color=#f8fafc
+border-color=#f59e0b88
+border-size=1
+border-radius=12
+padding=10
+margin=8
+width=360
+height=100
+
+max-visible=3
+layer=overlay
+anchor=top-right
+
+# Auto-dismiss notifications after 2 seconds
+default-timeout=2000
+ignore-timeout=0
+history-length=10
+
+[urgency=low]
+background-color=#0d0e15ea
+border-color=#38bdf888
+default-timeout=2000
+
+[urgency=normal]
+background-color=#0d0e15ea
+border-color=#f59e0b88
+default-timeout=2000
+
+[urgency=critical]
+background-color=#0d0e15ea
+border-color=#ef4444aa
+default-timeout=4000

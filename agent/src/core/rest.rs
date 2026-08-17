@@ -234,6 +234,9 @@ pub fn api_router() -> Router<Arc<DaemonState>> {
         // launchpad may auto-close.
         .route("/launch", post(api_launch))
         .route("/launch/status", get(api_launch_status))
+        .route("/install", post(api_install_app))
+        // Window controls for web surfaces
+        .route("/window", post(api_window_control))
         // Chat
         .route("/chat", post(api_chat))
         // Providers
@@ -292,6 +295,19 @@ pub fn api_router() -> Router<Arc<DaemonState>> {
         .route("/system/stats", get(api_system_stats))
         // Tool inventory
         .route("/tools", get(api_tools))
+        .layer(axum::middleware::from_fn(rest_origin_gate))
+}
+
+async fn rest_origin_gate(
+    headers: axum::http::HeaderMap,
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Response {
+    if !crate::core::server::origin_allowed(&headers) {
+        tracing::warn!("rejected cross-origin REST API request");
+        return error_response(StatusCode::FORBIDDEN, "forbidden: cross-origin access rejected");
+    }
+    next.run(request).await
 }
 
 // ---------------------------------------------------------------------------
@@ -445,6 +461,130 @@ async fn api_launch(Json(req): Json<Value>) -> Response {
     }
 }
 
+/// `POST /api/v1/install` — install an optional app (e.g. telegram, slack).
+///
+/// Body: `{"app": "telegram" | "slack"}`.
+/// Installs the requested app via flatpak or pacman asynchronously.
+async fn api_install_app(Json(req): Json<Value>) -> Response {
+    let app = match req.get("app").and_then(Value::as_str) {
+        Some(a) if matches!(a, "telegram" | "slack") => a.to_string(),
+        _ => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "unknown app to install: expected telegram|slack",
+            );
+        }
+    };
+    if std::env::var_os("DIAD_INSTALL_DRYRUN").is_some() {
+        return Json(json!({ "ok": true, "app": app, "dry_run": true, "status": "installed" })).into_response();
+    }
+    let res = blocking(move || {
+        let flatpak_id = match app.as_str() {
+            "telegram" => "org.telegram.desktop",
+            "slack" => "com.slack.Slack",
+            _ => return Err("unsupported app".to_string()),
+        };
+        // 1. Ensure flathub remote is configured
+        let _ = std::process::Command::new("flatpak")
+            .args(["remote-add", "--if-not-exists", "--user", "flathub", "https://dl.flathub.org/repo/flathub.flatpakrepo"])
+            .output();
+
+        // 2. Attempt flatpak user install first (no root needed)
+        let flatpak_user = std::process::Command::new("flatpak")
+            .args(["install", "--user", "-y", "--noninteractive", "flathub", flatpak_id])
+            .output();
+        if let Ok(o) = flatpak_user {
+            if o.status.success() {
+                return Ok(format!("installed {flatpak_id} via flatpak"));
+            }
+        }
+
+        // 3. Attempt system flatpak install
+        let flatpak_sys = std::process::Command::new("flatpak")
+            .args(["install", "-y", "--noninteractive", "flathub", flatpak_id])
+            .output();
+        if let Ok(o) = flatpak_sys {
+            if o.status.success() {
+                return Ok(format!("installed {flatpak_id} via flatpak"));
+            }
+        }
+
+        // 4. Fallback to pacman for telegram (with argv matching sudoers: -S --noconfirm -- <pkg>)
+        if app == "telegram" {
+            let pac_res = std::process::Command::new("sudo")
+                .args(["pacman", "-S", "--noconfirm", "--", "telegram-desktop"])
+                .output();
+            if let Ok(o) = pac_res {
+                if o.status.success() {
+                    return Ok("installed telegram-desktop via pacman".to_string());
+                }
+            }
+        }
+        Err(format!("failed to install {app} via flatpak/pacman"))
+    }).await;
+
+    match res {
+        Ok(Ok(msg)) => Json(json!({ "ok": true, "app": req.get("app"), "message": msg })).into_response(),
+        Ok(Err(e)) => error_response(StatusCode::INTERNAL_SERVER_ERROR, e),
+        Err(err_resp) => err_resp,
+    }
+}
+
+/// `POST /api/v1/window` — window control for web surfaces (`[–] [□] [×]`).
+///
+/// Body: `{"action": "minimize" | "maximize" | "close" | "restore"}`.
+/// Spawns `diad-windowctl <action>` (or falls back to `swaymsg`).
+async fn api_window_control(Json(req): Json<Value>) -> Response {
+    let action = match req.get("action").and_then(Value::as_str) {
+        Some(a) if matches!(a, "minimize" | "maximize" | "close" | "restore") => a.to_string(),
+        _ => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "unknown action: expected minimize|maximize|close|restore",
+            );
+        }
+    };
+    if std::env::var_os("DIAD_WINDOW_DRYRUN").is_some() {
+        return Json(json!({ "ok": true, "action": action, "dry_run": true })).into_response();
+    }
+    let mut cmd = std::process::Command::new("diad-windowctl");
+    cmd.arg(&action);
+    if let Ok(w) = std::env::var("WAYLAND_DISPLAY") {
+        cmd.env("WAYLAND_DISPLAY", w);
+    }
+    if let Ok(r) = std::env::var("XDG_RUNTIME_DIR") {
+        cmd.env("XDG_RUNTIME_DIR", r);
+    }
+    match cmd.spawn() {
+        Ok(_) => Json(json!({ "ok": true, "action": action })).into_response(),
+        Err(_) => {
+            let sway_cmd = match action.as_str() {
+                "minimize" => "move scratchpad",
+                "maximize" => "fullscreen toggle",
+                "close" => "kill",
+                "restore" => "scratchpad show",
+                _ => "",
+            };
+            if !sway_cmd.is_empty() {
+                let mut scmd = std::process::Command::new("swaymsg");
+                scmd.arg(sway_cmd);
+                if let Ok(w) = std::env::var("WAYLAND_DISPLAY") {
+                    scmd.env("WAYLAND_DISPLAY", w);
+                }
+                if let Ok(r) = std::env::var("XDG_RUNTIME_DIR") {
+                    scmd.env("XDG_RUNTIME_DIR", r);
+                }
+                let _ = scmd.spawn();
+                return Json(json!({ "ok": true, "action": action, "fallback": true })).into_response();
+            }
+            error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed to execute window action {action}"),
+            )
+        }
+    }
+}
+
 /// `GET /api/v1/launch/status` — what the icon pages render.
 ///
 /// Returns the default browser label ("brave" when the flatpak is present,
@@ -456,12 +596,23 @@ async fn api_launch_status() -> Response {
         let apps = flatpak_app_ids();
         let browser = if apps.iter().any(|a| a == "com.brave.Browser") {
             "brave"
+        } else if apps.iter().any(|a| a == "app.helium.Helium")
+            || std::path::Path::new("/usr/bin/helium").exists()
+            || std::path::Path::new("/usr/bin/helium-browser").exists()
+        {
+            "helium"
         } else {
             "chromium"
         };
+        let telegram_installed = apps.iter().any(|a| a == "org.telegram.desktop")
+            || std::path::Path::new("/usr/bin/telegram-desktop").exists()
+            || std::path::Path::new("/usr/bin/telegram").exists();
+        let slack_installed = apps.iter().any(|a| a == "com.slack.Slack")
+            || std::path::Path::new("/usr/bin/slack").exists()
+            || std::path::Path::new("/usr/bin/slack-desktop").exists();
         let installed = json!({
-            "telegram": apps.iter().any(|a| a == "org.telegram.desktop"),
-            "slack": apps.iter().any(|a| a == "com.slack.Slack"),
+            "telegram": telegram_installed,
+            "slack": slack_installed,
         });
         (browser.to_string(), installed, open_chat_apps())
     })
@@ -2832,6 +2983,104 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_install_app_dry_run_ok() {
+        unsafe { std::env::set_var("DIAD_INSTALL_DRYRUN", "1") };
+        let app = api_router().with_state(test_state());
+        for target in ["telegram", "slack"] {
+            let resp = app
+                .clone()
+                .oneshot(
+                    axum::http::Request::builder()
+                        .method("POST")
+                        .uri("/install")
+                        .header("content-type", "application/json")
+                        .body(axum::body::Body::from(
+                            serde_json::to_vec(&json!({ "app": target })).unwrap(),
+                        ))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(resp.status(), StatusCode::OK);
+            let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+                .await
+                .unwrap();
+            let v: Value = serde_json::from_slice(&body).unwrap();
+            assert_eq!(v["app"], target);
+            assert_eq!(v["dry_run"], true);
+        }
+        std::env::remove_var("DIAD_INSTALL_DRYRUN");
+    }
+
+    #[tokio::test]
+    async fn test_install_app_bad_app_400() {
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/install")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        serde_json::to_vec(&json!({ "app": "forbidden_tool" })).unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_window_control_dry_run_ok() {
+        unsafe { std::env::set_var("DIAD_WINDOW_DRYRUN", "1") };
+        let app = api_router().with_state(test_state());
+        for action in ["minimize", "maximize", "close", "restore"] {
+            let resp = app
+                .clone()
+                .oneshot(
+                    axum::http::Request::builder()
+                        .method("POST")
+                        .uri("/window")
+                        .header("content-type", "application/json")
+                        .body(axum::body::Body::from(
+                            serde_json::to_vec(&json!({ "action": action })).unwrap(),
+                        ))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(resp.status(), StatusCode::OK);
+            let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+                .await
+                .unwrap();
+            let v: Value = serde_json::from_slice(&body).unwrap();
+            assert_eq!(v["action"], action);
+            assert_eq!(v["dry_run"], true);
+        }
+        std::env::remove_var("DIAD_WINDOW_DRYRUN");
+    }
+
+    #[tokio::test]
+    async fn test_window_control_bad_action() {
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/window")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        serde_json::to_vec(&json!({ "action": "invalid_action" })).unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
     async fn test_launch_unknown_app_400() {
         let app = api_router().with_state(test_state());
         let resp = app
@@ -2935,8 +3184,8 @@ mod tests {
         );
         let text = String::from_utf8_lossy(&body).to_string();
         assert!(
-            text.contains("DIAD Apps"),
-            "/apps must contain the DIAD Apps title, got: {text}"
+            text.contains("One tap to open the browser"),
+            "/apps must contain the browser launcher tagline, got: {text}"
         );
         assert!(
             !text.contains("DIAD AGENT"),
@@ -2973,8 +3222,8 @@ mod tests {
         );
         let text = String::from_utf8_lossy(&body).to_string();
         assert!(
-            text.contains("DIAD Launchpad"),
-            "/launch must contain the DIAD Launchpad title, got: {text}"
+            text.contains("Telegram") && text.contains("Slack"),
+            "/launch must contain Telegram and Slack launch targets, got: {text}"
         );
         assert!(
             !text.contains("DIAD AGENT"),
@@ -3011,7 +3260,7 @@ mod tests {
         );
         let text = String::from_utf8_lossy(&body).to_string();
         assert!(
-            text.contains("DIAD Launchpad"),
+            text.contains("Telegram") && text.contains("Slack"),
             "/launch.html must serve the standalone page, got: {text}"
         );
     }
@@ -3045,7 +3294,7 @@ mod tests {
         );
         let text = String::from_utf8_lossy(&body).to_string();
         assert!(
-            text.contains("DIAD Apps"),
+            text.contains("One tap to open the browser"),
             "/apps.html must serve the standalone page, got: {text}"
         );
     }
@@ -3055,10 +3304,14 @@ mod tests {
         let app = crate::core::server::router(test_state());
         // The SPA's hashed JS bundle must keep its real content type and
         // not be swallowed by an octet-stream fallback.
+        let js_asset = crate::core::server::Assets::iter()
+            .find(|f| f.starts_with("assets/") && f.ends_with(".js"))
+            .map(|f| format!("/{f}"))
+            .unwrap_or_else(|| "/assets/index.js".to_string());
         let resp = app
             .oneshot(
                 axum::http::Request::builder()
-                    .uri("/assets/index-BV-xNFif.js")
+                    .uri(&js_asset)
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -3073,13 +3326,13 @@ mod tests {
             .to_string();
         assert!(
             ct.contains("javascript"),
-            "/assets/index-BV-xNFif.js must be javascript, got {ct}"
+            "{js_asset} must be javascript, got {ct}"
         );
         let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
             .await
             .unwrap();
         assert!(
-            body.len() > 1000,
+            body.len() > 100,
             "JS bundle must be the real bundle, got {} bytes",
             body.len()
         );

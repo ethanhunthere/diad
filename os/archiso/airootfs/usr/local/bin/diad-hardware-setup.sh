@@ -52,11 +52,6 @@ else
     log "diad-hardware-setup: media keys disabled (desktop)."
 fi
 
-# ---- Apply immediately if sway is running ----
-if command -v swaymsg >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
-    swaymsg reload >/dev/null 2>&1 && log "diad-hardware-setup: sway config reloaded." || true
-fi
-
 touch "${MARKER}"
 log "diad-hardware-setup: complete."
 exit 0

@@ -1,233 +1,145 @@
 # =============================================================================
-# DIAD — Sway Window Manager Configuration
+# DIAD — Sway Window Manager Configuration (2040 Edition)
 # =============================================================================
-# This config sets up a minimal Sway environment with exactly two surfaces:
-#   1. DIAD AGENT GUI (Brave app window on 127.0.0.1:7860) on workspace 1
-#   2. Brave Browser on workspace 2
+# Strict 3-workspace separation:
+#   1. DIAD AGENT (GUI / TUI)
+#   2. BROWSER
+#   3. COMMS (Telegram / Slack / Launchpad)
 # =============================================================================
 
-# ---- Daemon ----
-# Start gnome-keyring for secret storage
+# ---- Daemon & Secret Storage ----
 exec gnome-keyring-daemon --start --components=secrets
 
 # ---- Variables ----
-# NOTE: sway's config parser does NOT strip inline comments — the rest of
-# the line after 'set' becomes the variable VALUE. Never write
-# `set $mod Mod4  # comment` — the comment would be stored in $mod and
-# every `bindsym $mod+X` would collide on combo `Mod4` (RBRO-004 WP-10).
 set $mod Mod4
 set $term foot
 set $browser brave
+set $ws1 "1: DIAD AGENT"
+set $ws2 "2: BROWSER"
+set $ws3 "3: COMMS"
 
-# ---- Output Configuration ----
-# Default: use the first enabled output with preferred mode
-output * bg #1a1a2e solid_color
+# ---- Output & Background ----
+output * bg #0d0e15 solid_color
 
 # ---- Xwayland ----
-# DIAD is a pure-Wayland system (chromium, foot, mako, waybar, grim, slurp
-# all speak Wayland; there are no X11 apps). Xwayland is deliberately NOT
-# installed in the ISO, and sway's default is `xwayland enable` — leaving
-# it enabled makes sway fail to start Xwayland at every config load (boot
-# AND reload), which it reports as a config error and surfaces as a swaynag
-# popup ("There are errors in your config file"). RBRO-004 WP-10:
-# disabling Xwayland eliminates that error at the root — no error, no
-# swaynag, zero popups.
 xwayland disable
 
 # ---- Input Configuration ----
-# Keyboard layout
 input * {
     xkb_layout us
     xkb_options ctrl:nocaps
 }
 
-# Touchpad
 input type:touchpad {
     tap enabled
     natural_scroll enabled
 }
 
-# ---- Appearance ----
-# PROMPT-2 S2.5 — visible titlebars on every window: normal border + frame.
-# The brown titlebar carries the "DIAD · <app_id>" title, so every window
-# (GUI app-windows, foot/TUI, Telegram, Slack, Brave) has an obvious chrome
-# edge — this is what the waybar [–][□][×] buttons control.
-default_border normal
-default_floating_border normal
+# ---- Appearance & Geometry (Zero-Border Cleanliness) ----
+default_border pixel 0
+default_floating_border pixel 0
+gaps inner 0
+gaps outer 0
+smart_gaps on
+smart_borders on
 
-# Every window gets a visible titlebar (default_border normal above). The
-# title shows the client's REAL title — no global title_format rewrite, so
-# every title-based rule below (assign/for_window, window counts, waybar
-# buttons) matches what the client actually reports. RBRO-004 WP-03: title
-# matching integrity is what stops the boot flood (a rewritten title made
-# every DIAD window look identical and unassignable).
+# Eliminate all white window borders & titlebars across all apps
+for_window [class="^.*"] border pixel 0
+for_window [app_id="^.*"] border pixel 0
+for_window [title="^.*"] border pixel 0
 
-# PROMPT-2 S1 — auto-focus at boot (no user click ever needed): the GUI
-# app-window (chromium, URL :7860) and any foot window grab focus when they
-# map and are pinned to workspace 1. `focus_follows_mouse no` keeps the
-# pointer from ever stealing focus from the agent window.
-# The GUI title at map time is the URL (127.0.0.1:7860); after the page
-# loads it is the document title (DIAD AGENT) — both rules cover the two
-# states. The /apps and /launch app-windows must be matched FIRST so the
-# generic :7860 rule never pulls them onto workspace 1.
-# NOTE: sway criteria values are POSIX-EXTENDED REGEX, not globs — the
-# patterns must be ".*7860.*", never "*7860*" (that fails to compile and
-# sways falls back to swaynag). app_id at map time is the chromium profile
-# window id "chrome-127.0.0.1__-Default", so the regex must accept it.
-# RBRO-004 WP-10: the generic :7860 rule anchors at the URL END
-# (".*7860$") so it can NEVER swallow the /apps or /launch app-windows:
-# their URL titles (…/apps, …/launch) do not end in "7860", so only the
-# two specific rules above move them — even when chromium maps the URL
-# title before the page's document title replaces it (a boot race that
-# once parked the Apps page on workspace 1).
-# RBRO-004 WP-10 (hardened): the title is STILL racy — a fresh app-window
-# can map showing ONLY the bare origin "127.0.0.1:7860" before the
-# /launch or /apps navigation lands, and the generic title rule above
-# (.*7860$) then swallows the launchpad onto workspace 1 (observed:
-# WS1=agent+launchpad, no WS3 at all). app_id is set from the --app= URL
-# at window creation and NEVER races, so each DIAD window also matches a
-# deterministic app_id rule (both always target the SAME workspace):
-#   chrome-127.0.0.1__-Default       (agent GUI, workspace 1)
-#   chrome-127.0.0.1__apps-Default   (apps icon page, workspace 2)
-#   chrome-127.0.0.1__launch-Default (launchpad, workspace 3)
-# ORDER MATTERS: sway runs EVERY matching for_window handler in config
-# order and the LAST matching command wins. The generic title rule
-# (.*7860$) matches the bare-origin map title of ALL THREE app-windows,
-# so the deterministic app_id rules MUST come after it — otherwise the
-# generic rule would drag the launchpad/apps windows back onto workspace 1.
-# NOTE: the generic rule carries NO `focus` — the agent GUI is focused by
-# its own app_id rule below; a bare `focus` here would steal focus to the
-# launchpad/apps windows at map time and leave the user staring at
-# workspace 3 instead of the agent on workspace 1.
-for_window [app_id="chrome-.*" title=".*7860/launch.*"] move to workspace 3
-for_window [app_id="chrome-.*" title=".*7860/apps.*"] move to workspace 2
-for_window [app_id="chrome-.*" title=".*7860$"] move to workspace 1
-for_window [app_id="chrome-127\.0\.0\.1__launch-Default"] move to workspace 3
-for_window [app_id="chrome-127\.0\.0\.1__apps-Default"] move to workspace 2
-for_window [app_id="chrome-127\.0\.0\.1__-Default"] focus, move to workspace 1
-for_window [app_id="foot"] focus, move to workspace 1
+# 2040 Titanium Obsidian & Cyber-Amber Window Accents
+client.focused          #f59e0b #151722 #f8fafc #f59e0b #f59e0b
+client.unfocused        #232738 #0d0e15 #94a3b8 #232738 #232738
+client.focused_inactive #2a2f45 #151722 #cbd5e1 #2a2f45 #2a2f45
+client.urgent           #ef4444 #151722 #ffffff #ef4444 #ef4444
+
 focus_follows_mouse no
 
-# Gaps
-gaps inner 4
-gaps outer 0
+# ---- Strict Workspace Routing Rules ----
 
-# Colors — brown/copper titlebars (DIAD palette), red for urgent.
-client.focused          #8b5e3c #8b5e3c #ffffff #8b5e3c #8b5e3c
-client.unfocused        #2a2a3e #2a2a3e #888888 #2a2a3e #2a2a3e
-client.focused_inactive #333355 #333355 #cccccc #333355 #333355
-client.urgent           #e06c75 #e06c75 #ffffff #e06c75 #e06c75
+# General Web Browser (Workspace 2 default)
+for_window [app_id="epiphany"] move to workspace $ws2
+for_window [app_id="org.gnome.Epiphany"] move to workspace $ws2
+for_window [app_id="chromium"] move to workspace $ws2
+for_window [app_id="Chromium"] move to workspace $ws2
+for_window [app_id="brave-browser"] move to workspace $ws2
 
-# ---- Workspace Assignment ----
-# Workspace 1: DIAD AGENT GUI — Brave app window titled "DIAD AGENT"
-# (must precede the plain-Brave rule so the app window lands on ws1).
-# Workspace 2: DIAD Apps icon page + plain browser (RBRO-004 WP-04)
-# Workspace 3: DIAD Launchpad + chat apps (Telegram/Slack)
-#   - Launchpad rule must precede the generic-Brave rules so the app window
-#     (opened as `brave --app=http://127.0.0.1:7860/launch`) lands on ws3.
-#   - Telegram/Slack are flatpak sandboxes whose app_id/class is stable.
-# NOTE (MASTER FIX S5): there is intentionally NO daemon-side window
-# management here — the "ws1 max 8 / ws2 max 2 / ws3 max 2 watcher limits"
-# and "launchpad auto-close" features from the original design document DO
-# NOT EXIST in code. The supervisor only respawns windows when the count is
-# zero; it never kills or caps. Do not assume such limits exist.
-assign [title="DIAD AGENT"] 1
-assign [app_id="foot"] 1
-assign [title="DIAD Apps"] 2
-assign [title="DIAD Launchpad"] 3
-assign [app_id="brave-browser"] 2
-assign [app_id="com.brave.Browser"] 2
-# The plain browser window opens as "New Tab" (map-time title); the DIAD
-# app-windows (GUI/Apps/Launchpad) map with URL titles and are handled by
-# the for_window rules above, so a generic chromium assign is deliberately
-# absent — it would steal the app-windows at map time (RBRO-004 WP-04).
-assign [app_id="chromium" title="New Tab"] 2
-assign [app_id="org.telegram.desktop"] 3
-assign [app_id="com.slack.Slack"] 3
+# Communications (Workspace 3)
+for_window [title="^.*Telegram.*$"] move to workspace $ws3
+for_window [title="^.*Slack.*$"] move to workspace $ws3
+for_window [title="^DIAD Launchpad$"] move to workspace $ws3
+for_window [title="^Launchpad$"] move to workspace $ws3
+for_window [title="^.*web\.telegram\.org.*$"] move to workspace $ws3
+for_window [title="^.*app\.slack\.com.*$"] move to workspace $ws3
+for_window [app_id="org.telegram.desktop"] move to workspace $ws3
+for_window [app_id="telegramdesktop"] move to workspace $ws3
+for_window [app_id="com.slack.Slack"] move to workspace $ws3
+
+# Workspace 1: DIAD AGENT (GUI & TUI) Override (Evaluated after general browser)
+for_window [title="^DIAD AGENT$"] focus, move to workspace $ws1
+for_window [title="^DIAD Agent$"] focus, move to workspace $ws1
+for_window [title="^DIAD Studio$"] focus, move to workspace $ws1
+for_window [app_id="diad-agent"] focus, move to workspace $ws1
+for_window [app_id="foot"] focus, move to workspace $ws1
 
 # ---- Autostart ----
-# Launch mako (notification daemon) before anything that may notify.
 exec mako
-
-# Launch DIAD: first-run onboarding, hardware/display/network/power setup,
-# DIAD daemon, then the DIAD AGENT GUI (workspace 1) + Brave (workspace 2) +
-# DIAD Launchpad (workspace 3).
-#
-# MASTER FIX S4: the supervisor owns waybar — it is NOT started here anymore
-# (its 10 s watchdog relaunches it with /etc/waybar/config + style.css, which
-# is also what makes `diad-conf-write waybar-mode` take effect).
+exec waybar -c /etc/waybar/config -s /etc/waybar/style.css
 exec diad-supervisor.sh
 
 # ---- Keybindings ----
-
-# PROMPT-2 S2.4 — window controls (keyboard mirrors the waybar buttons):
-#   Super+M        minimize (move to scratchpad)
-#   Super+Shift+M  restore (scratchpad show)
-#   Super+F        maximize (fullscreen toggle)
-#   Super+Shift+Q  close focused window
-# Exit Sway moved to Super+Shift+E (sway's default exit binding).
 bindsym $mod+m move scratchpad
 bindsym $mod+Shift+m scratchpad show
 bindsym $mod+f fullscreen toggle
 bindsym $mod+Shift+q kill
+bindsym $mod+q kill
 bindsym $mod+Shift+e exit
 
 # Start terminal
 bindsym $mod+Return exec $term
 
-# Start browser
-bindsym $mod+b exec $browser
+# Smart Workspace Jumpers & App Launchers
+bindsym $mod+1 exec /usr/local/bin/diad-workspace-jump.sh 1
+bindsym $mod+2 exec /usr/local/bin/diad-workspace-jump.sh 2
+bindsym $mod+3 exec /usr/local/bin/diad-workspace-jump.sh 3
 
-# RBRO-004 WP-03 — user relaunch of the DIAD AGENT GUI (the supervisor
-# spawns it exactly once at boot; closing it never auto-reopens it, but the
-# user can always bring it back with Super+Shift+A).
-bindsym $mod+Shift+a exec brave --app=http://127.0.0.1:7860
+bindsym F1 exec /usr/local/bin/diad-workspace-jump.sh 1
+bindsym F2 exec /usr/local/bin/diad-workspace-jump.sh 2
+bindsym F3 exec /usr/local/bin/diad-workspace-jump.sh 3
+bindsym F5 exec /usr/local/bin/brave --app=http://127.0.0.1:7860
 
-# RBRO-004 WP-05 — user relaunch of the DIAD Launchpad (workspace 3; the
-# supervisor spawns it once at boot and it auto-closes when both chats
-# open — Super+Shift+L brings it back anytime).
-bindsym $mod+Shift+l exec brave --app=http://127.0.0.1:7860/launch
-
-# Switch workspaces
-bindsym $mod+1 workspace number 1
-bindsym $mod+2 workspace number 2
-bindsym $mod+3 workspace number 3
-bindsym $mod+4 workspace number 4
+# Direct app shortcuts
+bindsym $mod+b exec /usr/local/bin/diad-workspace-jump.sh 2
+bindsym $mod+t exec /usr/local/bin/diad-telegram
+bindsym $mod+s exec /usr/local/bin/diad-slack
+bindsym $mod+Shift+a exec /usr/local/bin/brave --app=http://127.0.0.1:7860
+bindsym $mod+Shift+l exec /usr/local/bin/brave --app=http://127.0.0.1:7860/launch
 
 # Move containers
-bindsym $mod+Shift+1 move container to workspace number 1
-bindsym $mod+Shift+2 move container to workspace number 2
+bindsym $mod+Shift+1 move container to workspace $ws1
+bindsym $mod+Shift+2 move container to workspace $ws2
+bindsym $mod+Shift+3 move container to workspace $ws3
 
 # Reload config
 bindsym $mod+Shift+c reload
-
-# Kill focused window
-bindsym $mod+q kill
-
-# Snap layouts (diad-snap.sh — tested integer-pixel geometry, spec 2.6):
-# Super+G tiles the first 2 windows side by side, Super+Shift+G tiles 4
-# in a 2x2 grid (portrait outputs stack vertically, handled by the agent).
-bindsym $mod+g exec diad-snap.sh 2
-bindsym $mod+Shift+g exec diad-snap.sh 4
 
 # Focus navigation
 bindsym $mod+h focus left
 bindsym $mod+j focus down
 bindsym $mod+k focus up
 bindsym $mod+Right focus right
+bindsym $mod+Left focus left
 
 # Move focused window
 bindsym $mod+Shift+h move left
 bindsym $mod+Shift+j move down
 bindsym $mod+Shift+k move up
-# NOTE: $mod+Shift+l (move right) is intentionally NOT bound — $mod+Shift+l
-# is the DIAD Launchpad relaunch (RBRO-004 WP-05). move right lives on
-# $mod+Shift+Right, mirroring focus-right on $mod+Right.
 bindsym $mod+Shift+Right move right
 
 # Split layout
 bindsym $mod+v split vertical
-bindsym $mod+s split horizontal
+bindsym $mod+Shift+v split horizontal
 
 # Floating toggle
 bindsym $mod+Shift+space floating toggle
@@ -235,38 +147,18 @@ bindsym $mod+Shift+space floating toggle
 # Screenshot
 bindsym $mod+Print exec grim -g "$(slurp)" ~/Pictures/screenshot-$(date +%s).png
 
-# Lock screen — Super+L (replaces $mod+Ctrl+l). Note: focus-right now lives
-# on $mod+Right so Super+L is free for the lock.
-bindsym Super+L exec swaylock -f -c 000000
+# Lock screen
+bindsym Super+L exec swaylock -f -c 0d0e15
 
-# Laptop media/backlight keys — populated by diad-hardware-setup.sh on
-# laptops (desktops keep this file commented out).
+# Laptop media/backlight keys & shortcuts
 include /etc/sway/conf.d/media-keys.conf
-
-# THE LAW F-15: user keybinding remaps written by `diad-conf-write
-# keybinding` (via the agent's set_keybinding intent / Settings panel).
-# Seeded empty at build time so the include never errors.
 include /etc/diad/sway-overrides.conf
-
-# ---- Status Bar (optional — disabled by default) ----
-# Uncomment to enable waybar:
-# bar {
-#     position bottom
-#     status_command waybar
-#     colors {
-#         background #1a1a2e
-#         statusline #ffffff
-#         separator  #333355
-#         focused_workspace  #4a9eff #4a9eff #1a1a2e
-#         active_workspace   #333355 #333355 #ffffff
-#         inactive_workspace #1a1a2e #1a1a2e #888888
-#         urgent_workspace   #ff4444 #ff4444 #1a1a2e
-#     }
-# }
 
 # ---- Idle Management ----
 exec swayidle -w \
-    timeout 300 'swaylock -f -c 1a1a2e' \
+    timeout 300 'swaylock -f -c 0d0e15' \
     timeout 600 'swaymsg "output * dpms off"' \
     resume 'swaymsg "output * dpms on"' \
-    before-sleep 'swaylock -f -c 1a1a2e'
+    before-sleep 'swaylock -f -c 0d0e15'
+
+workspace $ws1

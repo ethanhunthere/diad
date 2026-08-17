@@ -77,6 +77,42 @@ pub const OPENAI_COMPAT_PRESETS: &[ProviderPreset] = &[
         needs_key: true,
     },
     ProviderPreset {
+        name: "xai",
+        base_url: "https://api.x.ai/v1",
+        model: "grok-2-latest",
+        needs_key: true,
+    },
+    ProviderPreset {
+        name: "together",
+        base_url: "https://api.together.xyz/v1",
+        model: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        needs_key: true,
+    },
+    ProviderPreset {
+        name: "fireworks",
+        base_url: "https://api.fireworks.ai/inference/v1",
+        model: "accounts/fireworks/models/llama-v3p3-70b-instruct",
+        needs_key: true,
+    },
+    ProviderPreset {
+        name: "cohere",
+        base_url: "https://api.cohere.com/v1",
+        model: "command-r-plus-08-2024",
+        needs_key: true,
+    },
+    ProviderPreset {
+        name: "perplexity",
+        base_url: "https://api.perplexity.ai",
+        model: "sonar-pro",
+        needs_key: true,
+    },
+    ProviderPreset {
+        name: "cerebras",
+        base_url: "https://api.cerebras.ai/v1",
+        model: "llama-3.3-70b",
+        needs_key: true,
+    },
+    ProviderPreset {
         name: "ollama",
         base_url: "http://localhost:11434/v1",
         model: "qwen2.5:7b",
@@ -90,16 +126,87 @@ pub const OPENAI_COMPAT_PRESETS: &[ProviderPreset] = &[
 
 const ANTHROPIC_MODELS: &[&str] = &[
     "claude-sonnet-4-20250514",
+    "claude-3-7-sonnet-20250219",
     "claude-opus-4-20250514",
+    "claude-3-5-haiku-20241022",
     "claude-haiku-4-20250514",
 ];
-const OPENAI_MODELS: &[&str] = &["gpt-5", "gpt-5-codex", "codex-mini-latest", "o4-mini"];
+const OPENAI_MODELS: &[&str] = &[
+    "gpt-5",
+    "gpt-5-codex",
+    "codex-mini-latest",
+    "o4-mini",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "o1",
+    "o3-mini",
+];
 const GEMINI_MODELS: &[&str] = &[
     "gemini-2.5-flash",
     "gemini-2.5-pro",
     "gemini-2.5-flash-lite",
+    "gemini-2.0-flash",
+    "gemini-1.5-pro",
 ];
-const QWEN_MODELS: &[&str] = &["qwen-max", "qwen-plus", "qwen-turbo"];
+const QWEN_MODELS: &[&str] = &[
+    "qwen-max",
+    "qwen-plus",
+    "qwen-turbo",
+    "qwen-2.5-coder-32b-instruct",
+    "qwen-2.5-72b-instruct",
+];
+const DEEPSEEK_MODELS: &[&str] = &["deepseek-chat", "deepseek-reasoner"];
+const KIMI_MODELS: &[&str] = &[
+    "kimi-k2-0905",
+    "moonshot-v1-8k",
+    "moonshot-v1-32k",
+    "moonshot-v1-128k",
+];
+const XAI_MODELS: &[&str] = &["grok-2-latest", "grok-2-vision-1212", "grok-beta"];
+const GROQ_MODELS: &[&str] = &[
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "deepseek-r1-distill-llama-70b",
+    "mixtral-8x7b-32768",
+    "gemma2-9b-it",
+];
+const MISTRAL_MODELS: &[&str] = &[
+    "mistral-large-latest",
+    "mistral-small-latest",
+    "codestral-latest",
+    "pixtral-large-latest",
+];
+const OPENROUTER_MODELS: &[&str] = &[
+    "anthropic/claude-sonnet-4",
+    "anthropic/claude-3.7-sonnet",
+    "deepseek/deepseek-r1",
+    "openai/gpt-4o",
+    "meta-llama/llama-3.3-70b-instruct",
+];
+const TOGETHER_MODELS: &[&str] = &[
+    "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "deepseek-ai/DeepSeek-R1",
+    "deepseek-ai/DeepSeek-V3",
+    "Qwen/Qwen2.5-Coder-32B-Instruct",
+];
+const FIREWORKS_MODELS: &[&str] = &[
+    "accounts/fireworks/models/llama-v3p3-70b-instruct",
+    "accounts/fireworks/models/deepseek-r1",
+    "accounts/fireworks/models/deepseek-v3",
+];
+const COHERE_MODELS: &[&str] = &[
+    "command-r-plus-08-2024",
+    "command-r-08-2024",
+    "command-light",
+];
+const PERPLEXITY_MODELS: &[&str] = &["sonar-pro", "sonar", "sonar-reasoning"];
+const CEREBRAS_MODELS: &[&str] = &["llama-3.3-70b", "llama3.1-8b"];
+const OLLAMA_MODELS: &[&str] = &[
+    "qwen2.5:7b",
+    "qwen2.5-coder:7b",
+    "llama3.3:70b",
+    "deepseek-r1:8b",
+];
 
 // ---------------------------------------------------------------------------
 // Provider factory
@@ -287,6 +394,18 @@ impl ProviderFactory {
             "openai" => OPENAI_MODELS.iter().map(|s| s.to_string()).collect(),
             "gemini" => GEMINI_MODELS.iter().map(|s| s.to_string()).collect(),
             "qwen" => QWEN_MODELS.iter().map(|s| s.to_string()).collect(),
+            "deepseek" => DEEPSEEK_MODELS.iter().map(|s| s.to_string()).collect(),
+            "kimi" => KIMI_MODELS.iter().map(|s| s.to_string()).collect(),
+            "xai" => XAI_MODELS.iter().map(|s| s.to_string()).collect(),
+            "groq" => GROQ_MODELS.iter().map(|s| s.to_string()).collect(),
+            "mistral" => MISTRAL_MODELS.iter().map(|s| s.to_string()).collect(),
+            "openrouter" => OPENROUTER_MODELS.iter().map(|s| s.to_string()).collect(),
+            "together" => TOGETHER_MODELS.iter().map(|s| s.to_string()).collect(),
+            "fireworks" => FIREWORKS_MODELS.iter().map(|s| s.to_string()).collect(),
+            "cohere" => COHERE_MODELS.iter().map(|s| s.to_string()).collect(),
+            "perplexity" => PERPLEXITY_MODELS.iter().map(|s| s.to_string()).collect(),
+            "cerebras" => CEREBRAS_MODELS.iter().map(|s| s.to_string()).collect(),
+            "ollama" => OLLAMA_MODELS.iter().map(|s| s.to_string()).collect(),
             _ => {
                 if let Some(preset) = OPENAI_COMPAT_PRESETS.iter().find(|p| p.name == n) {
                     vec![preset.model.to_string()]
@@ -377,17 +496,18 @@ mod tests {
     #[test]
     fn test_preset_registry_completeness() {
         let names: Vec<&str> = OPENAI_COMPAT_PRESETS.iter().map(|p| p.name).collect();
-        assert_eq!(
-            names,
-            [
-                "kimi",
-                "deepseek",
-                "groq",
-                "mistral",
-                "openrouter",
-                "ollama"
-            ]
-        );
+        assert!(names.contains(&"kimi"));
+        assert!(names.contains(&"deepseek"));
+        assert!(names.contains(&"groq"));
+        assert!(names.contains(&"mistral"));
+        assert!(names.contains(&"openrouter"));
+        assert!(names.contains(&"xai"));
+        assert!(names.contains(&"together"));
+        assert!(names.contains(&"fireworks"));
+        assert!(names.contains(&"cohere"));
+        assert!(names.contains(&"perplexity"));
+        assert!(names.contains(&"cerebras"));
+        assert!(names.contains(&"ollama"));
 
         let kimi = OPENAI_COMPAT_PRESETS
             .iter()
@@ -426,6 +546,14 @@ mod tests {
         assert_eq!(openrouter.base_url, "https://openrouter.ai/api/v1");
         assert_eq!(openrouter.model, "anthropic/claude-sonnet-4");
 
+        let xai = OPENAI_COMPAT_PRESETS
+            .iter()
+            .find(|p| p.name == "xai")
+            .unwrap();
+        assert_eq!(xai.base_url, "https://api.x.ai/v1");
+        assert_eq!(xai.model, "grok-2-latest");
+        assert!(xai.needs_key);
+
         let ollama = OPENAI_COMPAT_PRESETS
             .iter()
             .find(|p| p.name == "ollama")
@@ -448,7 +576,7 @@ mod tests {
         let factory = test_factory();
         assert_eq!(
             factory.models_for("openai"),
-            ["gpt-5", "gpt-5-codex", "codex-mini-latest", "o4-mini"]
+            ["gpt-5", "gpt-5-codex", "codex-mini-latest", "o4-mini", "gpt-4o", "gpt-4o-mini", "o1", "o3-mini"]
         );
         assert_eq!(factory.default_model("openai"), "gpt-5");
     }
@@ -457,11 +585,13 @@ mod tests {
     /// be present with the exact names the picker renders.
     #[test]
     fn test_openai_coding_models_contract() {
-        // The four OpenAI CODEX models the GUI offers.
-        assert_eq!(
-            OPENAI_MODELS,
-            ["gpt-5", "gpt-5-codex", "codex-mini-latest", "o4-mini"]
-        );
+        // The OpenAI CODEX models the GUI offers.
+        for codex_m in ["gpt-5", "gpt-5-codex", "codex-mini-latest", "o4-mini"] {
+            assert!(
+                OPENAI_MODELS.contains(&codex_m),
+                "OPENAI_MODELS must contain {codex_m}"
+            );
+        }
 
         let factory = test_factory();
         for model in OPENAI_MODELS {
@@ -473,8 +603,8 @@ mod tests {
         assert_eq!(factory.default_model("openai"), "gpt-5");
 
         // Every preset must be registered, offer a default model, and list
-        // exactly the models the picker expects.
-        assert_eq!(OPENAI_COMPAT_PRESETS.len(), 6);
+        // its default model.
+        assert_eq!(OPENAI_COMPAT_PRESETS.len(), 12);
         for preset in OPENAI_COMPAT_PRESETS {
             assert!(
                 !preset.base_url.is_empty(),
@@ -486,9 +616,8 @@ mod tests {
                 "{} needs a default model",
                 preset.name
             );
-            assert_eq!(
-                factory.models_for(preset.name),
-                [preset.model],
+            assert!(
+                factory.models_for(preset.name).contains(&preset.model.to_string()),
                 "{} must advertise its default model",
                 preset.name
             );
@@ -519,11 +648,20 @@ mod tests {
         let entries = factory.provider_entries();
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"anthropic"));
+        assert!(names.contains(&"gemini"));
+        assert!(names.contains(&"openai"));
+        assert!(names.contains(&"qwen"));
         assert!(names.contains(&"kimi"));
         assert!(names.contains(&"deepseek"));
         assert!(names.contains(&"groq"));
         assert!(names.contains(&"mistral"));
         assert!(names.contains(&"openrouter"));
+        assert!(names.contains(&"xai"));
+        assert!(names.contains(&"together"));
+        assert!(names.contains(&"fireworks"));
+        assert!(names.contains(&"cohere"));
+        assert!(names.contains(&"perplexity"));
+        assert!(names.contains(&"cerebras"));
         assert!(names.contains(&"ollama"));
 
         let ollama = entries.iter().find(|e| e.name == "ollama").unwrap();

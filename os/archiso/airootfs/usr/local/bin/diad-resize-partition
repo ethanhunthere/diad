@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
 # DIAD least-privilege wrapper: grow a partition to the end of its device
-# (audit F-12 / phase A1). Replaces a raw `parted` sudoers entry — and also
-# fixes the old argv, which omitted the partition number entirely.
+# (audit F-12 / phase A1 / R-3). Replaces a raw `parted` sudoers entry.
 # -----------------------------------------------------------------------------
-# Usage: sudo DIAD_CONFIRM=resize-partition diad-resize-partition DEVICE PARTNUM
+# Usage: sudo diad-resize-partition [--confirm=resize-partition] DEVICE PARTNUM
 #
 set -u
 
@@ -16,8 +15,13 @@ fail() {
     exit 2
 }
 
-[[ $# -eq 2 ]] || fail "usage: diad-resize-partition DEVICE PARTNUM"
-[[ "${DIAD_CONFIRM:-}" == "resize-partition" ]] || fail "missing DIAD_CONFIRM=resize-partition marker"
+if [[ "${1:-}" == "--confirm=resize-partition" ]]; then
+    shift
+elif [[ "${DIAD_CONFIRM:-}" != "resize-partition" ]]; then
+    fail "missing --confirm=resize-partition flag"
+fi
+
+[[ $# -eq 2 ]] || fail "usage: diad-resize-partition [--confirm=resize-partition] DEVICE PARTNUM"
 [[ "$1" =~ $DEV_RE ]] || fail "invalid device: $1"
 [[ "$2" =~ $PART_RE ]] || fail "invalid partition number: $2"
 

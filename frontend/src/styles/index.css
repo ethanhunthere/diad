@@ -9,14 +9,206 @@
 @tailwind utilities;
 
 /* ------------------------------------------------------------------ */
-/* COPPER OBSIDIAN — base layer                                        */
+/* 2026 CLEAN DESIGN SYSTEM — THEME DEFINITIONS                       */
 /* ------------------------------------------------------------------ */
 
-@layer base {
-  :root {
-    color-scheme: dark;
-  }
+:root,
+[data-theme="copper"],
+[data-theme="monochrome"] {
+  color-scheme: dark;
+  --bg-obsidian: #0d0e15;
+  --bg-obsidian-rgb: 13, 14, 21;
+  --bg-surface: #151722;
+  --bg-surface-rgb: 21, 23, 34;
+  --bg-surface-2: #1e2130;
+  --bg-surface-2-rgb: 30, 33, 48;
+  --bg-surface-3: #2a2f45;
+  --bg-surface-3-rgb: 42, 47, 69;
+  --accent: #f59e0b;
+  --accent-rgb: 245, 158, 11;
+  --accent-hover: #fbbf24;
+  --accent-hover-rgb: 251, 191, 36;
+  --accent-dim: #d97706;
+  --accent-dim-rgb: 217, 119, 6;
+  --text-ink: #f8fafc;
+  --text-ink-rgb: 248, 250, 252;
+  --text-dim: #cbd5e1;
+  --text-dim-rgb: 203, 213, 225;
+  --text-faint: #94a3b8;
+  --text-faint-rgb: 148, 163, 184;
+  --border-subtle: rgba(245, 158, 11, 0.20);
+  --border-strong: rgba(245, 158, 11, 0.40);
+  --success: #34d399;
+  --success-rgb: 52, 211, 153;
+  --warn: #fbbf24;
+  --warn-rgb: 251, 191, 36;
+  --danger: #f87171;
+  --danger-rgb: 248, 113, 113;
+  --radius-panel: 14px;
+  --radius-control: 10px;
+}
 
+[data-theme="slate"] {
+  color-scheme: dark;
+  --bg-obsidian: #0f172a;
+  --bg-obsidian-rgb: 15, 23, 42;
+  --bg-surface: #1e293b;
+  --bg-surface-rgb: 30, 41, 59;
+  --bg-surface-2: #334155;
+  --bg-surface-2-rgb: 51, 65, 85;
+  --bg-surface-3: #475569;
+  --bg-surface-3-rgb: 71, 85, 105;
+  --accent: #38bdf8;
+  --accent-rgb: 56, 189, 248;
+  --accent-hover: #7dd3fc;
+  --accent-hover-rgb: 125, 211, 252;
+  --accent-dim: #0284c7;
+  --accent-dim-rgb: 2, 132, 199;
+  --text-ink: #f8fafc;
+  --text-ink-rgb: 248, 250, 252;
+  --text-dim: #cbd5e1;
+  --text-dim-rgb: 203, 213, 225;
+  --text-faint: #94a3b8;
+  --text-faint-rgb: 148, 163, 184;
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --success: #34d399;
+  --success-rgb: 52, 211, 153;
+  --warn: #fbbf24;
+  --warn-rgb: 251, 191, 36;
+  --danger: #f87171;
+  --danger-rgb: 248, 113, 113;
+}
+
+[data-theme="obsidian"] {
+  color-scheme: dark;
+  --bg-obsidian: #000000;
+  --bg-obsidian-rgb: 0, 0, 0;
+  --bg-surface: #101010;
+  --bg-surface-rgb: 16, 16, 16;
+  --bg-surface-2: #1a1a1a;
+  --bg-surface-2-rgb: 26, 26, 26;
+  --bg-surface-3: #262626;
+  --bg-surface-3-rgb: 38, 38, 38;
+  --accent: #ffffff;
+  --accent-rgb: 255, 255, 255;
+  --accent-hover: #e4e4e7;
+  --accent-hover-rgb: 228, 228, 231;
+  --accent-dim: #a1a1aa;
+  --accent-dim-rgb: 161, 161, 170;
+  --text-ink: #ffffff;
+  --text-ink-rgb: 255, 255, 255;
+  --text-dim: #e4e4e7;
+  --text-dim-rgb: 228, 228, 231;
+  --text-faint: #a1a1aa;
+  --text-faint-rgb: 161, 161, 170;
+  --border-subtle: rgba(255, 255, 255, 0.16);
+  --border-strong: rgba(255, 255, 255, 0.28);
+  --success: #4ade80;
+  --success-rgb: 74, 222, 128;
+  --warn: #facc15;
+  --warn-rgb: 250, 204, 21;
+  --danger: #f87171;
+  --danger-rgb: 248, 113, 113;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg-obsidian: #f4f4f5;
+  --bg-obsidian-rgb: 244, 244, 245;
+  --bg-surface: #ffffff;
+  --bg-surface-rgb: 255, 255, 255;
+  --bg-surface-2: #e4e4e7;
+  --bg-surface-2-rgb: 228, 228, 231;
+  --bg-surface-3: #d4d4d8;
+  --bg-surface-3-rgb: 212, 212, 216;
+  --accent: #18181b;
+  --accent-rgb: 24, 24, 27;
+  --accent-hover: #09090b;
+  --accent-hover-rgb: 9, 9, 11;
+  --accent-dim: #52525b;
+  --accent-dim-rgb: 82, 82, 91;
+  --text-ink: #09090b;
+  --text-ink-rgb: 9, 9, 11;
+  --text-dim: #3f3f46;
+  --text-dim-rgb: 63, 63, 70;
+  --text-faint: #71717a;
+  --text-faint-rgb: 113, 113, 122;
+  --border-subtle: rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.22);
+  --success: #16a34a;
+  --success-rgb: 22, 163, 74;
+  --warn: #d97706;
+  --warn-rgb: 217, 119, 6;
+  --danger: #dc2626;
+  --danger-rgb: 220, 38, 38;
+}
+
+[data-theme="cyber"] {
+  color-scheme: dark;
+  --bg-obsidian: #0b0f19;
+  --bg-obsidian-rgb: 11, 15, 25;
+  --bg-surface: #111827;
+  --bg-surface-rgb: 17, 24, 39;
+  --bg-surface-2: #1f2937;
+  --bg-surface-2-rgb: 31, 41, 55;
+  --bg-surface-3: #374151;
+  --bg-surface-3-rgb: 55, 65, 81;
+  --accent: #38bdf8;
+  --accent-rgb: 56, 189, 248;
+  --accent-hover: #7dd3fc;
+  --accent-hover-rgb: 125, 211, 252;
+  --accent-dim: #0284c7;
+  --accent-dim-rgb: 2, 132, 199;
+  --text-ink: #f9fafb;
+  --text-ink-rgb: 249, 250, 251;
+  --text-dim: #e2e8f0;
+  --text-dim-rgb: 226, 232, 240;
+  --text-faint: #94a3b8;
+  --text-faint-rgb: 148, 163, 184;
+  --border-subtle: rgba(56, 189, 248, 0.16);
+  --border-strong: rgba(56, 189, 248, 0.30);
+  --success: #34d399;
+  --success-rgb: 52, 211, 153;
+  --warn: #fbbf24;
+  --warn-rgb: 251, 191, 36;
+  --danger: #f87171;
+  --danger-rgb: 248, 113, 113;
+}
+
+[data-theme="copper"] {
+  color-scheme: dark;
+  --bg-obsidian: #14100d;
+  --bg-obsidian-rgb: 20, 16, 13;
+  --bg-surface: #1c1713;
+  --bg-surface-rgb: 28, 23, 19;
+  --bg-surface-2: #2a221c;
+  --bg-surface-2-rgb: 42, 34, 28;
+  --bg-surface-3: #3a2f26;
+  --bg-surface-3-rgb: 58, 47, 38;
+  --accent: #c87f4a;
+  --accent-rgb: 200, 127, 74;
+  --accent-hover: #e0955c;
+  --accent-hover-rgb: 224, 149, 92;
+  --accent-dim: #8a5a33;
+  --accent-dim-rgb: 138, 90, 51;
+  --text-ink: #ede6de;
+  --text-ink-rgb: 237, 230, 222;
+  --text-dim: #e2dcd5;
+  --text-dim-rgb: 226, 220, 213;
+  --text-faint: #b3a598;
+  --text-faint-rgb: 179, 165, 152;
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --success: #6fbf8b;
+  --success-rgb: 111, 191, 139;
+  --warn: #e0b060;
+  --warn-rgb: 224, 176, 96;
+  --danger: #e07a7a;
+  --danger-rgb: 224, 122, 122;
+}
+
+@layer base {
   html,
   body,
   #root {
@@ -25,31 +217,34 @@
   }
 
   body {
-    @apply bg-obsidian text-ink font-sans antialiased;
-    /* rem-based so the user font-scale multiplier (spec 2.9) applies live */
-    font-size: 0.875rem;
+    background-color: var(--bg-obsidian);
+    color: var(--text-ink);
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    font-size: 0.9375rem;
+    line-height: 1.6;
     letter-spacing: 0.01em;
   }
 
   ::selection {
-    background: rgba(200, 127, 74, 0.35);
+    background: var(--accent);
+    color: var(--bg-obsidian);
   }
 
-  /* Scrollbars — thin, obsidian-tinted */
+  /* Scrollbars */
   * {
     scrollbar-width: thin;
-    scrollbar-color: #2a221c transparent;
+    scrollbar-color: var(--bg-surface-2) transparent;
   }
   *::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
   *::-webkit-scrollbar-thumb {
-    background: #2a221c;
+    background: var(--bg-surface-2);
     border-radius: 8px;
   }
   *::-webkit-scrollbar-thumb:hover {
-    background: #3a2f26;
+    background: var(--bg-surface-3);
   }
   *::-webkit-scrollbar-track {
     background: transparent;
@@ -63,10 +258,10 @@
 @layer components {
   /* Frosted glass panel — the DIAD AGENT signature surface */
   .glass {
-    background: rgba(20, 16, 13, 0.65);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(14, 15, 20, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--border-subtle);
   }
 
   .panel {

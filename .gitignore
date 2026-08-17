@@ -51,6 +51,11 @@ os/archiso/airootfs/usr/local/bin/diad-agent
 # === Misc ===
 *.log
 *.tmp
+*.old/
+*.fd
+*-baseline*.txt
+.matrix/*.ppm
+.matrix/*.sock
 # Core dumps at the repo ROOT only — a bare `core` pattern would also match
 # the agent/src/core/ module directory and silently untrack new sources
 # (phase A2 caught daemon.rs/idle.rs/perf.rs already missing).

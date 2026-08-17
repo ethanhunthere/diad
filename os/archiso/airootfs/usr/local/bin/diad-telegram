@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# =============================================================================
+# DIAD OS — Telegram Dedicated Desktop App Runner (2040 Edition)
+# =============================================================================
+set -uo pipefail
+
+# 1. Native Telegram Desktop if installed
+if command -v telegram-desktop >/dev/null 2>&1; then
+    exec telegram-desktop "$@"
+fi
+
+# 2. Flatpak Telegram if installed
+if command -v flatpak >/dev/null 2>&1 && flatpak list --app --columns=application 2>/dev/null | grep -qx 'org.telegram.desktop'; then
+    exec flatpak run org.telegram.desktop "$@"
+fi
+
+# 3. Dedicated WebKit instance for Telegram with isolated profile
+if command -v epiphany >/dev/null 2>&1; then
+    PROFILE="${HOME}/.local/share/diad-apps/telegram"
+    mkdir -p "${PROFILE}"
+    exec /usr/bin/epiphany --profile="${PROFILE}" --application-mode "https://web.telegram.org/a/"
+fi
+
+# 4. Chromium app window fallback
+if command -v chromium >/dev/null 2>&1; then
+    exec /usr/bin/chromium --app="https://web.telegram.org/a/" --ozone-platform-hint=auto --ozone-platform=wayland
+fi
+
+notify-send "Telegram" "Could not launch Telegram application" -u critical
+exit 1

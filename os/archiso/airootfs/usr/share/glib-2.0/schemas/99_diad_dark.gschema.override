@@ -1,0 +1,23 @@
+[org.gnome.desktop.interface]
+color-scheme='prefer-dark'
+gtk-theme='Adwaita-dark'
+icon-theme='Adwaita'
+font-name='Inter 10'
+document-font-name='Inter 10'
+monospace-font-name='JetBrains Mono 10'
+
+[org.gnome.desktop.wm.preferences]
+theme='Adwaita-dark'
+button-layout='appmenu:'
+
+[org.gnome.Epiphany]
+default-search-engine='DuckDuckGo'
+ask-on-download=false
+
+[org.gnome.Epiphany.web]
+enable-webgl=true
+enable-accelerated-2d-canvas=true
+enable-mediasource=true
+smooth-scrolling=true
+enable-developer-extras=true
+enable-back-forward-navigation-gestures=true

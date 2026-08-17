@@ -12,13 +12,22 @@ const AGENT_META: Record<string, { desc: string; icon: string }> = {
 };
 
 const PROVIDER_META: Record<string, { desc: string }> = {
-  anthropic: { desc: "Claude Opus / Sonnet — complex reasoning" },
-  gemini: { desc: "Google Gemini 2.5 Pro" },
-  openai: { desc: "OpenAI GPT-4o / o-series" },
-  kimi: { desc: "Kimi K2.5 — 256k context, tool calling" },
-  deepseek: { desc: "DeepSeek — code & reasoning" },
-  groq: { desc: "Groq — ultra-fast inference" },
-  ollama: { desc: "Local models via Ollama" },
+  anthropic: { desc: "Claude 3.7 Sonnet / Opus / Haiku — frontier reasoning" },
+  gemini: { desc: "Google Gemini 2.5 Pro / Flash — multimodal intelligence" },
+  openai: { desc: "OpenAI GPT-5 / GPT-4o / o-series & Codex" },
+  qwen: { desc: "Alibaba Qwen 2.5 Coder & Max — multilingual & code" },
+  kimi: { desc: "Moonshot Kimi K2.5 — long context & tool calling" },
+  deepseek: { desc: "DeepSeek V3 & R1 — advanced reasoning & code" },
+  groq: { desc: "Groq LPU — ultra-fast low-latency inference" },
+  mistral: { desc: "Mistral Large & Codestral — European frontier models" },
+  openrouter: { desc: "OpenRouter — unified multi-model routing gateway" },
+  xai: { desc: "xAI Grok 2 & Grok Beta — real-time knowledge & reasoning" },
+  together: { desc: "Together AI — high-throughput open source models" },
+  fireworks: { desc: "Fireworks AI — fast production model serving" },
+  cohere: { desc: "Cohere Command R+ — enterprise search & retrieval" },
+  perplexity: { desc: "Perplexity Sonar — grounded search & citations" },
+  cerebras: { desc: "Cerebras CS-3 — world-record inference speeds" },
+  ollama: { desc: "Local offline models via Ollama (zero network needed)" },
 };
 
 /**

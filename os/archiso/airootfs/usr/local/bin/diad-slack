@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# =============================================================================
+# DIAD OS — Slack Dedicated Desktop App Runner (2040 Edition)
+# =============================================================================
+set -uo pipefail
+
+# 1. Native Slack if installed
+if command -v slack >/dev/null 2>&1; then
+    exec slack "$@"
+fi
+
+# 2. Flatpak Slack if installed
+if command -v flatpak >/dev/null 2>&1 && flatpak list --app --columns=application 2>/dev/null | grep -qx 'com.slack.Slack'; then
+    exec flatpak run com.slack.Slack "$@"
+fi
+
+# 3. Dedicated WebKit instance for Slack with isolated profile
+if command -v epiphany >/dev/null 2>&1; then
+    PROFILE="${HOME}/.local/share/diad-apps/slack"
+    mkdir -p "${PROFILE}"
+    exec /usr/bin/epiphany --profile="${PROFILE}" --application-mode "https://app.slack.com/client"
+fi
+
+# 4. Chromium app window fallback
+if command -v chromium >/dev/null 2>&1; then
+    exec /usr/bin/chromium --app="https://app.slack.com/client" --ozone-platform-hint=auto --ozone-platform=wayland
+fi
+
+notify-send "Slack" "Could not launch Slack application" -u critical
+exit 1

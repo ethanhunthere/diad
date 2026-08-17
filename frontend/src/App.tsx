@@ -4,16 +4,16 @@ import { Menu } from "lucide-react";
 import { useStore } from "./stores/useStore";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { TopBar } from "./components/TopBar";
-import { ActivityBar, VIEWS } from "./components/ActivityBar";
+import { ActivityBar, PRIMARY_VIEWS } from "./components/ActivityBar";
 import { StatusBar } from "./components/StatusBar";
 import { CommandPalette } from "./components/CommandPalette";
 import { ToastStack } from "./components/ToastStack";
 import { OnboardingWizard } from "./panels/OnboardingWizard";
-import { Launchpad } from "./panels/Launchpad";
+import { WorkspaceHub } from "./panels/WorkspaceHub";
 import { MaskedInputModal } from "./components/MaskedInputModal";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { useGlobalKeys } from "./hooks/useGlobalKeys";
-import { VIEW_LABELS } from "./lib/format";
+
 import { prefetchAggressive, setPerfTier } from "./lib/prefetch";
 
 // Lazy-loaded panels (spec 6.1/6.2): each panel is its own chunk and drags
@@ -69,12 +69,6 @@ function breakpointFor(width: number): "TINY" | "COMPACT" | "NORMAL" | "WIDE" | 
  * layout is flex with fr/minmax throughout and survives down to 640x480.
  */
 export default function App() {
-  // MASTER FIX S4/S5: the launchpad is served by the SPA fallback at /launch
-  // (the daemon's static handler serves index.html at ANY path). It renders
-  // standalone — no chrome, no panels — and sets its own document.title so
-  // sway can assign it to workspace 3.
-  const isLaunchpad = window.location.pathname === "/launch";
-
   useWebSocket();
   useGlobalKeys();
 
@@ -113,6 +107,16 @@ export default function App() {
     }
   }, []);
 
+  const theme = useStore((s) => s.settings.theme);
+
+  // Theme synchronization (2026 clean design system):
+  // Updates data-theme attribute on root element live without reloading.
+  useEffect(() => {
+    const t = theme || localStorage.getItem("diad.theme") || "monochrome";
+    document.documentElement.setAttribute("data-theme", t);
+    localStorage.setItem("diad.theme", t);
+  }, [theme]);
+
   // Font scaling (spec 2.9): rem-based UI follows the root font size; the
   // multiplier persists in localStorage and applies without a restart.
   useEffect(() => {
@@ -146,7 +150,7 @@ export default function App() {
   // twice and the supervisor engaged the TUI, surface the persisted reason
   // exactly once (GET /gui/fallback then DELETE clears the marker).
   useEffect(() => {
-    if (isLaunchpad) return;
+    if (window.location.pathname !== "/") return;
     import("./services/api")
       .then(({ apiGet, api }) =>
         apiGet<{ reason: string | null }>("/gui/fallback").then((r) => {
@@ -166,10 +170,11 @@ export default function App() {
       });
   }, []);
 
-  // MASTER FIX S4: standalone launchpad page — early-return before any of
-  // the main GUI chrome so it stays a tiny, dedicated launcher.
-  if (isLaunchpad) {
-    return <Launchpad />;
+  const path = window.location.pathname;
+  const isWorkspaceHub = path.startsWith("/workspace") || path === "/desktop" || path === "/launch" || new URLSearchParams(window.location.search).has("ws");
+
+  if (isWorkspaceHub) {
+    return <WorkspaceHub />;
   }
 
   return (
@@ -216,18 +221,18 @@ export default function App() {
             className="glass m-3 grid grid-cols-2 gap-2 rounded-panel p-3"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            {VIEWS.map(({ id, icon: Icon }) => (
+            {PRIMARY_VIEWS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
-                className={`flex min-h-[44px] items-center gap-2.5 rounded-control border border-border-subtle px-3 py-2 text-left text-[13px] ${
-                  view === id ? "bg-copper/15 text-copper-hover" : "bg-surface-2/50 text-dim"
+                className={`flex min-h-[44px] items-center gap-2.5 rounded-control border border-border-subtle px-3 py-2 text-left text-[14px] ${
+                  view === id ? "bg-copper/20 text-ink font-semibold" : "bg-surface-2/50 text-dim"
                 }`}
                 onClick={() => {
                   setView(id);
                   setMobileNav(false);
                 }}
               >
-                <Icon size={16} /> {VIEW_LABELS[id]}
+                <Icon size={18} /> {label}
               </button>
             ))}
           </nav>

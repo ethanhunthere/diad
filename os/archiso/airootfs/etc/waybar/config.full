@@ -1,54 +1,15 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 32,
+  "height": 36,
+  "exclusive": true,
   "spacing": 6,
-  "modules-left": ["clock", "cpu", "memory", "disk", "network"],
+  "modules-left": ["clock"],
   "modules-center": ["sway/workspaces"],
-  "modules-right": ["pulseaudio", "battery", "tray", "custom/winmin", "custom/winmax", "custom/winclose", "custom/suspend", "custom/reboot", "custom/power"],
+  "modules-right": ["custom/wifi", "custom/reboot", "custom/power"],
   "clock": {
     "format": "{:%H:%M}",
-    "interval": 10,
-    "tooltip": true
-  },
-  "cpu": {
-    "format": " {usage}%",
-    "interval": 3,
-    "tooltip": false
-  },
-  "memory": {
-    "format": " {}%",
-    "interval": 5,
-    "tooltip": false
-  },
-  "disk": {
-    "format": " {percentage_used}%",
-    "interval": 30,
-    "tooltip": false
-  },
-  "network": {
-    "format-wifi": " {essid}",
-    "format-ethernet": " {ifname}",
-    "format-disconnected": "⚠",
-    "tooltip": false
-  },
-  "pulseaudio": {
-    "format": "{icon} {volume}%",
-    "format-muted": "",
-    "format-icons": {
-      "default": ["", "", ""]
-    },
-    "tooltip": false
-  },
-  "battery": {
-    "format": "{icon} {capacity}%",
-    "format-icons": ["", "", "", "", ""],
-    "interval": 30,
-    "tooltip": false
-  },
-  "tray": {
-    "icon-size": 14,
-    "spacing": 4
+    "interval": 10
   },
   "sway/workspaces": {
     "disable-scroll": true,
@@ -57,13 +18,14 @@
     "tooltip": false,
     "persistent-workspaces": {
       "1": [],
-      "2": []
+      "2": [],
+      "3": []
     }
   },
-  "custom/suspend": {
-    "format": "\uf186",
-    "tooltip": "Sleep",
-    "on-click": "/usr/local/bin/diad-power.sh suspend"
+  "custom/wifi": {
+    "format": "\uf1eb",
+    "tooltip": "Wi-Fi Networks",
+    "on-click": "/usr/local/bin/diad-wifi.sh"
   },
   "custom/reboot": {
     "format": "\uf021",
@@ -74,20 +36,5 @@
     "format": "\uf011",
     "tooltip": "Shutdown",
     "on-click": "/usr/local/bin/diad-power.sh power"
-  },
-  "custom/winmin": {
-    "format": "\uf2d1",
-    "tooltip": "Minimize",
-    "on-click": "/usr/local/bin/diad-windowctl minimize"
-  },
-  "custom/winmax": {
-    "format": "\uf2d0",
-    "tooltip": "Maximize",
-    "on-click": "/usr/local/bin/diad-windowctl maximize"
-  },
-  "custom/winclose": {
-    "format": "\uf2d3",
-    "tooltip": "Close",
-    "on-click": "/usr/local/bin/diad-windowctl close"
   }
 }

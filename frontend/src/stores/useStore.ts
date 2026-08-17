@@ -33,6 +33,26 @@ import type {
 } from "../lib/types";
 import { nextId } from "../lib/format";
 
+function saveChatToStorage(messages: ChatMessage[]): void {
+  try {
+    const trimmed = messages.slice(-200);
+    localStorage.setItem("diad.chat.messages", JSON.stringify(trimmed));
+  } catch {
+    // quota exceeded or private browsing
+  }
+}
+
+function loadChatFromStorage(): ChatMessage[] {
+  try {
+    const raw = localStorage.getItem("diad.chat.messages");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 // ---------------------------------------------------------------------------
 // DIAD AGENT — global UI store (zustand)
 // ---------------------------------------------------------------------------
@@ -143,6 +163,7 @@ interface StoreActions {
   setPaletteOpen: (v: boolean) => void;
 
   // chat
+  clearMessages: () => void;
   appendMessage: (m: Omit<ChatMessage, "tools" | "diffs" | "timestamp" | "id"> & { id?: string }) => string;
   appendToken: (id: string, text: string) => void;
   finishStream: (id: string) => void;
@@ -215,7 +236,7 @@ export const useStore = create<Store>((set, get) => ({
   paletteOpen: false,
   settingsOpen: false,
 
-  messages: [],
+  messages: loadChatFromStorage(),
   input: "",
   pendingSecret: null,
   pendingConfirm: null,
@@ -275,31 +296,43 @@ export const useStore = create<Store>((set, get) => ({
   toggleActivityBar: () => set((s) => ({ activityBarCollapsed: !s.activityBarCollapsed })),
   setPaletteOpen: (v) => set({ paletteOpen: v }),
 
+  // chat
+  clearMessages: () => {
+    saveChatToStorage([]);
+    set({ messages: [] });
+  },
   appendMessage: (m) => {
     const id = m.id ?? nextId("msg");
-    set((s) => ({
-      messages: [
+    set((s) => {
+      const next = [
         ...s.messages,
         { ...m, id, tools: [], diffs: [], timestamp: Date.now() },
-      ],
-    }));
+      ];
+      saveChatToStorage(next);
+      return { messages: next };
+    });
     return id;
   },
 
   appendToken: (id, text) =>
-    set((s) => ({
-      messages: s.messages.map((m) =>
+    set((s) => {
+      const next = s.messages.map((m) =>
         m.id === id ? { ...m, content: m.content + text, streaming: true } : m,
-      ),
-    })),
+      );
+      return { messages: next };
+    }),
 
   finishStream: (id) =>
-    set((s) => ({
-      streaming: s.streaming && s.messages.some((m) => m.id === id),
-      messages: s.messages.map((m) =>
+    set((s) => {
+      const next = s.messages.map((m) =>
         m.id === id ? { ...m, streaming: false } : m,
-      ),
-    })),
+      );
+      saveChatToStorage(next);
+      return {
+        streaming: s.streaming && s.messages.some((m) => m.id === id),
+        messages: next,
+      };
+    }),
 
   setInput: (v) => set({ input: v }),
 

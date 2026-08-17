@@ -1499,12 +1499,14 @@ pub fn format_device(device: &str, fstype: &str) -> anyhow::Result<ToolResult> {
     if !device.starts_with("/dev/") {
         return Ok(ToolResult::err("refusing to format a non-/dev path"));
     }
-    // Validated wrapper: fstype allowlist + root-disk guard + DIAD_CONFIRM
-    // marker (the orchestrator's CONFIRM gate sets the marker before this runs).
-    run_privileged_env(
-        &["/usr/local/bin/diad-format", device, fstype],
-        &[("DIAD_CONFIRM", "format-device")],
-    )
+    // Validated wrapper: fstype allowlist + root-disk guard + --confirm
+    // marker in argv (the orchestrator's CONFIRM gate authorizes this execution).
+    run_privileged(&[
+        "/usr/local/bin/diad-format",
+        "--confirm=format-device",
+        device,
+        fstype,
+    ])
 }
 
 /// Check a filesystem (fsck).
@@ -1520,9 +1522,7 @@ pub fn check_filesystem(device: &str) -> anyhow::Result<ToolResult> {
 
 /// Resize a partition (grow to end of device).
 ///
-/// Goes through the validated `diad-resize-partition` wrapper. The partition
-/// number is derived from the device name (`/dev/sda1` → part 1); the old
-/// raw `parted` invocation never passed a partition number at all.
+/// Goes through the validated `diad-resize-partition` wrapper with argv confirmation.
 pub fn resize_partition(device: &str) -> anyhow::Result<ToolResult> {
     if !valid_value(device) {
         return Ok(ToolResult::err("invalid device"));
@@ -1543,10 +1543,12 @@ pub fn resize_partition(device: &str) -> anyhow::Result<ToolResult> {
             "resize_partition: cannot infer partition number from '{device}' (expected /dev/sda1)"
         )));
     }
-    run_privileged_env(
-        &["/usr/local/bin/diad-resize-partition", device, &partnum],
-        &[("DIAD_CONFIRM", "resize-partition")],
-    )
+    run_privileged(&[
+        "/usr/local/bin/diad-resize-partition",
+        "--confirm=resize-partition",
+        device,
+        &partnum,
+    ])
 }
 
 /// Clone a block device (dd) — DESTRUCTIVE, requires confirmation.
@@ -1558,12 +1560,13 @@ pub fn clone_disk(src: &str, dst: &str) -> anyhow::Result<ToolResult> {
         return Ok(ToolResult::err("refusing to clone to/from a non-/dev path"));
     }
     // Validated wrapper: /dev allowlist, src != dst, root-disk guard, and the
-    // DIAD_CONFIRM marker (set by the orchestrator's CONFIRM gate). The raw
-    // `dd` sudoers entry was removed in phase A1.
-    run_privileged_env(
-        &["/usr/local/bin/diad-clone-disk", src, dst],
-        &[("DIAD_CONFIRM", "clone-disk")],
-    )
+    // --confirm marker passed via argv.
+    run_privileged(&[
+        "/usr/local/bin/diad-clone-disk",
+        "--confirm=clone-disk",
+        src,
+        dst,
+    ])
 }
 
 /// Benchmark a device's read throughput (hdparm).
@@ -1984,7 +1987,7 @@ pub fn kill_gpu_process(pid: u64) -> anyhow::Result<ToolResult> {
     if !valid_identifier(&pid_str) {
         return Ok(ToolResult::err("invalid pid"));
     }
-    run_privileged(&["kill", "-9", &pid_str])
+    run_privileged(&["/usr/local/bin/diad-killpid", &pid_str])
 }
 
 // ===========================================================================

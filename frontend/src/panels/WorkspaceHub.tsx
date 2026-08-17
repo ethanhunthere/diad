@@ -1,0 +1,208 @@
+import { useState, useEffect } from "react";
+import { Globe, MessageSquare, MessagesSquare, SquareTerminal, Sparkles, Search, ExternalLink } from "lucide-react";
+import { DiadLogo } from "../components/DiadLogo";
+import { sendMsg } from "../stores/useStore";
+
+export function WorkspaceHub() {
+  const [ws, setWs] = useState<number>(1);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    const path = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    if (path.includes("/workspace/1") || params.get("ws") === "1") {
+      setWs(1);
+      document.title = "DIAD AGENT — Workspace 1";
+    } else if (path.includes("/workspace/2") || params.get("ws") === "2") {
+      setWs(2);
+      document.title = "BROWSER — Workspace 2";
+    } else if (path.includes("/workspace/3") || path.includes("/launch") || params.get("ws") === "3") {
+      setWs(3);
+      document.title = "COMMS — Workspace 3";
+    } else {
+      setWs(1);
+      document.title = "DIAD Desktop";
+    }
+  }, []);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    const query = searchQuery.trim();
+    if (query.startsWith("http://") || query.startsWith("https://")) {
+      window.location.href = query;
+    } else {
+      window.location.href = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
+    }
+  };
+
+  const openUrl = (url: string) => {
+    window.location.href = url;
+  };
+
+  return (
+    <div className="flex h-screen w-screen flex-col items-center justify-center bg-[#0d0e15] text-slate-100 p-6 select-none">
+      {/* Workspace 1: DIAD AGENT */}
+      {ws === 1 && (
+        <div className="flex flex-col items-center max-w-xl w-full text-center animate-fade-in">
+          <div className="mb-4 drop-shadow-[0_0_25px_rgba(245,158,11,0.25)]">
+            <DiadLogo size={64} showWordmark={true} />
+          </div>
+          <h1 className="text-xl font-bold tracking-wider font-mono text-slate-100 uppercase">
+            DIAD AGENT
+          </h1>
+          <p className="mt-1 text-[13px] text-amber-400/80 font-sans tracking-wide">
+            Sovereign Autonomous AI Operating System
+          </p>
+
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+            <button
+              onClick={() => { window.location.href = "/"; }}
+              className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-amber-500/40 bg-[#151722]/90 p-6 transition-all duration-200 hover:border-amber-500 hover:bg-[#1c1f2e] hover:shadow-2xl hover:shadow-amber-500/20 group cursor-pointer"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 group-hover:scale-110 group-hover:bg-amber-500/20 transition-all">
+                <Sparkles size={26} />
+              </div>
+              <span className="text-[15px] font-bold text-slate-100 group-hover:text-amber-400">
+                Launch DIAD Studio
+              </span>
+              <span className="text-[11.5px] text-slate-400 font-sans">
+                Full visual AI programming & OS controls
+              </span>
+            </button>
+
+            <button
+              onClick={() => { sendMsg({ type: "spawn_tui" }); }}
+              className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-sky-500/40 bg-[#151722]/90 p-6 transition-all duration-200 hover:border-sky-500 hover:bg-[#1c1f2e] hover:shadow-2xl hover:shadow-sky-500/20 group cursor-pointer"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/10 text-sky-400 group-hover:scale-110 group-hover:bg-sky-500/20 transition-all">
+                <SquareTerminal size={26} />
+              </div>
+              <span className="text-[15px] font-bold text-slate-100 group-hover:text-sky-400">
+                Open Terminal (TUI)
+              </span>
+              <span className="text-[11.5px] text-slate-400 font-sans">
+                High-speed lightweight Foot console (F5)
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Workspace 2: BROWSER */}
+      {ws === 2 && (
+        <div className="flex flex-col items-center max-w-xl w-full text-center animate-fade-in">
+          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shadow-2xl shadow-cyan-500/20">
+            <Globe size={44} className="animate-pulse" />
+          </div>
+          <h1 className="text-xl font-bold tracking-wider font-mono text-slate-100 uppercase">
+            WEB BROWSER
+          </h1>
+          <p className="mt-1 text-[13px] text-cyan-400/80 font-sans tracking-wide">
+            Hardware-Accelerated WebKit Wayland Engine
+          </p>
+
+          <form onSubmit={handleSearch} className="mt-8 w-full relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search DuckDuckGo or enter URL..."
+              className="w-full rounded-2xl border border-slate-700 bg-[#151722]/90 py-3.5 pl-12 pr-12 text-[14px] text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all shadow-inner"
+            />
+            <Search size={18} className="absolute left-4 top-4 text-slate-400" />
+            <button
+              type="submit"
+              className="absolute right-3 top-2.5 rounded-xl bg-cyan-500/20 px-3 py-1.5 text-[12px] font-bold text-cyan-300 hover:bg-cyan-500/30 transition-all cursor-pointer"
+            >
+              Go
+            </button>
+          </form>
+
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            {[
+              { label: "DuckDuckGo", url: "https://duckduckgo.com" },
+              { label: "YouTube", url: "https://youtube.com" },
+              { label: "GitHub", url: "https://github.com" },
+              { label: "Wikipedia", url: "https://wikipedia.org" },
+            ].map((link) => (
+              <button
+                key={link.label}
+                onClick={() => openUrl(link.url)}
+                className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-[#151722]/60 px-3 py-1.5 text-[12px] font-medium text-slate-300 hover:border-cyan-500/50 hover:bg-cyan-500/10 hover:text-cyan-300 transition-all cursor-pointer"
+              >
+                <span>{link.label}</span>
+                <ExternalLink size={12} className="opacity-60" />
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-8 w-full">
+            <button
+              onClick={() => openUrl("https://duckduckgo.com")}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl border border-cyan-500/40 bg-cyan-500/10 py-3.5 text-[14px] font-bold text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-500 transition-all cursor-pointer"
+            >
+              <Globe size={18} />
+              Open DuckDuckGo Home
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Workspace 3: COMMS (Telegram & Slack) */}
+      {ws === 3 && (
+        <div className="flex flex-col items-center max-w-xl w-full text-center animate-fade-in">
+          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-sky-500/10 border border-sky-500/30 text-sky-400 shadow-2xl shadow-sky-500/20">
+            <MessageSquare size={44} />
+          </div>
+          <h1 className="text-xl font-bold tracking-wider font-mono text-slate-100 uppercase">
+            COMMUNICATIONS
+          </h1>
+          <p className="mt-1 text-[13px] text-sky-400/80 font-sans tracking-wide">
+            Dedicated Sovereign Messaging & Collaboration
+          </p>
+
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+            <button
+              onClick={() => openUrl("https://web.telegram.org/a/")}
+              className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-sky-500/40 bg-[#151722]/90 p-6 transition-all duration-200 hover:border-sky-400 hover:bg-[#1c1f2e] hover:shadow-2xl hover:shadow-sky-500/20 group cursor-pointer"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/10 text-sky-400 group-hover:scale-110 group-hover:bg-sky-500/20 transition-all">
+                <MessageSquare size={26} />
+              </div>
+              <span className="text-[15px] font-bold text-slate-100 group-hover:text-sky-400">
+                Open Telegram
+              </span>
+              <span className="text-[11.5px] text-slate-400 font-sans">
+                Fast, secure messaging & channels
+              </span>
+            </button>
+
+            <button
+              onClick={() => openUrl("https://app.slack.com/client")}
+              className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-purple-500/40 bg-[#151722]/90 p-6 transition-all duration-200 hover:border-purple-400 hover:bg-[#1c1f2e] hover:shadow-2xl hover:shadow-purple-500/20 group cursor-pointer"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10 text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all">
+                <MessagesSquare size={26} />
+              </div>
+              <span className="text-[15px] font-bold text-slate-100 group-hover:text-purple-400">
+                Open Slack
+              </span>
+              <span className="text-[11.5px] text-slate-400 font-sans">
+                Team workspaces, huddles & chats
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="fixed bottom-6 flex items-center gap-4 text-[11.5px] text-slate-500 font-mono">
+        <span className={ws === 1 ? "text-amber-400 font-bold" : ""}>F1 / WS1: AGENT</span>
+        <span>•</span>
+        <span className={ws === 2 ? "text-cyan-400 font-bold" : ""}>F2 / WS2: BROWSER</span>
+        <span>•</span>
+        <span className={ws === 3 ? "text-sky-400 font-bold" : ""}>F3 / WS3: COMMS</span>
+      </div>
+    </div>
+  );
+}

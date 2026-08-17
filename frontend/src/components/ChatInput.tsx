@@ -1,19 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, CornerDownLeft } from "lucide-react";
+import { Send, CornerDownLeft, Terminal } from "lucide-react";
 import { useStore } from "../stores/useStore";
 
 const SLASH_COMMANDS: { cmd: string; desc: string }[] = [
-  { cmd: "/help", desc: "Show help" },
-  { cmd: "/tools", desc: "List available tools" },
-  { cmd: "/version", desc: "Show DIAD AGENT version" },
-  { cmd: "/model", desc: "Pick a model" },
-  { cmd: "/connect", desc: "Connect a provider" },
-  { cmd: "/wifi", desc: "Connect to Wi-Fi" },
+  { cmd: "/wifi", desc: "Scan & connect Wi-Fi" },
+  { cmd: "/status", desc: "Hardware diagnostics" },
+  { cmd: "/model", desc: "Select AI model" },
+  { cmd: "/tools", desc: "List OS & coding tools" },
+  { cmd: "/theme", desc: "Change appearance & colors" },
+  { cmd: "/help", desc: "Show command reference" },
 ];
 
 /**
- * Auto-grow chat input. Enter sends, Shift+Enter inserts a newline,
- * "/" opens the command menu.
+ * Auto-grow chat input with comfortable 15px font, human placeholder, and responsive controls.
  */
 export function ChatInput({
   onSend,
@@ -25,19 +24,18 @@ export function ChatInput({
   const input = useStore((s) => s.input);
   const setInput = useStore((s) => s.setInput);
   const streaming = useStore((s) => s.streaming);
+  const sendWs = useStore((s) => s.send);
   const ref = useRef<HTMLTextAreaElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuIdx, setMenuIdx] = useState(0);
 
-  // Auto-grow.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.style.height = "0px";
-    el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [input]);
 
-  // Focus on mount and when streaming finishes.
   useEffect(() => {
     ref.current?.focus();
   }, [streaming]);
@@ -51,7 +49,6 @@ export function ChatInput({
   };
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // "/" command menu
     if (e.key === "/" && !e.shiftKey && !e.metaKey && !e.ctrlKey && input === "") {
       setMenuOpen(true);
       setMenuIdx(0);
@@ -97,31 +94,37 @@ export function ChatInput({
     ref.current?.focus();
   };
 
+  const toggleTui = () => {
+    if (sendWs) sendWs({ v: 1, type: "spawn_tui" });
+  };
+
   return (
-    <div className="relative border-t border-border-subtle bg-surface/40 px-3 py-2.5">
+    <div className="relative border-t border-border-subtle/80 bg-surface/80 backdrop-blur-xl px-5 py-3.5 shadow-2xl">
       {/* "/" command menu */}
       {menuOpen && (
-        <div className="glass absolute bottom-full left-3 mb-2 w-72 overflow-hidden rounded-panel shadow-xl animate-fade-in">
-          <div className="border-b border-border-subtle px-3 py-1.5 text-[10px] uppercase tracking-wider text-faint">
-            Commands
+        <div className="glass absolute bottom-full left-5 mb-2 w-80 overflow-hidden rounded-xl border border-amber-500/40 bg-surface-2/95 shadow-2xl animate-fade-in backdrop-blur-2xl">
+          <div className="border-b border-border-subtle/80 bg-surface-3/90 px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-400 font-mono">
+            ✦ Quick Actions
           </div>
-          {SLASH_COMMANDS.map((c, i) => (
-            <button
-              key={c.cmd}
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] ${
-                i === menuIdx ? "bg-copper/10 text-copper-hover" : "text-dim"
-              }`}
-              onMouseEnter={() => setMenuIdx(i)}
-              onClick={() => pick(c.cmd)}
-            >
-              <span className="font-mono">{c.cmd}</span>
-              <span className="flex-1 text-right text-[10.5px] text-faint">{c.desc}</span>
-            </button>
-          ))}
+          <div className="p-1">
+            {SLASH_COMMANDS.map((c, i) => (
+              <button
+                key={c.cmd}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] transition-colors ${
+                  i === menuIdx ? "bg-amber-500/20 text-slate-100 font-medium" : "text-slate-300 hover:text-white hover:bg-surface-3/60"
+                }`}
+                onMouseEnter={() => setMenuIdx(i)}
+                onClick={() => pick(c.cmd)}
+              >
+                <span className="font-mono text-amber-400 font-semibold">{c.cmd}</span>
+                <span className="flex-1 text-right text-[12px] text-slate-400">{c.desc}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-3">
         <textarea
           ref={ref}
           value={input}
@@ -129,36 +132,44 @@ export function ChatInput({
           disabled={disabled}
           placeholder={
             disabled
-              ? "Daemon offline — starting…"
+              ? "Connecting to local agent…"
               : streaming
-                ? "Assistant is streaming…"
-                : 'Ask DIAD AGENT anything…  ("/" for commands)'
+                ? "DIAD AI is reasoning and executing tools…"
+                : 'Ask anything, execute OS intents, or type "/" for commands…'
           }
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
-          className="min-h-[38px] flex-1 resize-none rounded-panel border border-border-subtle bg-obsidian/80 px-3 py-2 text-[13px] text-ink placeholder:text-faint focus:border-copper/60 focus:outline-none focus:ring-1 focus:ring-copper/30 disabled:opacity-60"
+          className="min-h-[46px] flex-1 resize-none rounded-xl border border-border-subtle bg-obsidian px-4 py-2.5 text-[15px] leading-relaxed text-slate-100 placeholder:text-slate-500 focus:border-amber-500/70 focus:outline-none focus:ring-2 focus:ring-amber-500/30 disabled:opacity-60 font-sans shadow-inner"
         />
         <button
           onClick={submit}
           disabled={disabled || !input.trim()}
-          className="btn-primary h-[38px] w-[38px] shrink-0 justify-center !px-0 disabled:opacity-40"
-          title="Send (Enter)"
+          className="h-[46px] w-[46px] shrink-0 flex items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all shadow-lg shadow-amber-500/20"
+          title="Send intent (Enter)"
+          aria-label="Send message"
         >
-          <Send size={15} />
+          <Send size={18} />
         </button>
       </div>
-      <div className="mt-1 flex items-center gap-2 text-[10px] text-faint">
-        <span>
-          <CornerDownLeft size={9} className="inline" /> Enter send
+      <div className="mt-2 flex items-center gap-3 text-[11.5px] text-slate-400 font-mono">
+        <span className="flex items-center gap-1">
+          <CornerDownLeft size={11} className="inline text-amber-400" /> Enter to send
         </span>
-        <span>·</span>
-        <span>Shift+Enter newline</span>
+        <span className="text-slate-600">·</span>
+        <span>Shift+Enter for newline</span>
+        <span className="text-slate-600">·</span>
+        <button
+          onClick={toggleTui}
+          className="flex items-center gap-1 text-slate-300 hover:text-amber-400 transition-colors"
+          title="Open TUI Terminal (F5)"
+        >
+          <Terminal size={12} className="text-amber-400" />
+          <span>F5 TUI Terminal</span>
+        </button>
         {!disabled && (
-          <>
-            <span className="ml-auto">
-              Ctrl+K palette · F6 provider · Ctrl+` terminal
-            </span>
-          </>
+          <span className="ml-auto text-slate-500 hidden sm:inline">
+            Ctrl+K Commands · F6 Model
+          </span>
         )}
       </div>
     </div>

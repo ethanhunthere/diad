@@ -1,0 +1,67 @@
+/* =============================================================================
+   DIAD Wofi — 2040 Titanium Obsidian & Cyber-Amber Theme
+   ========================================================================== */
+
+window {
+    margin: 0px;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    background-color: rgba(13, 14, 21, 0.96);
+    border-radius: 14px;
+    font-family: "Inter", "JetBrains Mono", sans-serif;
+    font-size: 15px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+}
+
+#input {
+    margin: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(245, 158, 11, 0.30);
+    background-color: rgba(21, 23, 34, 0.95);
+    color: #f8fafc;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+#input:focus {
+    border-color: #fbbf24;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+    outline: none;
+}
+
+#inner-box {
+    margin: 6px 12px 12px 12px;
+    background-color: transparent;
+}
+
+#outer-box {
+    margin: 0px;
+    background-color: transparent;
+}
+
+#scroll {
+    margin: 0px;
+}
+
+#text {
+    margin: 6px 8px;
+    color: #cbd5e1;
+}
+
+#entry {
+    padding: 6px 10px;
+    border-radius: 8px;
+    margin: 2px 0px;
+    transition: all 100ms ease;
+}
+
+#entry:selected {
+    background-color: rgba(245, 158, 11, 0.25);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    color: #ffffff;
+}
+
+#entry:selected #text {
+    color: #ffffff;
+    font-weight: 600;
+}

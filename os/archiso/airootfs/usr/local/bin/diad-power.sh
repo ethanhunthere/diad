@@ -1,53 +1,53 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DIAD — power actions for the waybar buttons (S3).
+# DIAD — Universal Power & Session Manager (2040 Edition)
 # =============================================================================
-# Waybar custom modules call this with a fixed action word:
-#   suspend | reboot | power
-# The sudo grants are argv-pinned in sudoers.d/diad, so only the exact
-# `systemctl suspend|reboot|poweroff` invocations are allowed. This script
-# adds a wofi y/N confirmation (skipped if wofi is missing — the click is
-# already deliberate).
-# =============================================================================
-
-set -u
+set -euo pipefail
 
 action="${1:-}"
+
+if [ -z "$action" ]; then
+    menu=$(printf "⏻ Power Off\n⟳ Restart System\n⏾ Suspend / Sleep\n🔒 Lock Screen\n🚪 Log Out" | wofi --dmenu --insensitive --style /etc/wofi/style.css --width 340 --height 240 --prompt "✦ System Power" 2>/dev/null || true)
+    case "$menu" in
+        "⏻ Power Off")
+            action="power"
+            ;;
+        "⟳ Restart System")
+            action="reboot"
+            ;;
+        "⏾ Suspend / Sleep")
+            action="suspend"
+            ;;
+        "🔒 Lock Screen")
+            action="lock"
+            ;;
+        "🚪 Log Out")
+            action="logout"
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+fi
+
 case "${action}" in
-    suspend)
-        cmd="/usr/bin/systemctl suspend"
-        label="Sleep"
-        ;;
     reboot)
-        cmd="/usr/bin/systemctl reboot"
-        label="Restart"
+        systemctl reboot 2>/dev/null || sudo systemctl reboot
         ;;
-    power)
-        cmd="/usr/bin/systemctl poweroff"
-        label="Shutdown"
+    power|shutdown|poweroff)
+        systemctl poweroff 2>/dev/null || sudo systemctl poweroff
+        ;;
+    suspend|sleep)
+        systemctl suspend 2>/dev/null || sudo systemctl suspend
+        ;;
+    lock)
+        swaylock -f -c 0d0e15 2>/dev/null || true
+        ;;
+    logout)
+        swaymsg exit 2>/dev/null || true
         ;;
     *)
-        notify-send "diad-power: unknown action '${action}' (suspend|reboot|power)" -u critical
+        notify-send "DIAD Power" "Unknown action '${action}'" -u critical
         exit 1
         ;;
 esac
-
-# RBRO-004 WP-06.5 — dry-run mode for QEMU / hardware validation:
-# prints exactly what would run, then exits without touching the system.
-if [ "${DIAD_POWER_DRYRUN:-}" = "1" ]; then
-    echo "WOULD: systemctl ${cmd#/usr/bin/systemctl }"
-    exit 0
-fi
-
-confirm() {
-    if ! command -v wofi >/dev/null 2>&1; then
-        return 0
-    fi
-    choice="$(printf 'No\nYes\n' | wofi --dmenu --prompt "${label} DIAD?" --insensitive 2>/dev/null)"
-    [ "${choice}" = "Yes" ]
-}
-
-if confirm; then
-    exec sudo "${cmd}"
-fi
-exit 0

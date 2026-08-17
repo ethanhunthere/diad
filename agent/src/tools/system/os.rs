@@ -74,37 +74,7 @@ pub fn install_package(package: &str) -> anyhow::Result<ToolResult> {
         )));
     }
 
-    // Check if running as root
-    let use_sudo = if std::env::var("USER").map(|u| u != "root").unwrap_or(true) {
-        "sudo"
-    } else {
-        ""
-    };
-
-    let mut cmd = if use_sudo.is_empty() {
-        let mut c = Command::new("pacman");
-        c.args(["-S", "--noconfirm", "--", package]);
-        c
-    } else {
-        let mut c = Command::new("sudo");
-        c.args(["pacman", "-S", "--noconfirm", "--", package]);
-        c
-    };
-
-    let output = cmd
-        .output()
-        .map_err(|e| anyhow::anyhow!("Failed to install {package}: {e}"))?;
-
-    if output.status.success() {
-        Ok(ToolResult::ok(format!(
-            "Package '{package}' installed successfully."
-        )))
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        Ok(ToolResult::err(format!(
-            "Failed to install {package}: {stderr}"
-        )))
-    }
+    crate::tools::system::exec::run_privileged(&["/usr/local/bin/diad-pacman", "install", package])
 }
 
 /// Remove a system package using pacman.
@@ -117,36 +87,7 @@ pub fn remove_package(package: &str) -> anyhow::Result<ToolResult> {
         )));
     }
 
-    let use_sudo = if std::env::var("USER").map(|u| u != "root").unwrap_or(true) {
-        "sudo"
-    } else {
-        ""
-    };
-
-    let mut cmd = if use_sudo.is_empty() {
-        let mut c = Command::new("pacman");
-        c.args(["-R", "--noconfirm", "--", package]);
-        c
-    } else {
-        let mut c = Command::new("sudo");
-        c.args(["pacman", "-R", "--noconfirm", "--", package]);
-        c
-    };
-
-    let output = cmd
-        .output()
-        .map_err(|e| anyhow::anyhow!("Failed to remove {package}: {e}"))?;
-
-    if output.status.success() {
-        Ok(ToolResult::ok(format!(
-            "Package '{package}' removed successfully."
-        )))
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        Ok(ToolResult::err(format!(
-            "Failed to remove {package}: {stderr}"
-        )))
-    }
+    crate::tools::system::exec::run_privileged(&["/usr/local/bin/diad-pacman", "remove", package])
 }
 
 /// Manage a systemd service.

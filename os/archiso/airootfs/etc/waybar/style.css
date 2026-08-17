@@ -1,129 +1,132 @@
 /* =============================================================================
-   DIAD waybar — glass pills (RBRO-004 WP-06.4).
-   Every module is a frosted-glass pill: rgba(20,16,13,0.65) + 1px hairline
-   border. (GTK CSS — waybar — has no `backdrop-filter`; blur must come from
-   the translucent alpha alone. An invalid property aborts waybar at startup.)
-   Window controls fuse into one pill [–|□|×]; the power trio sits to their
-   right with an extra 6px breathing gap (suspend margin-left 6px). Icons are
-   Font Awesome 6 Free solid (font-weight 900).
+   DIAD Waybar — 2040 Titanium Obsidian & Cyber-Amber Compact Bar
    ========================================================================== */
 
 * {
-  font-family: "JetBrains Mono", monospace;
-  font-size: 14px;
-}
-
-#waybar {
-  background: transparent;
+  font-family: "Inter", "JetBrains Mono", system-ui, -apple-system, sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.2;
   border: none;
+  border-radius: 0;
+  min-height: 0;
 }
 
-/* ---- Glass pill base — shared by every module ------------------------ */
+window#waybar {
+  background: transparent;
+}
+
+/* Floating frosted capsule bar with 2040 titanium obsidian finish */
 #clock,
 #workspaces,
-#custom-suspend,
+#custom-wifi,
 #custom-reboot,
-#custom-power,
-#custom-winmin,
-#custom-winmax,
-#custom-winclose {
-  padding: 0 12px;
-  margin: 6px 0;
-  font-size: 14px;
-  color: #ede6de;
-  background: rgba(20, 16, 13, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+#custom-power {
+  background: rgba(13, 14, 21, 0.92);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 9px;
+  padding: 2px 10px;
+  margin: 3px 3px;
+  color: #f8fafc;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.50);
 }
 
-/* ---- Workspaces ------------------------------------------------------- */
+#clock {
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-left: 10px;
+  padding: 2px 12px;
+  color: #f8fafc;
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+#workspaces {
+  padding: 2px 4px;
+  border-radius: 9px;
+}
+
 #workspaces button {
   background: transparent;
-  border: none;
-  color: #ede6de;
-  padding: 0 8px;
-  border-radius: 10px;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  padding: 2px 14px;
+  margin: 0 4px;
+  border-radius: 7px;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  transition: all 120ms ease-in-out;
+  box-shadow: none;
+  text-shadow: none;
 }
 
-/* Active workspace: copper at 45% alpha — warm highlight on the glass. */
+#workspaces button.focused,
 #workspaces button.active {
-  background: rgba(224, 149, 92, 0.45);
-  color: #ffffff;
+  background: rgba(245, 158, 11, 0.22);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.60);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
 }
 
 #workspaces button:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(245, 158, 11, 0.12);
+  color: #f8fafc;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  box-shadow: none;
 }
 
-/* ---- Window-control pill [–|□|×] — one fused pill ---------------------
-   winmin left cap, winmax flat center, winclose right cap. Negative left
-   margins cancel waybar's 6px module spacing so the three fuse seamlessly;
-   the surrounding pills keep their normal 6px gaps. */
-#custom-winmin {
-  border-radius: 12px 0 0 12px;
-  margin: 6px 0 6px 3px;
+#workspaces button:active,
+#workspaces button:focus {
+  background: rgba(245, 158, 11, 0.28);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.60);
+  box-shadow: none;
+  outline: none;
 }
 
-#custom-winmax {
-  border-radius: 0;
-  margin: 6px 0 6px -6px;
+#workspaces button.urgent {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.60);
 }
 
-#custom-winclose {
-  border-radius: 0 12px 12px 0;
-  margin: 6px 0 6px -6px;
+#custom-wifi,
+#custom-reboot,
+#custom-power {
+  font-family: "Font Awesome 6 Free", "Font Awesome 5 Free", monospace;
+  font-size: 12px;
+  padding: 2px 10px;
 }
 
-/* Hover tints: minimize dims, maximize warms to copper, close warns red. */
-#custom-winmin:hover {
-  background: #8a7f75;
-}
-
-#custom-winmax:hover {
-  background: #e0955c;
-}
-
-#custom-winclose:hover {
-  background: #e07a7a;
-}
-
-/* ---- Power pill (sleep / restart / shutdown) ---------------------------
-   suspend carries an extra 6px left margin so the power cluster breathes
-   apart from the window-control pill; power sits 3px off the screen edge. */
-#custom-suspend {
-  border-radius: 12px;
-  margin: 6px 0 6px 6px;
+#custom-wifi {
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.35);
 }
 
 #custom-reboot {
-  border-radius: 12px;
+  color: #cbd5e1;
 }
 
 #custom-power {
-  border-radius: 12px;
-  margin: 6px 3px 6px 0;
+  margin-right: 10px;
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.30);
 }
 
-#custom-suspend:hover,
+#custom-wifi:hover {
+  background: rgba(245, 158, 11, 0.25);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+}
+
 #custom-reboot:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-/* Shutdown is the destructive one — tint it warm-red so it stands apart. */
-#custom-power {
-  color: #e07a7a;
+  background: rgba(203, 213, 225, 0.20);
+  color: #ffffff;
 }
 
 #custom-power:hover {
-  background: rgba(224, 122, 122, 0.3);
-}
-
-/* ---- Font Awesome solid glyphs (otf-font-awesome, weight 900) --------- */
-#custom-suspend,
-#custom-reboot,
-#custom-power,
-#custom-winmin,
-#custom-winmax,
-#custom-winclose {
-  font-family: "Font Awesome 6 Free", "Font Awesome 5 Free";
-  font-weight: 900;
+  background: rgba(239, 68, 68, 0.30);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.40);
 }
