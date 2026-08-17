@@ -19,8 +19,8 @@ for a in "$@"; do
     esac
 done
 
-# Wayland flags for Chromium
-WAYLAND_FLAGS="--ozone-platform-hint=auto --ozone-platform=wayland --enable-features=UseOzonePlatform,WaylandWindowDecorations"
+# Wayland & GPU acceleration flags for Chromium
+WAYLAND_FLAGS="--ozone-platform-hint=auto --ozone-platform=wayland --enable-features=UseOzonePlatform,WaylandWindowDecorations --enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist"
 if [ "$(id -u)" = "0" ]; then
     WAYLAND_FLAGS="${WAYLAND_FLAGS} --no-sandbox"
 fi

@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useStore, sendMsg } from "../stores/useStore";
-import { clock12 } from "../lib/format";
-
 import { DiadLogo } from "./DiadLogo";
 
 /**
- * TopBar — clean studio header with model selector, command palette trigger,
+ * TopBar — clean, compact studio header with model selector, command palette trigger,
  * connection status, TUI switcher, and window controls.
  */
 export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
@@ -22,12 +20,6 @@ export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
   const send = useStore((s) => s.send);
 
   const online = wsConnected && connected;
-
-  const [time, setTime] = useState(clock12());
-  useEffect(() => {
-    const t = setInterval(() => setTime(clock12()), 1000);
-    return () => clearInterval(t);
-  }, []);
 
   const [providerOpen, setProviderOpen] = useState(false);
   const providerRef = useRef<HTMLDivElement>(null);
@@ -78,23 +70,23 @@ export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
   };
 
   return (
-    <header className="glass z-30 flex h-12 shrink-0 items-center gap-3 border-b border-border-subtle/80 px-4 select-none">
+    <header className="glass z-30 flex h-10 shrink-0 items-center gap-2.5 border-b border-border-subtle/80 px-3.5 select-none bg-[#12141d]">
       {hamburger}
 
       {/* 2040 DIAD Logo & Wordmark */}
-      <DiadLogo size={24} />
+      <DiadLogo size={22} />
 
-      <div className="mx-2 h-4 w-px bg-border-strong" />
+      <div className="mx-1.5 h-3.5 w-px bg-border-strong hidden sm:block" />
 
       {/* Quick search / command trigger */}
       <button
-        className="flex h-8 items-center gap-2 rounded-lg border border-border-subtle bg-surface-2/70 px-3 text-[12.5px] text-dim hover:border-copper/50 hover:text-ink transition-colors"
+        className="flex h-7 items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-2/70 px-2.5 text-[12px] text-dim hover:border-amber-500/50 hover:text-ink transition-colors"
         onClick={() => setPaletteOpen(true)}
         title="Open command palette (Ctrl+K)"
       >
         <span>⌘</span>
-        <span>Search or command…</span>
-        <span className="kbd ml-1">Ctrl K</span>
+        <span className="hidden md:inline">Search or command…</span>
+        <span className="kbd text-[10px] ml-1 hidden sm:inline">Ctrl K</span>
       </button>
 
       <div className="flex-1" />
@@ -102,34 +94,34 @@ export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
       {/* Provider & Model Selector */}
       <div className="relative" ref={providerRef}>
         <button
-          className={`flex h-8 items-center gap-2 rounded-lg border px-3 text-[12.5px] font-medium transition-all ${
+          className={`flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-medium transition-all ${
             providerOpen
-              ? "border-copper/60 bg-copper/20 text-ink shadow-sm"
-              : "border-border-subtle bg-surface-2/70 text-dim hover:border-copper/40 hover:text-ink"
+              ? "border-amber-500/60 bg-amber-500/20 text-ink shadow-sm"
+              : "border-border-subtle bg-surface-2/70 text-dim hover:border-amber-500/40 hover:text-ink"
           }`}
           onClick={() => setProviderOpen((o) => !o)}
           title="Change AI model (F6)"
           aria-expanded={providerOpen}
           aria-haspopup="menu"
         >
-          <span className="h-2 w-2 rounded-full bg-copper-hover" />
-          <span className="text-ink">{provider || "AI Model"}</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+          <span className="text-ink font-semibold">{provider || "AI"}</span>
           <span className="text-faint">/</span>
-          <span className="max-w-[150px] truncate text-copper-hover font-semibold">{model || "Select"}</span>
+          <span className="max-w-[130px] truncate text-amber-400 font-semibold">{model || "Select"}</span>
           <span className="text-[10px] text-faint">▾</span>
         </button>
 
         {providerOpen && (
           <div
             role="menu"
-            className="glass absolute right-0 top-10 z-50 w-80 overflow-hidden rounded-xl border border-border-subtle bg-surface-2/98 p-2.5 shadow-2xl backdrop-blur-xl animate-fade-in"
+            className="glass absolute right-0 top-9 z-50 w-80 overflow-hidden rounded-xl border border-amber-500/40 bg-[#161824] p-2.5 shadow-2xl backdrop-blur-xl animate-fade-in"
           >
             <div className="flex items-center justify-between border-b border-border-subtle/80 pb-2 px-2">
               <span className="text-[11.5px] font-semibold uppercase tracking-wider text-dim">
                 Select Model
               </span>
               <button
-                className="text-[11.5px] font-medium text-copper-hover hover:underline"
+                className="text-[11.5px] font-medium text-amber-400 hover:underline"
                 onClick={() => {
                   setProviderOpen(false);
                   setView("settings");
@@ -144,7 +136,7 @@ export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
                 <div className="px-3 py-4 text-center text-[13px] text-dim">
                   No providers configured.
                   <button
-                    className="mt-2 block w-full text-center text-xs font-semibold text-copper-hover hover:underline"
+                    className="mt-2 block w-full text-center text-xs font-semibold text-amber-400 hover:underline"
                     onClick={() => {
                       setProviderOpen(false);
                       setView("settings");
@@ -159,32 +151,32 @@ export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
                 return (
                   <div
                     key={p.name}
-                    className={`rounded-lg border p-2.5 text-left transition-all ${
+                    className={`rounded-lg border p-2 text-left transition-all ${
                       isCurrentProvider
-                        ? "border-copper/50 bg-copper/10"
+                        ? "border-amber-500/50 bg-amber-500/10"
                         : "border-transparent hover:border-border-subtle hover:bg-surface-3/60"
                     }`}
                   >
                     <button
-                      className="flex w-full items-center gap-2 text-[13px] font-semibold text-ink capitalize"
+                      className="flex w-full items-center gap-2 text-[12.5px] font-semibold text-ink capitalize"
                       onClick={() => selectProvider(p.name)}
                     >
                       <span
                         className={`h-2 w-2 rounded-full ${
-                          p.has_key ? "bg-success" : "bg-faint"
+                          p.has_key ? "bg-emerald-400" : "bg-faint"
                         }`}
                       />
                       {p.name}
                     </button>
 
                     {isCurrentProvider && models.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
+                      <div className="mt-1.5 flex flex-wrap gap-1">
                         {models.slice(0, 6).map((m) => (
                           <button
                             key={m}
-                            className={`rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
+                            className={`rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors ${
                               model === m
-                                ? "bg-copper-hover text-obsidian font-bold shadow-sm"
+                                ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
                                 : "bg-surface-3 text-dim hover:text-ink hover:bg-surface-3/90"
                             }`}
                             onClick={() => selectModel(m)}
@@ -201,7 +193,7 @@ export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
 
             <div className="mt-2 border-t border-border-subtle/80 pt-2 px-1">
               <button
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border-subtle bg-surface-3/80 py-2 text-center text-[12px] font-medium text-ink hover:border-copper/50 hover:text-copper-hover transition-colors"
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border-subtle bg-surface-3/80 py-1.5 text-center text-[11.5px] font-medium text-ink hover:border-amber-500/50 hover:text-amber-300 transition-colors"
                 onClick={() => {
                   setProviderOpen(false);
                   setView("settings");
@@ -216,40 +208,33 @@ export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
 
       {/* Terminal / TUI Switcher */}
       <button
-        className="flex h-8 items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-2/70 px-2.5 text-[12.5px] font-medium text-dim hover:border-copper/40 hover:text-ink transition-colors"
+        className="flex h-7 items-center gap-1 rounded-lg border border-border-subtle bg-surface-2/70 px-2 text-[11.5px] font-medium text-dim hover:border-amber-500/40 hover:text-ink transition-colors"
         onClick={spawnTui}
-        title="Open TUI terminal mode"
+        title="Open TUI terminal mode (F5)"
       >
-        <span className="font-mono text-[13px]">▮▯</span>
+        <span className="font-mono text-amber-400 font-bold">▮</span>
         <span>TUI</span>
       </button>
 
       {/* Connection indicator */}
       <div
-        className={`flex items-center gap-1.5 text-[12.5px] font-medium ${online ? "text-dim" : "text-warn"}`}
+        className={`flex items-center gap-1.5 text-[11.5px] font-medium hidden sm:flex ${online ? "text-dim" : "text-amber-400"}`}
         title={online ? "Online" : "Disconnected"}
       >
         <span
-          className={`h-2 w-2 rounded-full ${
-            online ? "bg-success" : "bg-warn"
+          className={`h-1.5 w-1.5 rounded-full ${
+            online ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-amber-400"
           }`}
         />
         <span>{online ? "Online" : "Offline"}</span>
       </div>
 
-      <div className="mx-1.5 h-4 w-px bg-border-strong" />
-
-      {/* Clock */}
-      <div className="font-mono text-[12px] font-semibold text-dim">
-        {time}
-      </div>
-
-      <div className="mx-1.5 h-4 w-px bg-border-strong" />
+      <div className="mx-1 h-3.5 w-px bg-border-strong" />
 
       {/* Window controls [–] [□] [×] */}
       <div className="flex items-center gap-0.5 rounded-lg border border-border-subtle bg-surface-2/70 p-0.5">
         <button
-          className="flex h-7 w-7 items-center justify-center rounded-md text-[14px] font-medium text-dim hover:bg-surface-3 hover:text-ink transition-colors"
+          className="flex h-6 w-6 items-center justify-center rounded text-[13px] font-medium text-dim hover:bg-surface-3 hover:text-ink transition-colors"
           onClick={() => windowAction("minimize")}
           title="Minimize"
           aria-label="Minimize"
@@ -257,7 +242,7 @@ export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
           –
         </button>
         <button
-          className="flex h-7 w-7 items-center justify-center rounded-md text-[12px] font-medium text-dim hover:bg-surface-3 hover:text-ink transition-colors"
+          className="flex h-6 w-6 items-center justify-center rounded text-[11px] font-medium text-dim hover:bg-surface-3 hover:text-ink transition-colors"
           onClick={() => windowAction("maximize")}
           title="Maximize"
           aria-label="Maximize"
@@ -265,7 +250,7 @@ export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
           □
         </button>
         <button
-          className="flex h-7 w-7 items-center justify-center rounded-md text-[14px] font-medium text-dim hover:bg-danger/25 hover:text-danger transition-colors"
+          className="flex h-6 w-6 items-center justify-center rounded text-[13px] font-medium text-dim hover:bg-red-500/25 hover:text-red-400 transition-colors"
           onClick={() => windowAction("close")}
           title="Close"
           aria-label="Close"
