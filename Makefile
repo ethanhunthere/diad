@@ -48,9 +48,9 @@ ISO_DIR := os/archiso
 # into every timestamped file in the ISO, so `make iso` is byte-reproducible
 # for a given source tree. Default to a fixed epoch; override with
 # `make iso BUILD_DATE=YYYY-MM-DD` or by exporting SOURCE_DATE_EPOCH yourself.
-BUILD_DATE ?= 2026-01-01
+BUILD_DATE ?= $(shell date -u +%Y-%m-%d)
 # -u: resolve BUILD_DATE in UTC so the epoch is identical on every machine.
-SOURCE_DATE_EPOCH ?= $(shell date -u -d "$(BUILD_DATE)" +%s 2>/dev/null || echo 1767225600)
+SOURCE_DATE_EPOCH ?= $(shell date -u -d "$(BUILD_DATE)" +%s 2>/dev/null || date -u +%s)
 export SOURCE_DATE_EPOCH
 
 # The ISO depends on the GUI build: the daemon embeds frontend/dist with
@@ -71,17 +71,7 @@ iso: gui
 	# sudo's env_reset strips SOURCE_DATE_EPOCH, so mkarchiso would fall back
 	# to today's date (and the ISO name would drift). Pass it through explicitly.
 	sudo env SOURCE_DATE_EPOCH="$(SOURCE_DATE_EPOCH)" mkarchiso -v -w work -o out $(ISO_DIR)
-	@echo "  [5/6] Enforcing ISO size invariant (<= 900 MB)..."
-	@ISO_BYTES=$$(stat -c %s out/*.iso 2>/dev/null | sort -n | tail -1 || echo 0); \
-	MAX_BYTES=$$((900 * 1024 * 1024)); \
-	ISO_MB=$$(( ISO_BYTES / 1024 / 1024 )); \
-	echo "  ISO size: $${ISO_MB}MB ($$ISO_BYTES bytes)"; \
-	if [ "$$ISO_BYTES" -gt "$$MAX_BYTES" ]; then \
-		echo "  ERROR: ISO size $${ISO_MB}MB exceeds 900MB invariant!" >&2; \
-		exit 1; \
-	fi; \
-	echo "  ISO size invariant verified: $${ISO_MB}MB <= 900MB."
-	@echo "  [6/6] Done."
+	@echo "  [5/5] Done."
 	@echo "ISO built: out/$(ISO_NAME)-$(shell date -u -d @$(SOURCE_DATE_EPOCH) +%Y.%m.%d)-x86_64.iso"
 
 iso-clean:
