@@ -391,7 +391,7 @@ fi
 
 # ---- end-of-boot: focus workspace 1 on primary output ----
 if command -v swaymsg >/dev/null 2>&1; then
-    swaymsg workspace number 1 >/dev/null 2>&1
+    swaymsg workspace "1: DIAD AGENT" >/dev/null 2>&1 || swaymsg workspace number 1 >/dev/null 2>&1
     output_name="$(swaymsg -t get_outputs 2>/dev/null | jq -r '.[0].name // empty' 2>/dev/null)"
     if [[ -n "${output_name}" ]]; then
         swaymsg focus output "${output_name}" >/dev/null 2>&1
