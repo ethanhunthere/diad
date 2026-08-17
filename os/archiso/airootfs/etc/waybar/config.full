@@ -1,8 +1,9 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 32,
-  "spacing": 6,
+  "height": 36,
+  "exclusive": true,
+  "spacing": 8,
   "modules-left": ["clock"],
   "modules-center": ["sway/workspaces"],
   "modules-right": ["custom/wifi", "custom/reboot", "custom/power"],
@@ -16,18 +17,24 @@
     "all-outputs": true,
     "format": "{icon}",
     "format-icons": {
-      "1: DIAD AGENT": "◈ 1: DIAD AGENT",
-      "2: BROWSER": "🌐 2: BROWSER",
-      "3: COMMS": "💬 3: COMMS",
-      "1": "◈ 1: DIAD AGENT",
-      "2": "🌐 2: BROWSER",
-      "3": "💬 3: COMMS",
-      "default": "◈"
+      "1: DIAD AGENT": "DIAD AGENT",
+      "2: BROWSER": "BROWSER",
+      "3: COMMS": "COMMS",
+      "DIAD AGENT": "DIAD AGENT",
+      "BROWSER": "BROWSER",
+      "COMMS": "COMMS",
+      "1": "DIAD AGENT",
+      "2": "BROWSER",
+      "3": "COMMS",
+      "default": "DIAD AGENT"
     },
     "persistent_workspaces": {
       "1: DIAD AGENT": ["*"],
       "2: BROWSER": ["*"],
-      "3: COMMS": ["*"]
+      "3: COMMS": ["*"],
+      "1": ["*"],
+      "2": ["*"],
+      "3": ["*"]
     }
   },
   "custom/wifi": {
