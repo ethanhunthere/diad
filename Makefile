@@ -77,6 +77,11 @@ iso: gui
 iso-clean:
 	sudo rm -rf work out
 
+# === Virtual Machine (Instant Testing) ===
+vm: qemu
+qemu:
+	@./scripts/run-vm.sh
+
 # === Cleanup ===
 clean:
 	cd $(AGENT_DIR) && cargo clean
