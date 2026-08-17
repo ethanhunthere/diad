@@ -2,6 +2,12 @@
 # =============================================================================
 # DIAD OS — Virtual Machine Launcher (QEMU + KVM)
 # =============================================================================
+# Seamless, non-blocking desktop VM with:
+#   - Absolute tablet mouse (no cursor trapping or keyboard locking)
+#   - Universal VGA display (instant rendering under any Wayland host)
+#   - User network pass-through (internet connectivity)
+#   - Hotkey to release input if ever needed: Ctrl + Alt + G
+# =============================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,6 +23,7 @@ fi
 
 echo "🚀 Starting DIAD OS in QEMU VM..."
 echo "📦 ISO: ${ISO_PATH}"
+echo "💡 Note: Mouse moves freely in/out of the window. If input is ever grabbed, press Ctrl+Alt+G to release."
 
 KVM_FLAG=""
 if [[ -e /dev/kvm && -w /dev/kvm ]]; then
@@ -26,18 +33,14 @@ else
     echo "⚠️  KVM not available — running in software emulation"
 fi
 
-# Detect display backend (gtk, sdl, or default)
-DISPLAY_OPT="-display gtk,gl=on"
-if ! qemu-system-x86_64 -display gtk,help >/dev/null 2>&1; then
-    DISPLAY_OPT="-display sdl"
-fi
-
 exec qemu-system-x86_64 \
     ${KVM_FLAG} \
     -m 4G \
     -smp 4 \
-    -vga virtio \
-    ${DISPLAY_OPT} \
+    -vga std \
+    -display gtk,grab-on-hover=off,zoom-to-fit=on \
+    -device virtio-tablet-pci \
+    -device virtio-keyboard-pci \
     -device virtio-net-pci,netdev=net0 \
     -netdev user,id=net0 \
     -cdrom "${ISO_PATH}" \
