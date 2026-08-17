@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DIAD OS — Virtual Machine Launcher (QEMU + KVM)
+# DIAD OS — Virtual Machine Launcher (QEMU + KVM + UEFI)
 # =============================================================================
-# Seamless, non-blocking desktop VM with:
-#   - Absolute tablet mouse (no cursor trapping or keyboard locking)
-#   - Universal VGA display (instant rendering under any Wayland host)
-#   - User network pass-through (internet connectivity)
-#   - Hotkey to release input if ever needed: Ctrl + Alt + G
+# High-performance local VM with:
+#   - UEFI (OVMF) fast boot
+#   - KVM hardware acceleration
+#   - Tablet absolute mouse (moves freely without cursor trap)
+#   - User internet pass-through
+#   - Release key: Ctrl + Alt + G
 # =============================================================================
 set -euo pipefail
 
@@ -23,7 +24,6 @@ fi
 
 echo "🚀 Starting DIAD OS in QEMU VM..."
 echo "📦 ISO: ${ISO_PATH}"
-echo "💡 Note: Mouse moves freely in/out of the window. If input is ever grabbed, press Ctrl+Alt+G to release."
 
 KVM_FLAG=""
 if [[ -e /dev/kvm && -w /dev/kvm ]]; then
@@ -33,15 +33,22 @@ else
     echo "⚠️  KVM not available — running in software emulation"
 fi
 
+UEFI_OPTS=()
+if [[ -f /usr/share/edk2/x64/OVMF_CODE.4m.fd ]]; then
+    UEFI_OPTS=(-drive "if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd")
+    echo "⚡ UEFI (OVMF) Boot: ENABLED"
+fi
+
 exec qemu-system-x86_64 \
     ${KVM_FLAG} \
     -m 4G \
     -smp 4 \
-    -vga std \
+    -vga virtio \
     -display gtk,grab-on-hover=off,zoom-to-fit=on \
     -device virtio-tablet-pci \
     -device virtio-keyboard-pci \
     -device virtio-net-pci,netdev=net0 \
     -netdev user,id=net0 \
-    -cdrom "${ISO_PATH}" \
+    "${UEFI_OPTS[@]}" \
+    -drive "file=${ISO_PATH},media=cdrom,readonly=on" \
     -boot d
