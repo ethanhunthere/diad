@@ -19,19 +19,19 @@
   "custom/ws-agent": {
     "format": "DIAD AGENT",
     "tooltip": "Workspace 1: DIAD Agent (F1)",
-    "on-click": "swaymsg workspace 'DIAD AGENT'",
+    "on-click": "swaymsg workspace 'DIAD AGENT' && (/usr/local/bin/brave --app=http://127.0.0.1:7860 &)",
     "interval": "once"
   },
   "custom/ws-browser": {
     "format": "BROWSER",
     "tooltip": "Workspace 2: Web Browser (F2)",
-    "on-click": "swaymsg workspace 'BROWSER'",
+    "on-click": "swaymsg workspace 'BROWSER' && (/usr/local/bin/brave &)",
     "interval": "once"
   },
   "custom/ws-comms": {
     "format": "COMMS",
-    "tooltip": "Workspace 3: Communications (F3)",
-    "on-click": "swaymsg workspace 'COMMS'",
+    "tooltip": "Workspace 3: Communications & Launchpad (F3)",
+    "on-click": "swaymsg workspace 'COMMS' && (/usr/local/bin/brave --app=http://127.0.0.1:7860/launch &)",
     "interval": "once"
   },
   "custom/wifi": {

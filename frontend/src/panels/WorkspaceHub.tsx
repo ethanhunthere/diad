@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
-import { Globe, MessageSquare, MessagesSquare, SquareTerminal, Sparkles, Search, ExternalLink } from "lucide-react";
+import { Globe, MessageSquare, MessagesSquare, SquareTerminal, Sparkles, Search, ExternalLink, Download } from "lucide-react";
 import { DiadLogo } from "../components/DiadLogo";
-import { sendMsg } from "../stores/useStore";
+import { sendMsg, useStore } from "../stores/useStore";
+import { nextId } from "../lib/format";
 
 export function WorkspaceHub() {
   const [ws, setWs] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [installingTelegram, setInstallingTelegram] = useState(false);
+  const [installingSlack, setInstallingSlack] = useState(false);
+  const toast = useStore((s) => s.toast);
 
   useEffect(() => {
     const path = window.location.pathname;
@@ -13,7 +17,7 @@ export function WorkspaceHub() {
     if (path.includes("/workspace/1") || params.get("ws") === "1") {
       setWs(1);
       document.title = "DIAD AGENT — Workspace 1";
-    } else if (path.includes("/workspace/2") || params.get("ws") === "2") {
+    } else if (path.includes("/workspace/2") || path.includes("/apps") || params.get("ws") === "2") {
       setWs(2);
       document.title = "BROWSER — Workspace 2";
     } else if (path.includes("/workspace/3") || path.includes("/launch") || params.get("ws") === "3") {
@@ -38,6 +42,42 @@ export function WorkspaceHub() {
 
   const openUrl = (url: string) => {
     window.location.href = url;
+  };
+
+  const installTelegram = async () => {
+    setInstallingTelegram(true);
+    toast({ kind: "info", title: "Installing Telegram", message: "Dispatching package install intent to agent...", ttl: 4000 });
+    try {
+      sendMsg({
+        type: "chat_send",
+        id: nextId(),
+        text: "Please install telegram-desktop package for me.",
+      });
+      setTimeout(() => {
+        setInstallingTelegram(false);
+        toast({ kind: "info", title: "Telegram Install Request Sent", message: "DIAD Agent is installing Telegram.", ttl: 3000 });
+      }, 2000);
+    } catch {
+      setInstallingTelegram(false);
+    }
+  };
+
+  const installSlack = async () => {
+    setInstallingSlack(true);
+    toast({ kind: "info", title: "Installing Slack", message: "Dispatching package install intent to agent...", ttl: 4000 });
+    try {
+      sendMsg({
+        type: "chat_send",
+        id: nextId(),
+        text: "Please install slack package for me.",
+      });
+      setTimeout(() => {
+        setInstallingSlack(false);
+        toast({ kind: "info", title: "Slack Install Request Sent", message: "DIAD Agent is installing Slack.", ttl: 3000 });
+      }, 2000);
+    } catch {
+      setInstallingSlack(false);
+    }
   };
 
   return (
@@ -99,7 +139,7 @@ export function WorkspaceHub() {
             WEB BROWSER
           </h1>
           <p className="mt-1 text-[13px] text-cyan-400/80 font-sans tracking-wide">
-            Hardware-Accelerated WebKit Wayland Engine
+            Hardware-Accelerated Web Engine
           </p>
 
           <form onSubmit={handleSearch} className="mt-8 w-full relative">
@@ -143,13 +183,13 @@ export function WorkspaceHub() {
               className="w-full flex items-center justify-center gap-2 rounded-2xl border border-cyan-500/40 bg-cyan-500/10 py-3.5 text-[14px] font-bold text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-500 transition-all cursor-pointer"
             >
               <Globe size={18} />
-              Open DuckDuckGo Home
+              Open DuckDuckGo Browser
             </button>
           </div>
         </div>
       )}
 
-      {/* Workspace 3: COMMS (Telegram & Slack) */}
+      {/* Workspace 3: COMMS (Telegram & Slack with Install Options) */}
       {ws === 3 && (
         <div className="flex flex-col items-center max-w-xl w-full text-center animate-fade-in">
           <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-sky-500/10 border border-sky-500/30 text-sky-400 shadow-2xl shadow-sky-500/20">
@@ -159,39 +199,67 @@ export function WorkspaceHub() {
             COMMUNICATIONS
           </h1>
           <p className="mt-1 text-[13px] text-sky-400/80 font-sans tracking-wide">
-            Dedicated Sovereign Messaging & Collaboration
+            Official Telegram & Slack Integrations
           </p>
 
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-            <button
-              onClick={() => openUrl("https://web.telegram.org/a/")}
-              className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-sky-500/40 bg-[#151722]/90 p-6 transition-all duration-200 hover:border-sky-400 hover:bg-[#1c1f2e] hover:shadow-2xl hover:shadow-sky-500/20 group cursor-pointer"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/10 text-sky-400 group-hover:scale-110 group-hover:bg-sky-500/20 transition-all">
-                <MessageSquare size={26} />
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-5 w-full">
+            {/* Telegram Card */}
+            <div className="flex flex-col items-center justify-between rounded-2xl border border-sky-500/40 bg-[#151722]/90 p-5 transition-all hover:border-sky-400 hover:bg-[#1c1f2e] shadow-xl">
+              <div className="flex flex-col items-center gap-2 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#229ED9]/15 text-[#229ED9] shadow-lg">
+                  <MessageSquare size={30} />
+                </div>
+                <h3 className="text-[16px] font-bold text-slate-100">Telegram</h3>
+                <p className="text-[12px] text-slate-400">Fast & secure instant messenger</p>
               </div>
-              <span className="text-[15px] font-bold text-slate-100 group-hover:text-sky-400">
-                Open Telegram
-              </span>
-              <span className="text-[11.5px] text-slate-400 font-sans">
-                Fast, secure messaging & channels
-              </span>
-            </button>
 
-            <button
-              onClick={() => openUrl("https://app.slack.com/client")}
-              className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-purple-500/40 bg-[#151722]/90 p-6 transition-all duration-200 hover:border-purple-400 hover:bg-[#1c1f2e] hover:shadow-2xl hover:shadow-purple-500/20 group cursor-pointer"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10 text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all">
-                <MessagesSquare size={26} />
+              <div className="mt-5 flex flex-col gap-2 w-full">
+                <button
+                  onClick={() => openUrl("https://web.telegram.org/a/")}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#229ED9] py-2.5 text-[13px] font-bold text-white hover:bg-[#1e8bc0] transition-all cursor-pointer shadow-md"
+                >
+                  <ExternalLink size={14} />
+                  Open Web Telegram
+                </button>
+                <button
+                  onClick={installTelegram}
+                  disabled={installingTelegram}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-surface-3/50 py-2 text-[12px] font-medium text-slate-300 hover:border-sky-400 hover:text-sky-300 transition-all cursor-pointer"
+                >
+                  <Download size={13} />
+                  {installingTelegram ? "Installing…" : "Install Desktop App"}
+                </button>
               </div>
-              <span className="text-[15px] font-bold text-slate-100 group-hover:text-purple-400">
-                Open Slack
-              </span>
-              <span className="text-[11.5px] text-slate-400 font-sans">
-                Team workspaces, huddles & chats
-              </span>
-            </button>
+            </div>
+
+            {/* Slack Card */}
+            <div className="flex flex-col items-center justify-between rounded-2xl border border-purple-500/40 bg-[#151722]/90 p-5 transition-all hover:border-purple-400 hover:bg-[#1c1f2e] shadow-xl">
+              <div className="flex flex-col items-center gap-2 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E01E5A]/15 text-[#ECB22E] shadow-lg">
+                  <MessagesSquare size={30} />
+                </div>
+                <h3 className="text-[16px] font-bold text-slate-100">Slack</h3>
+                <p className="text-[12px] text-slate-400">Team channels, huddles & workspace</p>
+              </div>
+
+              <div className="mt-5 flex flex-col gap-2 w-full">
+                <button
+                  onClick={() => openUrl("https://app.slack.com/client")}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#611f69] py-2.5 text-[13px] font-bold text-white hover:bg-[#4a154b] transition-all cursor-pointer shadow-md"
+                >
+                  <ExternalLink size={14} />
+                  Open Web Slack
+                </button>
+                <button
+                  onClick={installSlack}
+                  disabled={installingSlack}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-surface-3/50 py-2 text-[12px] font-medium text-slate-300 hover:border-purple-400 hover:text-purple-300 transition-all cursor-pointer"
+                >
+                  <Download size={13} />
+                  {installingSlack ? "Installing…" : "Install Desktop App"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

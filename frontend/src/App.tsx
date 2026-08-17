@@ -171,7 +171,7 @@ export default function App() {
   }, []);
 
   const path = window.location.pathname;
-  const isWorkspaceHub = path.startsWith("/workspace") || path === "/desktop" || path === "/launch" || new URLSearchParams(window.location.search).has("ws");
+  const isWorkspaceHub = path.startsWith("/workspace") || path === "/desktop" || path === "/launch" || path === "/apps" || new URLSearchParams(window.location.search).has("ws");
 
   if (isWorkspaceHub) {
     return <WorkspaceHub />;

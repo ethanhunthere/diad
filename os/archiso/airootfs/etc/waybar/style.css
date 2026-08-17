@@ -1,5 +1,5 @@
 /* =============================================================================
-   DIAD Waybar — Floating Top Bar with Individual Rounded Workspace Divs (GTK3 CSS)
+   DIAD Waybar — Floating Top Bar with Uniform Rounded Workspace Capsules (GTK3 CSS)
    ========================================================================== */
 
 * {
@@ -27,53 +27,26 @@ window#waybar {
   margin-left: 8px;
 }
 
-/* Individual Distinct Workspace Divs (Each has its own rounded rectangle container) */
+/* Individual Workspace Divs (Identical size, width, and style for all 3) */
 #custom-ws-agent,
 #custom-ws-browser,
 #custom-ws-comms {
+  background-color: #151722;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 10px;
-  padding: 5px 16px;
+  min-width: 130px;
+  padding: 5px 0px;
   margin: 0 4px;
+  color: #e2e8f0;
   font-weight: bold;
   font-size: 12px;
 }
 
-/* DIAD AGENT Own Div */
-#custom-ws-agent {
-  background-color: #1c1810;
-  border: 1px solid rgba(245, 158, 11, 0.45);
-  color: #fbbf24;
-}
-
-#custom-ws-agent:hover {
+#custom-ws-agent:hover,
+#custom-ws-browser:hover,
+#custom-ws-comms:hover {
   background-color: rgba(245, 158, 11, 0.25);
   border-color: #f59e0b;
-  color: #ffffff;
-}
-
-/* BROWSER Own Div */
-#custom-ws-browser {
-  background-color: #101724;
-  border: 1px solid rgba(56, 189, 248, 0.40);
-  color: #38bdf8;
-}
-
-#custom-ws-browser:hover {
-  background-color: rgba(56, 189, 248, 0.25);
-  border-color: #38bdf8;
-  color: #ffffff;
-}
-
-/* COMMS Own Div */
-#custom-ws-comms {
-  background-color: #161824;
-  border: 1px solid rgba(148, 163, 184, 0.30);
-  color: #cbd5e1;
-}
-
-#custom-ws-comms:hover {
-  background-color: rgba(148, 163, 184, 0.25);
-  border-color: #cbd5e1;
   color: #ffffff;
 }
 
