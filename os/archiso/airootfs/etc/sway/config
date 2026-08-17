@@ -1,10 +1,10 @@
 # =============================================================================
 # DIAD — Sway Window Manager Configuration
 # =============================================================================
-# Strict 3-workspace separation:
-#   1. DIAD AGENT (GUI / TUI)
-#   2. BROWSER (DIAD Apps icon hub & web browser)
-#   3. COMMS (Telegram / Slack / Launchpad)
+# Strict 3-workspace architecture:
+#   - DIAD AGENT (AI Core GUI / TUI)
+#   - BROWSER    (Web Browser & Web Apps)
+#   - COMMS      (Telegram / Slack / Launchpad)
 # =============================================================================
 
 # ---- Daemon & Secret Storage ----
@@ -14,9 +14,9 @@ exec gnome-keyring-daemon --start --components=secrets
 set $mod Mod4
 set $term foot
 set $browser brave
-set $ws1 "1: DIAD AGENT"
-set $ws2 "2: BROWSER"
-set $ws3 "3: COMMS"
+set $ws1 "DIAD AGENT"
+set $ws2 "BROWSER"
+set $ws3 "COMMS"
 
 # ---- Output & Background (DIAD Agent emblem reveals when windows close) ----
 output * bg /usr/share/backgrounds/diad/wallpaper.png fill #0d0e15
@@ -94,6 +94,9 @@ for_window [app_id="foot"] focus, move to workspace $ws1
 exec /usr/local/bin/diad-waybar
 exec mako
 exec diad-supervisor.sh
+
+# Instantiate all 3 persistent workspaces in Sway IPC tree at boot
+exec swaymsg "workspace $ws3; workspace $ws2; workspace $ws1"
 
 # ---- Keybindings ----
 bindsym $mod+m move scratchpad
