@@ -3,24 +3,32 @@
   "position": "top",
   "height": 36,
   "exclusive": true,
-  "spacing": 8,
+  "spacing": 6,
   "modules-left": ["clock"],
-  "modules-center": ["sway/workspaces"],
+  "modules-center": ["custom/ws-agent", "custom/ws-browser", "custom/ws-comms"],
   "modules-right": ["custom/wifi", "custom/reboot", "custom/power"],
   "clock": {
     "format": "{:%H:%M}",
     "tooltip-format": "{:%Y-%m-%d}",
     "interval": 10
   },
-  "sway/workspaces": {
-    "disable-scroll": true,
-    "all-outputs": true,
-    "format": "{name}",
-    "persistent-workspaces": {
-      "DIAD AGENT": ["*"],
-      "BROWSER": ["*"],
-      "COMMS": ["*"]
-    }
+  "custom/ws-agent": {
+    "format": "DIAD AGENT",
+    "tooltip": "Workspace 1: DIAD Agent (F1)",
+    "on-click": "swaymsg workspace 'DIAD AGENT'",
+    "interval": "once"
+  },
+  "custom/ws-browser": {
+    "format": "BROWSER",
+    "tooltip": "Workspace 2: Web Browser (F2)",
+    "on-click": "swaymsg workspace 'BROWSER'",
+    "interval": "once"
+  },
+  "custom/ws-comms": {
+    "format": "COMMS",
+    "tooltip": "Workspace 3: Communications (F3)",
+    "on-click": "swaymsg workspace 'COMMS'",
+    "interval": "once"
   },
   "custom/wifi": {
     "format": "",

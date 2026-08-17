@@ -21,6 +21,11 @@ set $ws3 "COMMS"
 # ---- Output & Background (DIAD Agent emblem reveals when windows close) ----
 output * bg /usr/share/backgrounds/diad/wallpaper.png fill #0d0e15
 
+# Force all 3 workspaces to bind to all outputs
+workspace $ws1 output *
+workspace $ws2 output *
+workspace $ws3 output *
+
 # ---- Input Configuration ----
 input * {
     xkb_layout us
@@ -95,8 +100,8 @@ exec /usr/local/bin/diad-waybar
 exec mako
 exec diad-supervisor.sh
 
-# Instantiate all 3 persistent workspaces in Sway IPC tree at boot
-exec swaymsg "workspace $ws3; workspace $ws2; workspace $ws1"
+# Pre-register and instantiate all 3 persistent workspaces in Sway IPC
+exec_always swaymsg "workspace $ws3; workspace $ws2; workspace $ws1"
 
 # ---- Keybindings ----
 bindsym $mod+m move scratchpad

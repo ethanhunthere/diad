@@ -27,17 +27,19 @@ window#waybar {
   margin-left: 8px;
 }
 
-/* Workspaces in the Center: Rounded Rectangle Capsule */
-#workspaces {
+/* Center Capsule Container */
+.modules-center {
   background-color: rgba(21, 23, 34, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
-  padding: 3px 5px;
+  padding: 3px 6px;
   margin-top: 2px;
 }
 
-/* Individual workspace pills inside the rectangle */
-#workspaces button {
+/* Individual workspace pills inside the center capsule */
+#custom-ws-agent,
+#custom-ws-browser,
+#custom-ws-comms {
   background-color: transparent;
   border: none;
   color: #94a3b8;
@@ -48,18 +50,24 @@ window#waybar {
   font-size: 12px;
 }
 
-/* Active / Focused Workspace */
-#workspaces button.focused,
-#workspaces button.active {
-  background-color: #f59e0b;
-  color: #0d0e15;
-  font-weight: bold;
-  border-radius: 8px;
+#custom-ws-agent:hover,
+#custom-ws-browser:hover,
+#custom-ws-comms:hover {
+  background-color: rgba(255, 255, 255, 0.10);
+  color: #ffffff;
 }
 
-#workspaces button:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
+/* Workspace pills styling */
+#custom-ws-agent {
+  color: #fbbf24;
+}
+
+#custom-ws-browser {
+  color: #38bdf8;
+}
+
+#custom-ws-comms {
+  color: #cbd5e1;
 }
 
 /* Floating Icons on the Right (no boxes, completely floating) */
