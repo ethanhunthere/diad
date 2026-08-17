@@ -40,9 +40,10 @@ input type:touchpad {
 # ---- Appearance & Geometry ----
 default_border pixel 0
 default_floating_border pixel 0
-gaps inner 0
-gaps outer 0
-smart_gaps on
+gaps inner 8
+gaps outer 8
+gaps top 10
+smart_gaps off
 smart_borders on
 
 # Zero borders across all windows
