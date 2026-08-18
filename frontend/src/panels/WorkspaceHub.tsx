@@ -85,14 +85,11 @@ export function WorkspaceHub() {
       {/* Workspace 1: DIAD AGENT */}
       {ws === 1 && (
         <div className="flex flex-col items-center max-w-xl w-full text-center animate-fade-in">
-          <div className="mb-4 drop-shadow-[0_0_25px_rgba(245,158,11,0.25)]">
-            <DiadLogo size={64} showWordmark={true} />
+          <div className="mb-3">
+            <DiadLogo size={36} />
           </div>
-          <h1 className="text-xl font-bold tracking-wider font-mono text-slate-100 uppercase">
-            DIAD AGENT
-          </h1>
-          <p className="mt-1 text-[13px] text-amber-400/80 font-sans tracking-wide">
-            Sovereign Autonomous AI Operating System
+          <p className="mt-1 text-[13px] text-slate-400 font-sans tracking-wide">
+            Autonomous Operating System
           </p>
 
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">

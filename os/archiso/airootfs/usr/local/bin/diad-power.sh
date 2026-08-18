@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DIAD — Universal Power & Session Manager (2040 Edition)
+# DIAD — Universal Power & Session Manager (Edition)
 # =============================================================================
 set -euo pipefail
 

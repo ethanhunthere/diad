@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DIAD OS — Telegram Dedicated Desktop App Runner (2040 Edition)
+# DIAD OS — Telegram Dedicated Desktop App Runner (Edition)
 # =============================================================================
 set -uo pipefail
 

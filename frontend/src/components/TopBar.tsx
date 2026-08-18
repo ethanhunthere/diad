@@ -73,8 +73,8 @@ export function TopBar({ hamburger }: { hamburger?: ReactNode }) {
     <header className="glass z-30 flex h-10 shrink-0 items-center gap-2.5 border-b border-border-subtle/80 px-3.5 select-none bg-[#12141d]">
       {hamburger}
 
-      {/* 2040 DIAD Logo & Wordmark */}
-      <DiadLogo size={22} />
+      {/* DIAD Wordmark */}
+      <DiadLogo size={14} />
 
       <div className="mx-1.5 h-3.5 w-px bg-border-strong hidden sm:block" />
 

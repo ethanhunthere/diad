@@ -26,11 +26,10 @@ export function Launchpad() {
 
   return (
     <div className="flex h-full flex-col items-center justify-center bg-obsidian text-slate-100 p-6">
-      <div className="mb-6 flex flex-col items-center">
-        <DiadLogo size={52} showWordmark={true} />
+      <div className="mb-4 flex flex-col items-center">
+        <DiadLogo size={32} />
       </div>
-      <h1 className="text-xl font-bold tracking-wide font-mono text-slate-100">DIAD OS APP LAUNCHPAD</h1>
-      <p className="mt-1.5 text-[13px] text-slate-400 font-sans">Autonomous Operating System · Workspace Navigation</p>
+      <p className="mt-1 text-[13px] text-slate-400 font-sans">Autonomous Operating System · Workspace Navigation</p>
 
       <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-xl w-full">
         <button
@@ -95,7 +94,7 @@ export function Launchpad() {
       </div>
 
       <p className="mt-10 text-[11px] text-slate-500 font-mono">
-        127.0.0.1:7860 · DIAD 2040 Sovereign Loopback
+        DIAD Sovereign OS
       </p>
     </div>
   );

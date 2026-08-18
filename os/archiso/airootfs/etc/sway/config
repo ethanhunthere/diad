@@ -51,7 +51,7 @@ for_window [class="^.*"] border pixel 0
 for_window [app_id="^.*"] border pixel 0
 for_window [title="^.*"] border pixel 0
 
-# 2040 Titanium Obsidian & Cyber-Amber Window Accents
+# Titanium Obsidian & Cyber-Amber Window Accents
 client.focused          #f59e0b #151722 #f8fafc #f59e0b #f59e0b
 client.unfocused        #232738 #0d0e15 #94a3b8 #232738 #232738
 client.focused_inactive #2a2f45 #151722 #cbd5e1 #2a2f45 #2a2f45
@@ -115,17 +115,17 @@ bindsym $mod+Shift+e exit
 # Start terminal
 bindsym $mod+Return exec $term
 
-# Smart Workspace Jumpers & App Launchers
+# Smart Workspace Jumpers (Pure workspace navigation, zero duplicate windows)
 bindsym $mod+1 workspace $ws1
 bindsym $mod+2 workspace $ws2
 bindsym $mod+3 workspace $ws3
 
-bindsym F1 workspace $ws1; exec /usr/local/bin/brave --app=http://127.0.0.1:7860
-bindsym F2 workspace $ws2; exec /usr/local/bin/brave --app=http://127.0.0.1:7860/apps
-bindsym F3 workspace $ws3; exec /usr/local/bin/brave --app=http://127.0.0.1:7860/launch
+bindsym F1 workspace $ws1
+bindsym F2 workspace $ws2
+bindsym F3 workspace $ws3
 bindsym F5 exec /usr/local/bin/brave --app=http://127.0.0.1:7860
 
-# Direct app shortcuts
+# Direct app launch shortcuts (explicit user launch)
 bindsym $mod+a exec /usr/local/bin/brave --app=http://127.0.0.1:7860
 bindsym $mod+b exec /usr/local/bin/brave
 bindsym $mod+t exec /usr/local/bin/diad-telegram

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DIAD — Fast Workspace Switcher (2040 Edition)
+# DIAD — Fast Workspace Switcher (Edition)
 # =============================================================================
 set -uo pipefail
 

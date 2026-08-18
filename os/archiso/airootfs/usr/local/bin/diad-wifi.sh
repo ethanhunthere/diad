@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DIAD — Universal Glassy Wi-Fi Network Manager (2040 Edition)
+# DIAD — Universal Glassy Wi-Fi Network Manager (Edition)
 # =============================================================================
 set -euo pipefail
 

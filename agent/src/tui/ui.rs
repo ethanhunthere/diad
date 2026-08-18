@@ -130,7 +130,7 @@ fn render_top_bar(app: &App) -> Paragraph<'static> {
 
     let line = Line::from(vec![
         Span::styled(
-            " ◈ DIAD 2040 ",
+            " ◈ DIAD ",
             Style::default().fg(Color::Black).bg(accent).bold(),
         ),
         Span::raw(" │ "),
