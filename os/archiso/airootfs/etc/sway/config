@@ -26,6 +26,12 @@ workspace $ws1 output *
 workspace $ws2 output *
 workspace $ws3 output *
 
+# Responsive Workspace Layouts:
+# Browser and Comms use tabbed layout so multiple windows always take 100% width
+# instead of squishing into unreadable narrow columns.
+workspace $ws2 layout tabbed
+workspace $ws3 layout tabbed
+
 # ---- Input Configuration ----
 input * {
     xkb_layout us
@@ -132,6 +138,11 @@ bindsym $mod+t exec /usr/local/bin/diad-telegram
 bindsym $mod+s exec /usr/local/bin/diad-slack
 bindsym $mod+Shift+a exec /usr/local/bin/brave --app=http://127.0.0.1:7860
 bindsym $mod+Shift+l exec /usr/local/bin/brave --app=http://127.0.0.1:7860/launch
+
+# Layout controls (Tabbed = full width responsive tabs, Split = tiled)
+bindsym $mod+w layout tabbed
+bindsym $mod+e layout toggle split
+bindsym $mod+s layout stacking
 
 # Move containers
 bindsym $mod+Shift+1 move container to workspace $ws1
