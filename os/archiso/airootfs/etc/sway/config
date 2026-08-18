@@ -70,10 +70,10 @@ for_window [title="^.*"] border pixel 0
 # ---- Strict Workspace Routing Rules ----
 
 # Workspace 3: Communications & Launchpad
-assign [title="^DIAD Launchpad.*$"] $ws3
-assign [app_id="org.telegram.desktop"] $ws3
-assign [app_id="telegramdesktop"] $ws3
-assign [app_id="com.slack.Slack"] $ws3
+for_window [title="^DIAD Launchpad.*$"] move to workspace $ws3
+for_window [app_id="org.telegram.desktop"] move to workspace $ws3
+for_window [app_id="telegramdesktop"] move to workspace $ws3
+for_window [app_id="com.slack.Slack"] move to workspace $ws3
 for_window [app_id="chrome-127\.0\.0\.1__launch-Default"] move to workspace $ws3
 for_window [app_id="chrome-.*" title=".*7860/launch.*"] move to workspace $ws3
 for_window [app_id="chromium" title="^DIAD Launchpad.*$"] move to workspace $ws3
@@ -83,26 +83,26 @@ for_window [title="^.*web\.telegram\.org.*$"] move to workspace $ws3
 for_window [title="^.*app\.slack\.com.*$"] move to workspace $ws3
 
 # Workspace 2: DIAD Apps Hub & Web Browser
-assign [title="^DIAD Apps.*$"] $ws2
-assign [app_id="brave-browser"] $ws2
-assign [app_id="com.brave.Browser"] $ws2
-assign [app_id="chromium" title="^New Tab.*$"] $ws2
-assign [app_id="epiphany"] $ws2
-assign [app_id="org.gnome.Epiphany"] $ws2
+for_window [title="^DIAD Apps.*$"] move to workspace $ws2
+for_window [app_id="brave-browser"] move to workspace $ws2
+for_window [app_id="com.brave.Browser"] move to workspace $ws2
+for_window [app_id="chromium" title="^New Tab.*$"] move to workspace $ws2
+for_window [app_id="epiphany"] move to workspace $ws2
+for_window [app_id="org.gnome.Epiphany"] move to workspace $ws2
 for_window [app_id="chrome-127\.0\.0\.1__apps-Default"] move to workspace $ws2
 for_window [app_id="chrome-.*" title=".*7860/apps.*"] move to workspace $ws2
 for_window [app_id="chromium" title="^DIAD Apps.*$"] move to workspace $ws2
 for_window [app_id="chromium" title="^(?!.*DIAD).*$"] move to workspace $ws2
 
 # Workspace 1: DIAD AGENT (GUI & TUI)
-assign [title="^DIAD AGENT.*$"] $ws1
-assign [title="^DIAD Agent.*$"] $ws1
-assign [title="^DIAD Studio.*$"] $ws1
-assign [app_id="foot" title="^DIAD AGENT.*$"] $ws1
-for_window [app_id="chrome-127\.0\.0\.1__-Default"] focus, move to workspace $ws1
-for_window [app_id="chrome-.*" title=".*7860$"] focus, move to workspace $ws1
-for_window [app_id="chromium" title="^DIAD AGENT.*$"] focus, move to workspace $ws1
-for_window [app_id="foot"] focus, move to workspace $ws1
+for_window [title="^DIAD AGENT.*$"] move to workspace $ws1; focus
+for_window [title="^DIAD Agent.*$"] move to workspace $ws1; focus
+for_window [title="^DIAD Studio.*$"] move to workspace $ws1; focus
+for_window [app_id="foot" title="^DIAD AGENT.*$"] move to workspace $ws1; focus
+for_window [app_id="chrome-127\.0\.0\.1__-Default"] move to workspace $ws1; focus
+for_window [app_id="chrome-.*" title=".*7860$"] move to workspace $ws1; focus
+for_window [app_id="chromium" title="^DIAD AGENT.*$"] move to workspace $ws1; focus
+for_window [app_id="foot"] move to workspace $ws1; focus
 
 # ---- Autostart Services ----
 exec /usr/local/bin/diad-waybar

@@ -6,7 +6,8 @@
 #   - UEFI (OVMF) fast boot
 #   - KVM hardware acceleration
 #   - Tablet absolute mouse (moves freely without cursor trap)
-#   - User internet pass-through
+#   - User internet pass-through with SSH forward (port 2222 -> 22)
+#   - QMP monitor socket at /tmp/qmp.sock
 #   - Release key: Ctrl + Alt + G
 # =============================================================================
 set -euo pipefail
@@ -48,7 +49,8 @@ exec qemu-system-x86_64 \
     -device virtio-tablet-pci \
     -device virtio-keyboard-pci \
     -device virtio-net-pci,netdev=net0 \
-    -netdev user,id=net0 \
+    -netdev user,id=net0,hostfwd=tcp::2222-:22 \
+    -qmp unix:/tmp/qmp.sock,server,nowait \
     "${UEFI_OPTS[@]}" \
     -drive "file=${ISO_PATH},media=cdrom,readonly=on" \
     -boot d
