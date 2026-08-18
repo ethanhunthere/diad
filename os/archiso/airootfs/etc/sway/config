@@ -62,11 +62,10 @@ client.urgent           #ef4444 #151722 #ffffff #ef4444 #ef4444
 
 focus_follows_mouse no
 
-# Workspace Window Border Policies:
-# DIAD Agent has zero borders; Tabbed Browser/Comms get clean titlebars for tab switching
-for_window [workspace="DIAD AGENT"] border pixel 0
-for_window [workspace="BROWSER"] border normal 2
-for_window [workspace="COMMS"] border normal 2
+# Zero borders across all tiled windows
+for_window [class="^.*"] border pixel 0
+for_window [app_id="^.*"] border pixel 0
+for_window [title="^.*"] border pixel 0
 
 # ---- Strict Workspace Routing Rules ----
 
