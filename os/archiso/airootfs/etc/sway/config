@@ -18,7 +18,7 @@ set $ws1 "DIAD AGENT"
 set $ws2 "BROWSER"
 set $ws3 "COMMS"
 
-# ---- Output & Background (DIAD Agent emblem reveals when windows close) ----
+# ---- Output & Background (Clean minimal typography wallpaper) ----
 output * bg /usr/share/backgrounds/diad/wallpaper.png fill #0d0e15
 
 # Force all 3 workspaces to bind to all outputs
@@ -27,8 +27,9 @@ workspace $ws2 output *
 workspace $ws3 output *
 
 # Responsive Workspace Layouts:
-# Browser and Comms use tabbed layout so multiple windows always take 100% width
-# instead of squishing into unreadable narrow columns.
+# Browser and Comms default to tabbed full-width layouts so every app takes 100%
+# screen width and never gets squished into columns on small or large screens.
+workspace $ws1 layout default
 workspace $ws2 layout tabbed
 workspace $ws3 layout tabbed
 
@@ -44,6 +45,7 @@ input type:touchpad {
 }
 
 # ---- Appearance & Geometry ----
+font pango:Inter 10
 default_border pixel 0
 default_floating_border pixel 0
 gaps inner 8
@@ -52,18 +54,19 @@ gaps top 10
 smart_gaps off
 smart_borders on
 
-# Zero borders across all windows
-for_window [class="^.*"] border pixel 0
-for_window [app_id="^.*"] border pixel 0
-for_window [title="^.*"] border pixel 0
-
-# Titanium Obsidian & Cyber-Amber Window Accents
+# Styling for Tabbed Workspaces: Clean dark tabs with cyber-amber active accent
 client.focused          #f59e0b #151722 #f8fafc #f59e0b #f59e0b
 client.unfocused        #232738 #0d0e15 #94a3b8 #232738 #232738
 client.focused_inactive #2a2f45 #151722 #cbd5e1 #2a2f45 #2a2f45
 client.urgent           #ef4444 #151722 #ffffff #ef4444 #ef4444
 
 focus_follows_mouse no
+
+# Workspace Window Border Policies:
+# DIAD Agent has zero borders; Tabbed Browser/Comms get clean titlebars for tab switching
+for_window [workspace="DIAD AGENT"] border pixel 0
+for_window [workspace="BROWSER"] border normal 2
+for_window [workspace="COMMS"] border normal 2
 
 # ---- Strict Workspace Routing Rules ----
 
@@ -152,10 +155,11 @@ bindsym $mod+Shift+3 move container to workspace $ws3
 # Reload config
 bindsym $mod+Shift+c reload
 
-# Focus navigation
+# Focus navigation (and Tab switching)
 bindsym $mod+h focus left
 bindsym $mod+j focus down
 bindsym $mod+k focus up
+bindsym $mod+l focus right
 bindsym $mod+Right focus right
 bindsym $mod+Left focus left
 
@@ -163,6 +167,7 @@ bindsym $mod+Left focus left
 bindsym $mod+Shift+h move left
 bindsym $mod+Shift+j move down
 bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
 bindsym $mod+Shift+Right move right
 
 # Split layout
