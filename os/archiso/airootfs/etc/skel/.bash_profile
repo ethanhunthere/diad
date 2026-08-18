@@ -10,7 +10,7 @@ if [ -z "${WAYLAND_DISPLAY:-}" ] && [ "$(tty)" = "/dev/tty1" ]; then
         sleep 10
     fi
     echo "$now" > /tmp/.diad-sway-last
-    exec sway
+    exec sway >/tmp/sway.log 2>&1
 fi
 
 if [ -f ~/.bashrc ]; then

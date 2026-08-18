@@ -21,11 +21,6 @@ set $ws3 "COMMS"
 # ---- Output & Background (Clean minimal typography wallpaper) ----
 output * bg /usr/share/backgrounds/diad/wallpaper.png fill #0d0e15
 
-# Force all 3 workspaces to bind to all outputs
-workspace $ws1 output *
-workspace $ws2 output *
-workspace $ws3 output *
-
 # Responsive Workspace Layouts:
 # Browser and Comms default to tabbed full-width layouts so every app takes 100%
 # screen width and never gets squished into columns on small or large screens.
@@ -109,9 +104,6 @@ exec /usr/local/bin/diad-waybar
 exec mako
 exec diad-supervisor.sh
 
-# Pre-register and instantiate all 3 persistent workspaces in Sway IPC
-exec_always swaymsg "workspace $ws3; workspace $ws2; workspace $ws1"
-
 # ---- Keybindings ----
 bindsym $mod+m move scratchpad
 bindsym $mod+Shift+m scratchpad show
@@ -180,7 +172,7 @@ bindsym $mod+Shift+space floating toggle
 bindsym $mod+Print exec grim -g "$(slurp)" ~/Pictures/screenshot-$(date +%s).png
 
 # Lock screen
-bindsym Super+L exec swaylock -f -c 0d0e15
+bindsym $mod+Escape exec swaylock -f -c 0d0e15
 
 # Laptop media/backlight keys & shortcuts
 include /etc/sway/conf.d/media-keys.conf
