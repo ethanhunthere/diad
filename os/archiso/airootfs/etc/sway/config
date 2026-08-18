@@ -129,9 +129,8 @@ bindsym F5 exec /usr/local/bin/brave --app=http://127.0.0.1:7860
 bindsym $mod+a exec /usr/local/bin/brave --app=http://127.0.0.1:7860
 bindsym $mod+b exec /usr/local/bin/brave
 bindsym $mod+t exec /usr/local/bin/diad-telegram
-bindsym $mod+s exec /usr/local/bin/diad-slack
-bindsym $mod+Shift+a exec /usr/local/bin/brave --app=http://127.0.0.1:7860
-bindsym $mod+Shift+l exec /usr/local/bin/brave --app=http://127.0.0.1:7860/launch
+bindsym $mod+Shift+s exec /usr/local/bin/diad-slack
+bindsym $mod+Shift+p exec /usr/local/bin/brave --app=http://127.0.0.1:7860/launch
 
 # Layout controls (Tabbed = full width responsive tabs, Split = tiled)
 bindsym $mod+w layout tabbed
@@ -153,6 +152,8 @@ bindsym $mod+k focus up
 bindsym $mod+l focus right
 bindsym $mod+Right focus right
 bindsym $mod+Left focus left
+bindsym $mod+Up focus up
+bindsym $mod+Down focus down
 
 # Move focused window
 bindsym $mod+Shift+h move left
@@ -160,6 +161,7 @@ bindsym $mod+Shift+j move down
 bindsym $mod+Shift+k move up
 bindsym $mod+Shift+l move right
 bindsym $mod+Shift+Right move right
+bindsym $mod+Shift+Left move left
 
 # Split layout
 bindsym $mod+v split vertical
