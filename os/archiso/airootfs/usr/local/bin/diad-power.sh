@@ -7,7 +7,7 @@ set -euo pipefail
 action="${1:-}"
 
 if [ -z "$action" ]; then
-    menu=$(printf "⏻ Power Off\n⟳ Restart System\n⏾ Suspend / Sleep\n🔒 Lock Screen\n🚪 Log Out" | wofi --dmenu --insensitive --style /etc/wofi/style.css --width 340 --height 240 --prompt "✦ System Power" 2>/dev/null || true)
+    menu=$(printf "⏻ Power Off\n⟳ Restart System\n⏾ Suspend / Sleep\n🔒 Lock Screen\n🚪 Log Out" | wofi --dmenu --insensitive --style /etc/wofi/style.css --width 340 --height 240 --prompt "System Power" 2>/dev/null || true)
     case "$menu" in
         "⏻ Power Off")
             action="power"

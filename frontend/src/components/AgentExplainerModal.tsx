@@ -152,7 +152,7 @@ export function AgentExplainerModal({
                 className="rounded-xl border border-[#202623] bg-[#0F1110] p-3.5 hover-elevate transition-all hover:border-[#B32032]/50"
               >
                 <div className="text-[13.5px] font-semibold text-[#E5EAE6] flex items-center gap-2">
-                  <span className="text-[#B32032] font-bold text-[12px]">✦</span>
+                  <span className="font-mono text-[#B32032] font-semibold">{i + 1}.</span>
                   {pt.title}
                 </div>
                 <div className="mt-1 text-[12.5px] text-[#8A968E] leading-relaxed">

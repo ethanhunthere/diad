@@ -117,7 +117,7 @@ done <<< "$raw_list"
 menu_header=$(printf "[S] ⟳ Rescan Networks\n[C] ➔ Connect to Selected Network\n[X] ✕ Close Menu\n────────────────────────────────────────────────────────\n")
 full_menu=$(printf "%b%b" "$menu_header" "$entries")
 
-selected=$(printf "%b" "$full_menu" | wofi $WOFI_BASE --width 640 --height 520 --prompt "✦ Wi-Fi Networks [Enter:Connect / S:Scan / X:Close]" 2>/dev/null || true)
+selected=$(printf "%b" "$full_menu" | wofi $WOFI_BASE --width 640 --height 520 --prompt "Wi-Fi Networks [Enter:Connect / S:Scan / X:Close]" 2>/dev/null || true)
 [ -z "$selected" ] && exit 0
 
 # 7. Handle menu actions and keyboard shortcuts

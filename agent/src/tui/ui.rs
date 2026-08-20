@@ -121,21 +121,21 @@ fn render_top_bar(app: &App, width: u16) -> Paragraph<'static> {
     };
 
     let spans = if width < 42 {
-        // Ultra-compact: ◈ DIAD | OFFLINE
+        // Ultra-compact: DIAD | OFFLINE
         vec![
             Span::styled(
-                " ◈ DIAD ",
+                " DIAD ",
                 Style::default().fg(Color::Rgb(229, 234, 230)).bg(accent).bold(),
             ),
             Span::raw(" "),
             Span::styled(status, Style::default().fg(status_color).bold()),
         ]
     } else if width < 68 {
-        // Compact: ◈ DIAD | PROVIDER | STATUS
+        // Compact: DIAD | PROVIDER | STATUS
         let prov = app.provider.to_uppercase();
         vec![
             Span::styled(
-                " ◈ DIAD ",
+                " DIAD ",
                 Style::default().fg(Color::Rgb(229, 234, 230)).bg(accent).bold(),
             ),
             Span::raw(" │ "),
@@ -158,7 +158,7 @@ fn render_top_bar(app: &App, width: u16) -> Paragraph<'static> {
         };
         vec![
             Span::styled(
-                " ◈ DIAD ",
+                " DIAD ",
                 Style::default().fg(Color::Rgb(229, 234, 230)).bg(accent).bold(),
             ),
             Span::raw(" │ "),
@@ -346,7 +346,7 @@ fn render_chat_view(frame: &mut Frame, app: &App, area: Rect) {
             let styled = if let Some(content) = msg.strip_prefix("[You] ") {
                 Line::from(vec![
                     Span::styled(
-                        "◈ USER ",
+                        " USER ",
                         Style::default().fg(Color::White).bg(accent).bold(),
                     ),
                     Span::raw(" "),

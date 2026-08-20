@@ -183,7 +183,7 @@ export function ChatInput({
       {menuOpen && (
         <div className="glass absolute bottom-full left-3.5 sm:left-6 mb-2.5 w-76 sm:w-84 overflow-hidden rounded-xl border border-[#202623] bg-[#161918] shadow-2xl animate-fade-in">
           <div className="border-b border-[#202623] bg-[#1E2321] px-4 py-2.5 text-[11.5px] font-bold uppercase tracking-wider text-[#B32032] font-mono">
-            ✦ Quick Actions
+            Quick Actions
           </div>
           <div className="p-1.5">
             {SLASH_COMMANDS.map((c, i) => (

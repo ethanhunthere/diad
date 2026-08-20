@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { Copy, Check, Sparkles, Terminal, Wrench, Shield, HelpCircle, Plus, ChevronRight, Eye } from "lucide-react";
+import { Copy, Check, Terminal, Wrench, Shield, HelpCircle, Plus, ChevronRight, Eye } from "lucide-react";
 import { useStore, sendMsg } from "../stores/useStore";
 import { nextId } from "../lib/format";
 import type { ChatMessage } from "../lib/types";
@@ -65,8 +65,8 @@ function MessageBubble({ m }: { m: ChatMessage }) {
 
   if (m.role === "system") {
     return (
-      <div className="flex items-center gap-2.5 px-4 py-2.5 text-[12.5px] text-[#8A968E] animate-fade-in font-mono bg-[#161918]/80 backdrop-blur-md rounded-xl border border-[#202623] my-2 max-w-2xl mx-auto shadow-sm">
-        <span className="text-[#B32032] font-bold">◈</span>
+      <div className="flex items-center gap-2 px-4 py-2.5 text-[12px] text-[#8A968E] animate-fade-in font-mono bg-[#161918]/80 backdrop-blur-md rounded-xl border border-[#202623] my-2 max-w-2xl mx-auto shadow-sm">
+        <span className="font-semibold text-[#B32032]">[SYSTEM]</span>
         <span className="break-words leading-relaxed">{m.content}</span>
       </div>
     );
@@ -99,19 +99,17 @@ function MessageBubble({ m }: { m: ChatMessage }) {
         <div className="mb-2 flex items-center justify-between gap-3 text-[12px] font-semibold">
           <div className="flex items-center gap-2">
             {isUser ? (
-              <span className="text-[12px] font-bold text-[#E5EAE6] font-mono flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[#B32032] shadow-[0_0_8px_rgba(179,32,50,0.6)]" /> You
+              <span className="text-[12px] font-bold text-[#E5EAE6] font-mono">
+                You
               </span>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="text-[12.5px] font-bold text-[#E5EAE6] font-mono flex items-center gap-1.5">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#B32032]/20 border border-[#B32032]/40 text-[#B32032] text-[10px]">✦</span>
+                <span className="text-[12.5px] font-bold text-[#E5EAE6] font-mono">
                   DIAD Agent
                 </span>
                 {m.streaming && (
-                  <span className="flex items-center gap-1.5 text-[11px] text-[#8A968E] font-mono font-normal">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#38A169] animate-pulse" />
-                    reasoning…
+                  <span className="text-[11px] text-[#8A968E] font-mono font-normal">
+                    executing…
                   </span>
                 )}
               </div>
@@ -273,7 +271,7 @@ export function ChatPanel() {
       setView("settings");
       useStore.getState().appendMessage({
         role: "system",
-        content: "◈ Opening Settings & Appearance panel.",
+        content: "Opening Settings & Appearance panel.",
       });
       return;
     }
@@ -309,8 +307,7 @@ export function ChatPanel() {
 
       {/* Top chat action bar */}
       <div className="flex h-11 items-center justify-between border-b border-[#202623] bg-[#0F1110] px-4 sm:px-6 text-[12.5px] select-none">
-        <div className="flex items-center gap-2.5 text-[#8A968E]">
-          <span className="text-[#B32032] font-bold">✦</span>
+        <div className="flex items-center gap-2 text-[#8A968E]">
           <span className="font-semibold text-[#E5EAE6]">{provider || "DIAD"} · {model || "Agent"}</span>
           {messages.length > 0 && (
             <span className="text-[#525D56] text-[11.5px]">({messages.length} messages)</span>
@@ -345,11 +342,11 @@ export function ChatPanel() {
       >
         {messages.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center text-center px-4 my-auto animate-fade-in max-w-xl mx-auto">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#202623] bg-[#161918] text-[#B32032] shadow-xl mb-4">
-              <Sparkles size={22} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#202623] bg-[#161918] text-[#B32032] shadow-xl mb-4 font-mono font-bold text-base">
+              DIAD
             </div>
             <h3 className="text-[17px] font-bold text-[#E5EAE6]">
-              DIAD Agent Studio
+              DIAD Studio
             </h3>
             <p className="mt-1.5 text-[13px] text-[#8A968E] max-w-md">
               Intent-driven OS execution engine. Run shell tools, manage filesystem diffs, paste images, or control native desktop subsystems.
@@ -387,9 +384,8 @@ export function ChatPanel() {
         ))}
 
         {streaming && messages.length > 0 && (
-          <div className="px-4 py-1 text-[13px] text-[#8A968E] font-mono flex items-center gap-2">
-            <span className="text-[#B32032]">✦</span>
-            <span>DIAD Agent is reasoning…</span>
+          <div className="px-4 py-1 text-[12.5px] text-[#8A968E] font-mono flex items-center gap-2">
+            <span>DIAD Agent executing…</span>
           </div>
         )}
       </div>

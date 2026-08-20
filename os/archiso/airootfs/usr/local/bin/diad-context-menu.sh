@@ -8,7 +8,7 @@ WOFI_STYLE="/etc/wofi/style.css"
 WOFI_BASE="--dmenu --insensitive --style $WOFI_STYLE"
 
 menu=$(cat << 'MENU'
-✦ Launch DIAD AI Agent (Workspace 1)
+DIAD AI Agent (Workspace 1)
 🌐 Open Web Browser (Workspace 2)
 💬 Open Communications (Workspace 3)
 💻 Open Terminal Console (Super+Enter)
@@ -27,7 +27,7 @@ menu=$(cat << 'MENU'
 MENU
 )
 
-choice=$(printf "%b" "$menu" | wofi $WOFI_BASE --width 480 --height 540 --prompt "✦ DIAD Quick Menu" 2>/dev/null || true)
+choice=$(printf "%b" "$menu" | wofi $WOFI_BASE --width 480 --height 540 --prompt "DIAD Quick Menu" 2>/dev/null || true)
 [ -z "$choice" ] && exit 0
 
 case "$choice" in

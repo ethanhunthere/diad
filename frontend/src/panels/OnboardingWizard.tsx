@@ -148,8 +148,8 @@ export function OnboardingWizard() {
         {/* WELCOME */}
         {onboarding.kind === "welcome" && (
           <div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-panel border border-copper/40 bg-copper/15 text-2xl text-copper-hover">
-              ◈
+            <div className="flex h-12 w-12 items-center justify-center rounded-panel border border-copper/40 bg-copper/15 text-sm font-mono font-bold text-copper-hover">
+              DIAD
             </div>
             <h1 className="mt-3 text-lg font-semibold text-ink">Welcome to DIAD AGENT</h1>
             <p className="mt-1.5 text-[12.5px] leading-relaxed text-dim">

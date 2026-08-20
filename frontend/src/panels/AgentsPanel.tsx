@@ -4,11 +4,11 @@ import { nextId } from "../lib/format";
 import type { ProviderEntryDto } from "../lib/types";
 
 const AGENT_META: Record<string, { desc: string; icon: string }> = {
-  claude: { desc: "Anthropic Claude Code — terminal coding agent", icon: "✦" },
-  codex: { desc: "OpenAI Codex — cloud coding agent", icon: "▣" },
-  aider: { desc: "Aider — pair-programming CLI", icon: "⚡" },
-  opencode: { desc: "OpenCode — local AI coding agent", icon: "◉" },
-  gemini: { desc: "Google Gemini CLI — code & workspace agent", icon: "✧" },
+  claude: { desc: "Anthropic Claude Code — terminal coding agent", icon: "C" },
+  codex: { desc: "OpenAI Codex — cloud coding agent", icon: "X" },
+  aider: { desc: "Aider — pair-programming CLI", icon: ">" },
+  opencode: { desc: "OpenCode — local AI coding agent", icon: "O" },
+  gemini: { desc: "Google Gemini CLI — code & workspace agent", icon: "G" },
 };
 
 const PROVIDER_META: Record<string, { desc: string }> = {
