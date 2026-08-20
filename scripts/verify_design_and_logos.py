@@ -178,7 +178,19 @@ def main():
         tui_file = os.path.join(ARTIFACT_DIR, "audit_tui_split_responsive.png")
         capture_screenshot(sock, tui_file)
 
-        # 5. Test Lockscreen
+        # 5. Test Wi-Fi Menu Dialog
+        print("[AUDIT] Testing Wi-Fi Menu Dialog (diad-wifi.sh)...")
+        send_key(sock, "ctrl")
+        send_string(sock, "diad-wifi.sh &\n")
+        time.sleep(2.5)
+        wifi_file = os.path.join(ARTIFACT_DIR, "audit_wifi_dialog.png")
+        capture_screenshot(sock, wifi_file)
+        # Close Wi-Fi dialog with x
+        send_key(sock, "x")
+        send_key(sock, "ret")
+        time.sleep(1.0)
+
+        # 6. Test Lockscreen
         print("[AUDIT] Testing Lockscreen (diad lock)...")
         send_string(sock, "diad lock\n")
         time.sleep(3.0)
