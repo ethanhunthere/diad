@@ -130,79 +130,194 @@ const ANTHROPIC_MODELS: &[&str] = &[
     "claude-3-5-haiku-20241022",
     "claude-3-opus-20240229",
     "claude-sonnet-4-20250514",
+    "claude-opus-4-20250514",
+    "claude-haiku-4-20250514",
+    "claude-opus-4-8",
+    "claude-opus-5",
+    "claude-sonnet-5",
+    "claude-haiku-5",
+    "claude-fable-5",
+    "claude-3-sonnet-20240229",
+    "claude-3-haiku-20240307",
+    "claude-2.1",
+    "claude-2.0",
 ];
 const OPENAI_MODELS: &[&str] = &[
+    "gpt-5",
+    "gpt-5-codex",
+    "codex-mini-latest",
+    "o4-mini",
     "gpt-4o",
     "gpt-4o-mini",
     "o1",
+    "o1-mini",
     "o3-mini",
+    "o3",
     "gpt-4.5-preview",
+    "gpt-5-pro",
+    "gpt-4-turbo",
+    "gpt-4",
+    "gpt-3.5-turbo",
 ];
 const GEMINI_MODELS: &[&str] = &[
-    "gemini-2.5-flash",
     "gemini-2.5-pro",
+    "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
     "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-2.0-pro-exp",
+    "gemini-2.0-flash-thinking-exp",
     "gemini-1.5-pro",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
+    "gemini-3.0-pro",
+    "gemini-3.0-flash",
 ];
 const QWEN_MODELS: &[&str] = &[
     "qwen-max",
     "qwen-plus",
     "qwen-turbo",
-    "qwen-2.5-coder-32b-instruct",
+    "qwen-2.5-max",
     "qwen-2.5-72b-instruct",
+    "qwen-2.5-32b-instruct",
+    "qwen-2.5-14b-instruct",
+    "qwen-2.5-7b-instruct",
+    "qwen-2.5-coder-32b-instruct",
+    "qwen-2.5-coder-14b-instruct",
+    "qwen-2.5-coder-7b-instruct",
+    "qwen-2.5-math-72b-instruct",
+    "qwq-32b-preview",
+    "qvq-72b-preview",
+    "qwen-3-max",
+    "qwen-3-coder",
 ];
-const DEEPSEEK_MODELS: &[&str] = &["deepseek-chat", "deepseek-reasoner"];
+const DEEPSEEK_MODELS: &[&str] = &[
+    "deepseek-chat",
+    "deepseek-reasoner",
+    "deepseek-coder",
+    "deepseek-r1-zero",
+    "deepseek-v4",
+    "deepseek-r2",
+];
 const KIMI_MODELS: &[&str] = &[
     "kimi-k2-0905",
+    "kimi-k1.5",
+    "kimi-latest",
     "moonshot-v1-8k",
     "moonshot-v1-32k",
     "moonshot-v1-128k",
+    "moonshot-v1-auto",
 ];
-const XAI_MODELS: &[&str] = &["grok-2-latest", "grok-2-vision-1212", "grok-beta"];
+const XAI_MODELS: &[&str] = &[
+    "grok-2-latest",
+    "grok-2-1212",
+    "grok-2-vision-1212",
+    "grok-beta",
+    "grok-vision-beta",
+    "grok-3",
+    "grok-3-mini",
+];
 const GROQ_MODELS: &[&str] = &[
     "llama-3.3-70b-versatile",
+    "llama-3.3-70b-specdec",
     "llama-3.1-8b-instant",
+    "llama-3.1-70b-versatile",
     "deepseek-r1-distill-llama-70b",
+    "deepseek-r1-distill-qwen-32b",
     "mixtral-8x7b-32768",
     "gemma2-9b-it",
+    "qwen-2.5-32b",
+    "qwen-2.5-coder-32b",
 ];
 const MISTRAL_MODELS: &[&str] = &[
     "mistral-large-latest",
+    "mistral-large-2411",
     "mistral-small-latest",
+    "mistral-small-2409",
     "codestral-latest",
+    "codestral-2501",
     "pixtral-large-latest",
+    "pixtral-12b",
+    "ministral-8b-latest",
+    "ministral-3b-latest",
+    "open-mistral-nemo",
 ];
 const OPENROUTER_MODELS: &[&str] = &[
-    "anthropic/claude-sonnet-4",
+    "openrouter/auto",
     "anthropic/claude-3.7-sonnet",
-    "deepseek/deepseek-r1",
+    "anthropic/claude-3.7-sonnet:thinking",
+    "anthropic/claude-3.5-sonnet",
+    "anthropic/claude-3.5-haiku",
+    "anthropic/claude-3-opus",
+    "anthropic/claude-sonnet-4",
+    "anthropic/claude-opus-5",
+    "anthropic/claude-fable-5",
+    "openai/o3-mini",
+    "openai/o1",
     "openai/gpt-4o",
+    "openai/gpt-4.5-preview",
+    "deepseek/deepseek-r1",
+    "deepseek/deepseek-chat",
     "meta-llama/llama-3.3-70b-instruct",
+    "google/gemini-2.0-flash-001",
+    "google/gemini-2.5-pro",
+    "qwen/qwen-2.5-coder-32b-instruct",
+    "mistralai/mistral-large-2411",
 ];
 const TOGETHER_MODELS: &[&str] = &[
     "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
     "deepseek-ai/DeepSeek-R1",
     "deepseek-ai/DeepSeek-V3",
     "Qwen/Qwen2.5-Coder-32B-Instruct",
+    "Qwen/Qwen2.5-72B-Instruct-Turbo",
+    "mistralai/Mixtral-8x22B-Instruct-v0.1",
 ];
 const FIREWORKS_MODELS: &[&str] = &[
-    "accounts/fireworks/models/llama-v3p3-70b-instruct",
     "accounts/fireworks/models/deepseek-r1",
     "accounts/fireworks/models/deepseek-v3",
+    "accounts/fireworks/models/llama-v3p3-70b-instruct",
+    "accounts/fireworks/models/qwen2p5-coder-32b-instruct",
 ];
 const COHERE_MODELS: &[&str] = &[
     "command-r-plus-08-2024",
     "command-r-08-2024",
+    "command-r-plus",
+    "command-r",
     "command-light",
 ];
-const PERPLEXITY_MODELS: &[&str] = &["sonar-pro", "sonar", "sonar-reasoning"];
-const CEREBRAS_MODELS: &[&str] = &["llama-3.3-70b", "llama3.1-8b"];
+const PERPLEXITY_MODELS: &[&str] = &[
+    "sonar-pro",
+    "sonar",
+    "sonar-reasoning",
+    "sonar-reasoning-pro",
+    "r1-1776",
+];
+const CEREBRAS_MODELS: &[&str] = &[
+    "llama-3.3-70b",
+    "llama3.1-70b",
+    "llama3.1-8b",
+];
 const OLLAMA_MODELS: &[&str] = &[
-    "qwen2.5:7b",
+    "qwen2.5-coder:32b",
+    "qwen2.5-coder:14b",
     "qwen2.5-coder:7b",
-    "llama3.3:70b",
+    "qwen2.5:72b",
+    "qwen2.5:32b",
+    "qwen2.5:14b",
+    "qwen2.5:7b",
+    "deepseek-r1:70b",
+    "deepseek-r1:32b",
+    "deepseek-r1:14b",
     "deepseek-r1:8b",
+    "deepseek-r1:1.5b",
+    "llama3.3:70b",
+    "llama3.1:8b",
+    "mistral-nemo:12b",
+    "codestral:22b",
+    "phi4:14b",
+    "gemma2:27b",
+    "gemma2:9b",
 ];
 
 // ---------------------------------------------------------------------------
@@ -573,16 +688,10 @@ mod tests {
         let factory = test_factory();
         assert_eq!(
             factory.models_for("openai"),
-            [
-                "gpt-5",
-                "gpt-5-codex",
-                "codex-mini-latest",
-                "o4-mini",
-                "gpt-4o",
-                "gpt-4o-mini",
-                "o1",
-                "o3-mini"
-            ]
+            OPENAI_MODELS
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
         );
         assert_eq!(factory.default_model("openai"), "gpt-5");
     }
