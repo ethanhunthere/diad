@@ -1,0 +1,290 @@
+#!/usr/bin/env bash
+# =============================================================================
+# DIAD OS — Flagship Universal Terminal CLI
+# =============================================================================
+# Complete terminal-driven management for DIAD OS:
+# Workspaces, AI Intents, Hardware & Power, Wi-Fi, UI Reset, Benchmarks & TUI.
+# =============================================================================
+set -uo pipefail
+
+# Industrial Basalt & Crimson TrueColor Palette (#B32032)
+C_CRIMSON="\e[38;2;179;32;50m"
+C_WHITE="\e[38;2;229;234;230m"
+C_SLATE="\e[38;2;138;150;142m"
+C_DIM="\e[38;2;82;93;86m"
+C_GREEN="\e[38;2;56;161;105m"
+C_AMBER="\e[38;2;217;119;6m"
+C_BOLD="\e[1m"
+C_RESET="\e[0m"
+
+VERSION="2026.08.19"
+
+banner() {
+    echo -e "${C_WHITE}  ██████╗  ${C_CRIMSON}██${C_WHITE}   █████╗  ██████╗ ${C_RESET}"
+    echo -e "${C_WHITE}  ██╔══██╗     ██╔══██╗ ██╔══██╗${C_RESET}"
+    echo -e "${C_WHITE}  ██║  ██║ ██║ ███████║ ██║  ██║${C_RESET}   ${C_CRIMSON}DIAD OS ${C_SLATE}v${VERSION}${C_RESET}"
+    echo -e "${C_WHITE}  ██║  ██║ ██║ ██╔══██║ ██║  ██║${C_RESET}   ${C_DIM}Intent-Driven Operating System${C_RESET}"
+    echo -e "${C_WHITE}  ██████╔╝ ██║ ██║  ██║ ██████╔╝${C_RESET}"
+    echo -e "${C_WHITE}  ╚═════╝  ╚═╝ ╚═╝  ╚═╝ ╚═════╝ ${C_RESET}"
+    echo ""
+}
+
+show_help() {
+    banner
+    echo -e "${C_BOLD}USAGE:${C_RESET}"
+    echo -e "  diad [COMMAND] [OPTIONS]"
+    echo ""
+    echo -e "${C_BOLD}CORE COMMANDS:${C_RESET}"
+    echo -e "  ${C_AMBER}diad${C_RESET}                       Launch interactive AI Terminal (TUI)"
+    echo -e "  ${C_AMBER}diad ask${C_RESET} <intent>          Execute an intent or command via AI Agent"
+    echo -e "  ${C_AMBER}diad status${C_RESET} | ${C_AMBER}info${C_RESET}          Display full OS telemetry, RAM & hardware state"
+    echo -e "  ${C_AMBER}diad doctor${C_RESET} [--reset-ui]   Run system diagnostic audit (or restore clean UI)"
+    echo -e "  ${C_AMBER}diad bench${C_RESET}                 Run 0-lag latency & memory benchmarking suite"
+    echo ""
+    echo -e "${C_BOLD}WORKSPACE & WINDOW MANAGEMENT:${C_RESET}"
+    echo -e "  ${C_CYAN}diad ws${C_RESET} <1|2|3|agent|browser|comms>  Jump to workspace and focus/spawn app"
+    echo -e "  ${C_CYAN}diad lock${C_RESET}                  Lock the screen instantly"
+    echo -e "  ${C_CYAN}diad snap${C_RESET}                  Capture fullscreen screenshot"
+    echo -e "  ${C_CYAN}diad tui${C_RESET}                   Launch TUI Studio in current terminal"
+    echo -e "  ${C_CYAN}diad gui${C_RESET}                   Open GUI Studio in Workspace 1"
+    echo ""
+    echo -e "${C_BOLD}SYSTEM & HARDWARE CONTROL:${C_RESET}"
+    echo -e "  ${C_GREEN}diad wifi${C_RESET} list             Scan and list available wireless networks"
+    echo -e "  ${C_GREEN}diad wifi${C_RESET} connect <ssid>   Connect to Wi-Fi network"
+    echo -e "  ${C_GREEN}diad wifi${C_RESET} status           Show current wireless connection details"
+    echo -e "  ${C_GREEN}diad power${C_RESET} <profile>       Set profile: saver | balanced | performance"
+    echo -e "  ${C_GREEN}diad power${C_RESET} <action>        Execute: suspend | reboot | off"
+    echo -e "  ${C_GREEN}diad perf${C_RESET}                  Audit hardware specs and print model tier"
+    echo ""
+}
+
+cmd_status() {
+    banner
+    echo -e "${C_BOLD}SYSTEM TELEMETRY:${C_RESET}"
+    
+    # Kernel & Uptime
+    local kernel uptime_str
+    kernel=$(uname -r)
+    uptime_str=$(uptime -p 2>/dev/null || uptime)
+    echo -e "  ${C_SLATE}Kernel:${C_RESET}       ${C_WHITE}${kernel}${C_RESET}"
+    echo -e "  ${C_SLATE}Uptime:${C_RESET}       ${C_WHITE}${uptime_str}${C_RESET}"
+
+    # Memory
+    local mem_total mem_used mem_free mem_percent
+    if [ -f /proc/meminfo ]; then
+        mem_total=$(awk '/MemTotal/ {printf "%.0f MB", $2/1024}' /proc/meminfo)
+        mem_free=$(awk '/MemAvailable/ {printf "%.0f MB", $2/1024}' /proc/meminfo)
+        mem_used=$(free -m | awk '/Mem:/ {print $3" MB"}')
+        mem_percent=$(free | awk '/Mem:/ {printf "%.1f%%", $3/$2*100}')
+        echo -e "  ${C_SLATE}Memory:${C_RESET}       ${C_GREEN}${mem_used}${C_RESET} / ${C_WHITE}${mem_total}${C_RESET} (${mem_percent} active)"
+    fi
+
+    # Compositor & Sway RSS
+    local sway_rss
+    sway_rss=$(ps -C sway -o rss= 2>/dev/null | awk '{printf "%.1f MB", $1/1024}' || echo "N/A")
+    echo -e "  ${C_SLATE}Compositor:${C_RESET}   ${C_CYAN}Sway (Wayland)${C_RESET} · RSS: ${C_GREEN}${sway_rss}${C_RESET}"
+
+    # Agent Daemon
+    local agent_status="Offline"
+    if curl -s http://127.0.0.1:7860/api/v1/status >/dev/null 2>&1; then
+        agent_status="${C_GREEN}Active (localhost:7860)${C_RESET}"
+    else
+        agent_status="${C_CRIMSON}Stopped${C_RESET}"
+    fi
+    echo -e "  ${C_SLATE}AI Daemon:${C_RESET}    ${agent_status}"
+
+    # Power profile
+    local power_prof="balanced"
+    if command -v powerprofilesctl >/dev/null 2>&1; then
+        power_prof=$(powerprofilesctl get 2>/dev/null || echo "balanced")
+    fi
+    echo -e "  ${C_SLATE}Power Mode:${C_RESET}   ${C_AMBER}${power_prof}${C_RESET}"
+
+    # Active Wi-Fi
+    local wifi_ssid="Disconnected"
+    if command -v nmcli >/dev/null 2>&1; then
+        wifi_ssid=$(nmcli -t -f active,ssid dev wifi 2>/dev/null | grep '^yes:' | cut -d: -f2 || echo "Disconnected")
+    fi
+    echo -e "  ${C_SLATE}Network:${C_RESET}      ${C_WHITE}${wifi_ssid}${C_RESET}"
+    echo ""
+}
+
+cmd_ask() {
+    local prompt="$*"
+    if [ -z "${prompt}" ]; then
+        echo -e "${C_CRIMSON}Error:${C_RESET} Please provide a prompt or intent to execute."
+        echo -e "Example: ${C_AMBER}diad ask \"check battery health and list open ports\"${C_RESET}"
+        exit 1
+    fi
+
+    echo -e "${C_DIM}Executing via DIAD Agent...${C_RESET}"
+    if ! curl -s http://127.0.0.1:7860/api/v1/status >/dev/null 2>&1; then
+        echo -e "${C_CRIMSON}Agent daemon is offline.${C_RESET} Spawning local fallback..."
+        /usr/local/bin/diad-agent "$@"
+        exit 0
+    fi
+
+    # Dispatch to local agent API
+    local resp
+    resp=$(curl -s -X POST http://127.0.0.1:7860/api/v1/intent \
+        -H "Content-Type: application/json" \
+        -d "{\"prompt\": $(echo -n "${prompt}" | jq -s -R .)}" 2>/dev/null || true)
+    
+    if [ -n "${resp}" ]; then
+        echo "${resp}" | jq -r '.response // .text // .' 2>/dev/null || echo "${resp}"
+    else
+        echo -e "${C_AMBER}Intent sent to DIAD Agent.${C_RESET}"
+    fi
+}
+
+cmd_doctor() {
+    banner
+    echo -e "${C_BOLD}RUNNING SYSTEM HEALTH AUDIT...${C_RESET}\n"
+
+    if [[ "${1:-}" == "--reset-ui" ]]; then
+        echo -e "${C_AMBER}Restoring clean factory UI configuration...${C_RESET}"
+        mkdir -p "${HOME}/.config/sway.bak" "${HOME}/.config/waybar.bak"
+        cp -r "${HOME}/.config/sway"/* "${HOME}/.config/sway.bak/" 2>/dev/null || true
+        cp -r "${HOME}/.config/waybar"/* "${HOME}/.config/waybar.bak/" 2>/dev/null || true
+        cp -r /etc/sway/* "${HOME}/.config/sway/" 2>/dev/null || true
+        cp -r /etc/waybar/* "${HOME}/.config/waybar/" 2>/dev/null || true
+        swaymsg reload >/dev/null 2>&1 || true
+        echo -e "${C_GREEN}✓ Factory UI configuration restored and Sway reloaded.${C_RESET}"
+        exit 0
+    fi
+
+    # Check Sway
+    if pgrep -x sway >/dev/null 2>&1; then
+        echo -e "  ${C_GREEN}✓${C_RESET} Sway Wayland Compositor running"
+    else
+        echo -e "  ${C_CRIMSON}✗${C_RESET} Sway Wayland Compositor not running"
+    fi
+
+    # Check Waybar
+    if pgrep -x waybar >/dev/null 2>&1; then
+        echo -e "  ${C_GREEN}✓${C_RESET} Waybar status bar running"
+    else
+        echo -e "  ${C_AMBER}!${C_RESET} Waybar is not active (run: diad-waybar to spawn)"
+    fi
+
+    # Check Agent Daemon
+    if curl -s http://127.0.0.1:7860/api/v1/status >/dev/null 2>&1; then
+        echo -e "  ${C_GREEN}✓${C_RESET} DIAD Agent API healthy (port 7860)"
+    else
+        echo -e "  ${C_AMBER}!${C_RESET} DIAD Agent API not responding on port 7860"
+    fi
+
+    # Check Firewall
+    if systemctl is-active diad-firewall >/dev/null 2>&1 || sudo -n nft list ruleset >/dev/null 2>&1; then
+        echo -e "  ${C_GREEN}✓${C_RESET} nftables zero-trust firewall active"
+    else
+        echo -e "  ${C_AMBER}!${C_RESET} nftables firewall inactive"
+    fi
+
+    # Check zram swap
+    if swapon --show | grep -q zram; then
+        echo -e "  ${C_GREEN}✓${C_RESET} zram memory compression active"
+    else
+        echo -e "  ${C_AMBER}!${C_RESET} zram swap not active"
+    fi
+
+    echo -e "\n${C_SLATE}Audit complete. Use ${C_WHITE}diad doctor --reset-ui${C_SLATE} to restore pristine default UI.${C_RESET}\n"
+}
+
+# Subcommand dispatch
+case "${1:-}" in
+    ""|"-h"|"--help"|"help")
+        if [ -t 0 ] && [ "${1:-}" == "" ]; then
+            exec /usr/local/bin/diad-agent --tui
+        else
+            show_help
+        fi
+        ;;
+    "status"|"info")
+        cmd_status
+        ;;
+    "ask"|"intent"|"do")
+        shift
+        cmd_ask "$@"
+        ;;
+    "ws"|"workspace")
+        shift
+        exec /usr/local/bin/diad-workspace.sh "${1:-1}"
+        ;;
+    "lock")
+        exec /usr/local/bin/diad-lock
+        ;;
+    "snap"|"screenshot")
+        exec /usr/local/bin/diad-screenshot
+        ;;
+    "tui"|"terminal")
+        exec foot /usr/local/bin/diad-agent --tui &
+        ;;
+    "gui"|"studio")
+        exec /usr/local/bin/diad-workspace.sh 1
+        ;;
+    "wifi")
+        shift
+        case "${1:-status}" in
+            "list"|"scan")
+                exec /usr/local/bin/diad-wifi.sh scan
+                ;;
+            "connect")
+                shift
+                exec /usr/local/bin/diad-wifi.sh connect "$@"
+                ;;
+            "off"|"disable")
+                exec /usr/local/bin/diad-wifi.sh off
+                ;;
+            "on"|"enable")
+                exec /usr/local/bin/diad-wifi.sh on
+                ;;
+            *)
+                exec /usr/local/bin/diad-wifi.sh status
+                ;;
+        esac
+        ;;
+    "power")
+        shift
+        case "${1:-status}" in
+            "saver"|"powersave")
+                powerprofilesctl set power-saver 2>/dev/null || true
+                echo "Power profile set to: power-saver"
+                ;;
+            "balanced")
+                powerprofilesctl set balanced 2>/dev/null || true
+                echo "Power profile set to: balanced"
+                ;;
+            "performance"|"perf")
+                powerprofilesctl set performance 2>/dev/null || true
+                echo "Power profile set to: performance"
+                ;;
+            "suspend")
+                exec /usr/local/bin/diad-power.sh suspend
+                ;;
+            "reboot")
+                exec /usr/local/bin/diad-power.sh reboot
+                ;;
+            "off"|"shutdown")
+                exec /usr/local/bin/diad-power.sh poweroff
+                ;;
+            *)
+                exec /usr/local/bin/diad-power.sh status
+                ;;
+        esac
+        ;;
+    "perf"|"tier")
+        exec /usr/local/bin/diad-perf-tier.sh --dry-run
+        ;;
+    "bench")
+        exec /usr/local/bin/diad-bench.sh
+        ;;
+    "doctor")
+        shift
+        cmd_doctor "$@"
+        ;;
+    *)
+        # Forward any unrecognized command directly to agent intent router
+        cmd_ask "$@"
+        ;;
+esac

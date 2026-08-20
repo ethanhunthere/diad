@@ -208,6 +208,30 @@ fn wrappers_exist_on_disk_and_are_executable_in_iso() {
     }
 }
 
+/// Compiled wrappers (C sources in `os/lock-auth/`) that the agent invokes
+/// via sudo. They are built at ISO time (like `diad-agent`), so they cannot
+/// exist as scripts in the airootfs tree — the on-disk check validates the
+/// committed C source instead.
+const COMPILED_WRAPPERS: &[&str] = &["diad-lock-auth"];
+
+#[test]
+fn compiled_wrappers_exist_as_source_and_are_in_sudoers_and_profiledef() {
+    let sudoers = read_repo_file(SUDOERS_REL);
+    let profiledef = read_repo_file(PROFILEDEF_REL);
+    for w in COMPILED_WRAPPERS {
+        let src = repo_path(&format!("os/lock-auth/{w}.c"));
+        assert!(src.is_file(), "C source missing on disk: {}", src.display());
+        assert!(
+            sudoers.contains(&format!("/usr/local/bin/{w}")),
+            "sudoers missing required wrapper /usr/local/bin/{w}"
+        );
+        assert!(
+            profiledef.contains(&format!("/usr/local/bin/{w}\"]=\"0:0:755\"")),
+            "profiledef.sh missing 0:0:755 entry for {w}"
+        );
+    }
+}
+
 #[test]
 fn sudoers_syntax_sanity() {
     // Cheap parse sanity (the authoritative check is `visudo -cf`, run by the

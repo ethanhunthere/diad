@@ -12,9 +12,6 @@ export EDITOR="diad-agent"
 export PAGER="less"
 
 # ---- Aliases ----
-alias diad="diad-agent"
-alias d="diad-agent"
-alias config="diad-agent --configure"
 alias ls="ls --color=auto"
 alias ll="ls -lah"
 alias la="ls -A"

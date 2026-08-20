@@ -146,6 +146,7 @@ impl ClientHandle {
         self.send(ClientMsg::ChatSend {
             id: self.next_id(),
             text,
+            images: Vec::new(),
         });
     }
 

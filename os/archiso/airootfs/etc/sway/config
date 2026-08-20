@@ -7,6 +7,8 @@
 #   - COMMS      (Telegram / Slack / Launchpad)
 # =============================================================================
 
+swaynag_command /bin/true
+
 # ---- Daemon & Secret Storage ----
 exec gnome-keyring-daemon --start --components=secrets
 
@@ -18,20 +20,15 @@ set $ws1 "DIAD AGENT"
 set $ws2 "BROWSER"
 set $ws3 "COMMS"
 
-# ---- Output & Background (Clean minimal typography wallpaper) ----
-output * bg /usr/share/backgrounds/diad/wallpaper.png fill #0d0e15
+# ---- Output & Background ----
+output * bg /usr/share/backgrounds/diad/wallpaper.png fill #090A0A
 
-# Responsive Workspace Layouts:
-# Browser and Comms default to tabbed full-width layouts so every app takes 100%
-# screen width and never gets squished into columns on small or large screens.
-workspace $ws1 layout default
-workspace $ws2 layout tabbed
-workspace $ws3 layout tabbed
+# Workspace layout
+workspace_layout default
 
 # ---- Input Configuration ----
 input * {
-    xkb_layout us
-    xkb_options ctrl:nocaps
+    xkb_layout "us"
 }
 
 input type:touchpad {
@@ -42,62 +39,55 @@ input type:touchpad {
 # ---- Appearance & Geometry ----
 font pango:Inter 10
 default_border pixel 0
-default_floating_border pixel 0
-gaps inner 8
-gaps outer 8
-gaps top 10
+gaps inner 0
+gaps outer 0
+gaps top 0
+gaps bottom 0
+gaps left 0
+gaps right 0
 smart_gaps off
 smart_borders on
 
-# Styling for Tabbed Workspaces: Clean dark tabs with cyber-amber active accent
-client.focused          #f59e0b #151722 #f8fafc #f59e0b #f59e0b
-client.unfocused        #232738 #0d0e15 #94a3b8 #232738 #232738
-client.focused_inactive #2a2f45 #151722 #cbd5e1 #2a2f45 #2a2f45
-client.urgent           #ef4444 #151722 #ffffff #ef4444 #ef4444
+# Industrial Basalt & Crimson Design Tokens (Focused #B32032, Inactive #202623)
+client.focused          #B32032 #161918 #E5EAE6 #B32032 #B32032
+client.unfocused        #202623 #0F1110 #8A968E #202623 #202623
+client.focused_inactive #202623 #0F1110 #8A968E #202623 #202623
+client.urgent           #B32032 #161918 #FFFFFF #B32032 #B32032
 
 focus_follows_mouse no
 
-# Zero borders across all tiled windows
-for_window [class="^.*"] border pixel 0
-for_window [app_id="^.*"] border pixel 0
-for_window [title="^.*"] border pixel 0
-
 # ---- Strict Workspace Routing Rules ----
 
-# Workspace 3: Communications & Launchpad
-for_window [title="^DIAD Launchpad.*$"] move to workspace $ws3
-for_window [app_id="org.telegram.desktop"] move to workspace $ws3
-for_window [app_id="telegramdesktop"] move to workspace $ws3
-for_window [app_id="com.slack.Slack"] move to workspace $ws3
-for_window [app_id="chrome-127\.0\.0\.1__launch-Default"] move to workspace $ws3
-for_window [app_id="chrome-.*" title=".*7860/launch.*"] move to workspace $ws3
-for_window [app_id="chromium" title="^DIAD Launchpad.*$"] move to workspace $ws3
-for_window [title="^.*Telegram.*$"] move to workspace $ws3
-for_window [title="^.*Slack.*$"] move to workspace $ws3
-for_window [title="^.*web\.telegram\.org.*$"] move to workspace $ws3
-for_window [title="^.*app\.slack\.com.*$"] move to workspace $ws3
+# App ID assignments (Valid criteria for assign)
+assign [app_id="^foot$"] workspace $ws1
+assign [app_id="^chrome-127\.0\.0\.1__-Default$"] workspace $ws1
+assign [app_id="^chromium$"] workspace $ws2
+assign [app_id="^brave-browser$"] workspace $ws2
+assign [app_id="^com\.brave\.Browser$"] workspace $ws2
+assign [app_id="^epiphany$"] workspace $ws2
+assign [app_id="^org\.gnome\.Epiphany$"] workspace $ws2
+assign [app_id="^chrome-127\.0\.0\.1__apps-Default$"] workspace $ws2
+assign [app_id="^org\.telegram\.desktop$"] workspace $ws3
+assign [app_id="^telegramdesktop$"] workspace $ws3
+assign [app_id="^com\.slack\.Slack$"] workspace $ws3
+assign [app_id="^chrome-127\.0\.0\.1__launch-Default$"] workspace $ws3
 
-# Workspace 2: DIAD Apps Hub & Web Browser
-for_window [title="^DIAD Apps.*$"] move to workspace $ws2
-for_window [app_id="brave-browser"] move to workspace $ws2
-for_window [app_id="com.brave.Browser"] move to workspace $ws2
-for_window [app_id="chromium" title="^New Tab.*$"] move to workspace $ws2
-for_window [app_id="epiphany"] move to workspace $ws2
-for_window [app_id="org.gnome.Epiphany"] move to workspace $ws2
-for_window [app_id="chrome-127\.0\.0\.1__apps-Default"] move to workspace $ws2
-for_window [app_id="chrome-.*" title=".*7860/apps.*"] move to workspace $ws2
-for_window [app_id="chromium" title="^DIAD Apps.*$"] move to workspace $ws2
-for_window [app_id="chromium" title="^(?!.*DIAD).*$"] move to workspace $ws2
+# Title-based dynamic window routing (Must use for_window)
+for_window [title="^DIAD AGENT.*$"] move container to workspace $ws1
+for_window [title="^DIAD Agent.*$"] move container to workspace $ws1
+for_window [title="^DIAD Studio.*$"] move container to workspace $ws1
+for_window [title=".*BROWSER.*"] move container to workspace $ws2
+for_window [title=".*Workspace 2.*"] move container to workspace $ws2
+for_window [title="^DIAD Launchpad.*$"] move container to workspace $ws3
+for_window [title=".*COMMS.*"] move container to workspace $ws3
+for_window [title=".*Workspace 3.*"] move container to workspace $ws3
+for_window [title="^.*Telegram.*$"] move container to workspace $ws3
+for_window [title="^.*Slack.*$"] move container to workspace $ws3
+for_window [title="^.*web\.telegram\.org.*$"] move container to workspace $ws3
+for_window [title="^.*app\.slack\.com.*$"] move container to workspace $ws3
 
-# Workspace 1: DIAD AGENT (GUI & TUI)
-for_window [title="^DIAD AGENT.*$"] move to workspace $ws1; focus
-for_window [title="^DIAD Agent.*$"] move to workspace $ws1; focus
-for_window [title="^DIAD Studio.*$"] move to workspace $ws1; focus
-for_window [app_id="foot" title="^DIAD AGENT.*$"] move to workspace $ws1; focus
-for_window [app_id="chrome-127\.0\.0\.1__-Default"] move to workspace $ws1; focus
-for_window [app_id="chrome-.*" title=".*7860$"] move to workspace $ws1; focus
-for_window [app_id="chromium" title="^DIAD AGENT.*$"] move to workspace $ws1; focus
-for_window [app_id="foot"] move to workspace $ws1; focus
+for_window [title=".*Locked.*"] fullscreen enable
+for_window [title=".*Locked.*"] floating enable
 
 # ---- Autostart Services ----
 exec /usr/local/bin/diad-waybar
@@ -115,7 +105,7 @@ bindsym $mod+Shift+e exit
 # Start terminal
 bindsym $mod+Return exec $term
 
-# Smart Workspace Jumpers (Pure workspace navigation, zero duplicate windows)
+# Workspace Navigation (Direct Sway IPC — 0 latency, 0 flashing)
 bindsym $mod+1 workspace $ws1
 bindsym $mod+2 workspace $ws2
 bindsym $mod+3 workspace $ws3
@@ -125,14 +115,14 @@ bindsym F2 workspace $ws2
 bindsym F3 workspace $ws3
 bindsym F5 exec /usr/local/bin/brave --app=http://127.0.0.1:7860
 
-# Direct app launch shortcuts (explicit user launch)
+# Direct app launch shortcuts
 bindsym $mod+a exec /usr/local/bin/brave --app=http://127.0.0.1:7860
 bindsym $mod+b exec /usr/local/bin/brave
 bindsym $mod+t exec /usr/local/bin/diad-telegram
 bindsym $mod+Shift+s exec /usr/local/bin/diad-slack
 bindsym $mod+Shift+p exec /usr/local/bin/brave --app=http://127.0.0.1:7860/launch
 
-# Layout controls (Tabbed = full width responsive tabs, Split = tiled)
+# Layout controls
 bindsym $mod+w layout tabbed
 bindsym $mod+e layout toggle split
 bindsym $mod+s layout stacking
@@ -145,7 +135,7 @@ bindsym $mod+Shift+3 move container to workspace $ws3
 # Reload config
 bindsym $mod+Shift+c reload
 
-# Focus navigation (and Tab switching)
+# Focus navigation
 bindsym $mod+h focus left
 bindsym $mod+j focus down
 bindsym $mod+k focus up
@@ -171,20 +161,44 @@ bindsym $mod+Shift+v split horizontal
 bindsym $mod+Shift+space floating toggle
 
 # Screenshot
-bindsym $mod+Print exec grim -g "$(slurp)" ~/Pictures/screenshot-$(date +%s).png
+bindsym $mod+Print exec /usr/local/bin/diad-screenshot
 
 # Lock screen
-bindsym $mod+Escape exec swaylock -f -c 0d0e15
+bindsym $mod+Escape exec /usr/local/bin/diad-lock
 
-# Laptop media/backlight keys & shortcuts
-include /etc/sway/conf.d/media-keys.conf
+# Screen brightness
+bindsym XF86MonBrightnessUp exec brightnessctl set +5%
+bindsym XF86MonBrightnessDown exec brightnessctl set 5%-
+
+# Volume
+bindsym XF86AudioRaiseVolume exec wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+
+bindsym XF86AudioLowerVolume exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+bindsym XF86AudioMute exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+bindsym XF86AudioMicMute exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+
+# Media playback
+bindsym XF86AudioPlay exec playerctl play-pause
+bindsym XF86AudioNext exec playerctl next
+bindsym XF86AudioPrev exec playerctl previous
+bindsym XF86AudioStop exec playerctl stop
+
+# Airplane mode toggle
+bindsym XF86RFKill exec /usr/local/bin/diad-rfkill
+
+# Quick launcher shortcuts
+bindsym $mod+n exec /usr/local/bin/diad-wifi.sh
+bindsym $mod+p exec /usr/local/bin/diad-power.sh
+
+# Lock screen bindings
+bindsym XF86ScreenSaver exec /usr/local/bin/diad-lock
+bindsym Control+Mod1+l exec /usr/local/bin/diad-lock
+
+# Overrides
 include /etc/diad/sway-overrides.conf
 
 # ---- Idle Management ----
 exec swayidle -w \
-    timeout 300 'swaylock -f -c 0d0e15' \
+    timeout 300 '/usr/local/bin/diad-lock' \
     timeout 600 'swaymsg "output * dpms off"' \
     resume 'swaymsg "output * dpms on"' \
-    before-sleep 'swaylock -f -c 0d0e15'
-
-workspace $ws1
+    before-sleep '/usr/local/bin/diad-lock'

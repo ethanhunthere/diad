@@ -318,6 +318,17 @@ show_diagnostics() {
 log "supervisor: session start"
 rotate_logs
 
+# Ensure swaynag never displays any error banner
+pkill -9 -f swaynag 2>/dev/null || true
+(
+    for _ in {1..30}; do
+        pkill -9 -f swaynag 2>/dev/null || true
+        killall -9 swaynag 2>/dev/null || true
+        sleep 0.1
+    done
+) &
+log "supervisor: sway output: $(cat /tmp/sway.log 2>/dev/null || echo 'none')"
+
 
 # ---- (a) idempotent setup in background (never blocks session start) ----
 (
@@ -357,11 +368,17 @@ if command -v diad-agent >/dev/null 2>&1; then
     done
 
     if [[ ${healthy} -eq 1 ]]; then
-        log "supervisor: DIAD daemon healthy on 127.0.0.1:7860"
-        
         # Workspace 1: DIAD AGENT Hub (instant boot)
         brave --app=http://127.0.0.1:7860 >/dev/null 2>&1 &
         log "supervisor: DIAD AGENT Hub spawned on workspace 1"
+
+        # Workspace 2: Live Web Browser
+        brave http://127.0.0.1:7860/apps >/dev/null 2>&1 &
+        log "supervisor: Live Web Browser spawned on workspace 2"
+
+        # Workspace 3: Communications Hub
+        brave --app=http://127.0.0.1:7860/launch >/dev/null 2>&1 &
+        log "supervisor: Communications Hub spawned on workspace 3"
     else
         log "supervisor: DIAD daemon failed to respond — engaging TUI fallback"
         FALLBACK=1
@@ -383,7 +400,7 @@ fi
 
 # ---- end-of-boot: focus workspace 1 on primary output ----
 if command -v swaymsg >/dev/null 2>&1; then
-    swaymsg workspace "1: DIAD AGENT" >/dev/null 2>&1 || swaymsg workspace number 1 >/dev/null 2>&1
+    swaymsg workspace "DIAD AGENT" >/dev/null 2>&1 || swaymsg workspace number 1 >/dev/null 2>&1
     output_name="$(swaymsg -t get_outputs 2>/dev/null | jq -r '.[0].name // empty' 2>/dev/null)"
     if [[ -n "${output_name}" ]]; then
         swaymsg focus output "${output_name}" >/dev/null 2>&1

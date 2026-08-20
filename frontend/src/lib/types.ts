@@ -15,7 +15,7 @@ export const PROTOCOL_VERSION = 1;
 // ---- Client → daemon -------------------------------------------------------
 
 export type ClientMsg =
-  | { type: "chat_send"; id: string; text: string }
+  | { type: "chat_send"; id: string; text: string; images?: string[] }
   | { type: "tool_approve"; id: string }
   | { type: "tool_reject"; id: string }
   | { type: "edit_approve"; id: string }
@@ -204,6 +204,7 @@ export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
+  images?: string[];
   streaming?: boolean;
   /** Per-message tool call cards, in order. */
   tools: ToolCallCard[];

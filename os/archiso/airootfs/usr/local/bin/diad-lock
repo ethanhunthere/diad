@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# diad-lock — diadOS web lockscreen orchestrator.
+#
+# Enters sway's exclusive "lock" mode and shows the web lockscreen
+# (Originkit character-cursor animation + DIAD logo + password unlock)
+# fullscreen in a kiosk browser.
+#
+# Called from sway ($mod+Escape, Ctrl+Alt+L, Waybar lock icon)
+# and swayidle (timeout/before-sleep).
+
+set -u
+
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+LOCK_PIDFILE="$RUNTIME_DIR/diad-lock.pid"
+MARK="/tmp/diad-unlocked"
+LOCK_URL="file:///usr/share/diad/lockscreen/dist/index.html"
+
+# Never double-lock
+if [ -f "$LOCK_PIDFILE" ]; then
+    if kill -0 "$(cat "$LOCK_PIDFILE" 2>/dev/null)" 2>/dev/null; then
+        exit 0
+    fi
+fi
+echo "$$" > "$LOCK_PIDFILE"
+trap 'rm -f "$LOCK_PIDFILE"' EXIT INT TERM
+
+# Clear any stale unlock marker
+rm -f "$MARK"
+
+# Exclusive sway mode: only the kiosk window accepts input
+swaymsg -q mode lock
+
+# Launch the web lockscreen in an isolated kiosk profile
+rm -rf /tmp/diad-lock-profile
+mkdir -p /tmp/diad-lock-profile
+
+/usr/bin/chromium \
+    --ozone-platform-hint=auto \
+    --ozone-platform=wayland \
+    --user-data-dir=/tmp/diad-lock-profile \
+    --no-first-run \
+    --no-default-browser-check \
+    --kiosk \
+    --start-fullscreen \
+    --app="$LOCK_URL" &
+LOCK_PID=$!
+
+# Wait for the lock window to appear (up to 15 seconds)
+FOUND=0
+for _ in $(seq 1 300); do
+    if swaymsg -t get_tree 2>/dev/null | grep -qi "Locked"; then
+        FOUND=1
+        swaymsg -q "[title=\".*Locked.*\"] fullscreen enable"
+        swaymsg -q "[title=\".*Locked.*\"] focus"
+        break
+    fi
+    sleep 0.05
+done
+
+if [ "$FOUND" -eq 1 ]; then
+    # Keep locked while the lock window is active
+    while swaymsg -t get_tree 2>/dev/null | grep -qi "Locked"; do
+        if [ -f "$MARK" ]; then
+            break
+        fi
+        sleep 0.1
+    done
+fi
+
+# Restore default sway mode
+swaymsg -q mode default
+
+# Clean up
+kill -TERM "$LOCK_PID" 2>/dev/null || true
+rm -rf /tmp/diad-lock-profile
+
+if [ -f "$MARK" ]; then
+    rm -f "$MARK"
+    exit 0
+fi
+
+exit 0

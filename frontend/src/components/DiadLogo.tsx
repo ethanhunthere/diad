@@ -2,23 +2,31 @@ interface DiadLogoProps {
   size?: number;
   className?: string;
   showSubtitle?: boolean;
+  variant?: "white" | "black";
 }
 
 /**
- * DIAD — Minimalist, modern typography wordmark.
- * Designed with refined tracking and neo-grotesque clarity.
+ * DIAD — Official wordmark logo with signature red square dot on the 'i'.
  */
-export function DiadLogo({ size, className = "", showSubtitle = false }: DiadLogoProps) {
+export function DiadLogo({
+  size = 18,
+  className = "",
+  showSubtitle = false,
+  variant = "white",
+}: DiadLogoProps) {
+  const logoSrc = variant === "black" ? "/diad-logo-black.png" : "/diad-logo-white.png";
+
   return (
     <div className={`inline-flex items-center gap-2 select-none ${className}`}>
-      <span
-        className="font-sans font-bold tracking-[0.2em] text-slate-100 uppercase transition-colors hover:text-white"
-        style={{ fontSize: size ? `${size}px` : "14px" }}
-      >
-        DIAD
-      </span>
+      <img
+        src={logoSrc}
+        alt="DiAD"
+        style={{ height: `${size}px`, width: "auto" }}
+        className="object-contain"
+        draggable={false}
+      />
       {showSubtitle && (
-        <span className="text-[11px] font-medium tracking-wider text-slate-400 font-sans">
+        <span className="text-[11px] font-semibold tracking-wider text-slate-400 font-sans uppercase">
           Agent
         </span>
       )}

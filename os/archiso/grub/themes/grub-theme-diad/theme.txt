@@ -1,21 +1,20 @@
 # =============================================================================
-# DIAD OS — GRUB boot theme
+# DIAD OS — GRUB boot theme (Titanium Obsidian & Official Logo)
 # =============================================================================
-# Minimal, image-free theme: DIAD title text, DIAD accent color, and a centered
-# menu box. Fonts resolve to GRUB's bundled unicode.pf2 from /boot/grub/fonts.
 
-title-text: "DIAD OS — Intent is the only interface"
-title-color: "#4a9eff"
+desktop-image: "background.png"
+desktop-color: "#0d0e15"
+
+title-text: ""
+title-color: "#f8fafc"
 title-font: "unicode.pf2"
 
-message-color: "#ffffff"
+message-color: "#94a3b8"
 message-font: "unicode.pf2"
 
 terminal-font: "unicode.pf2"
-terminal-border-color: "#4a9eff"
+terminal-border-color: "#333852"
 terminal-left-margin: 25%
 terminal-right-margin: 25%
-terminal-top-margin: 60%
-terminal-bottom-margin: 5%
-
-desktop-color: "#1a1a2e"
+terminal-top-margin: 55%
+terminal-bottom-margin: 10%

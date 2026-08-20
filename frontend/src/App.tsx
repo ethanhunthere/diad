@@ -40,9 +40,8 @@ const TrashPanel = lazyNamed(() => import("./panels/TrashPanel"), (m) => m.Trash
 /** Suspense fallback while a lazy panel chunk streams in. */
 function PanelLoading() {
   return (
-    <div className="flex h-full items-center justify-center text-[12px] text-faint">
-      <span className="streaming-dot mr-2 inline-block h-2 w-2 rounded-full bg-copper" />
-      loading panel…
+    <div className="flex h-full items-center justify-center text-[12px] text-faint font-sans">
+      Loading…
     </div>
   );
 }

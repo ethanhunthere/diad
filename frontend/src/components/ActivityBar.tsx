@@ -18,19 +18,18 @@ export const PRIMARY_VIEWS: { id: ViewId; label: string; icon: typeof MessageSqu
 ];
 
 /**
- * Clean, simplified 56px activity bar with large accessible targets and clear tooltips.
+ * Clean, pro 56px activity bar with large accessible targets and industrial basalt styling.
  */
 export function ActivityBar({ collapsed }: { collapsed: boolean }) {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
   const toggleActivityBar = useStore((s) => s.toggleActivityBar);
-  const streaming = useStore((s) => s.streaming);
 
   if (collapsed) {
     return (
-      <nav className="activity-bar flex w-0 shrink-0 flex-col items-center border-r border-border-subtle bg-surface/60 py-3 transition-all duration-150 ease-out">
+      <nav className="activity-bar flex w-0 shrink-0 flex-col items-center border-r border-[#202623] bg-[#0F1110] py-3 transition-all duration-150 ease-out">
         <button
-          className="icon-btn h-9 w-9"
+          className="icon-btn h-9 w-9 text-[#8A968E] hover:text-[#E5EAE6]"
           onClick={toggleActivityBar}
           title="Expand sidebar"
           aria-label="Expand sidebar"
@@ -42,11 +41,10 @@ export function ActivityBar({ collapsed }: { collapsed: boolean }) {
   }
 
   return (
-    <nav className="activity-bar flex w-14 shrink-0 flex-col items-center border-r border-border-subtle bg-surface/60 py-3 transition-all duration-150 ease-out select-none">
-      <div className="flex flex-col gap-2">
+    <nav className="activity-bar flex w-14 shrink-0 flex-col items-center border-r border-[#202623] bg-[#0F1110] py-3 transition-all duration-150 ease-out select-none">
+      <div className="flex flex-col gap-2.5">
         {PRIMARY_VIEWS.map(({ id, label, icon: Icon }) => {
           const active = view === id;
-          const isChatStreaming = id === "chat" && streaming;
           return (
             <button
               key={id}
@@ -56,16 +54,13 @@ export function ActivityBar({ collapsed }: { collapsed: boolean }) {
               aria-label={label}
               className={`relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-150 ${
                 active
-                  ? "bg-copper/20 text-ink shadow-sm ring-1 ring-copper/40"
-                  : "text-dim hover:bg-surface-2 hover:text-ink"
+                  ? "bg-[#B32032]/20 text-[#E5EAE6] shadow-sm ring-1 ring-[#B32032]/60"
+                  : "text-[#8A968E] hover:bg-[#161918] hover:text-[#E5EAE6]"
               }`}
             >
-              <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
-              {isChatStreaming && (
-                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-copper-hover animate-pulse" />
-              )}
+              <Icon size={20} />
               {active && (
-                <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-copper-hover" />
+                <span className="absolute -left-1 h-5 w-1 rounded-r-full bg-[#B32032]" />
               )}
             </button>
           );
@@ -75,12 +70,12 @@ export function ActivityBar({ collapsed }: { collapsed: boolean }) {
       <div className="flex-1" />
 
       <button
-        className="icon-btn h-9 w-9 text-dim hover:text-ink"
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-[#525D56] hover:bg-[#161918] hover:text-[#8A968E] transition-colors"
         onClick={toggleActivityBar}
         title="Collapse sidebar"
         aria-label="Collapse sidebar"
       >
-        <PanelLeftClose size={18} />
+        <PanelLeftClose size={16} />
       </button>
     </nav>
   );

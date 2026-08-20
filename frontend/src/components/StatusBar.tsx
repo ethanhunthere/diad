@@ -10,17 +10,17 @@ export function StatusBar() {
   const streaming = useStore((s) => s.streaming);
 
   return (
-    <footer className="z-30 flex h-6 shrink-0 items-center justify-between border-t border-border-subtle/80 bg-[#12141d] px-4 text-[11px] text-slate-400 select-none">
-      <div className="flex items-center gap-2 font-mono">
-        <span className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.8)]"}`} />
-        <span className="font-bold text-slate-200">{provider || "DIAD"}</span>
-        <span className="text-slate-600">/</span>
-        <span className="text-slate-300">{model || "Agent"}</span>
-        {streaming && <span className="text-amber-400 animate-pulse font-normal">· generating…</span>}
+    <footer className="z-30 flex h-7 shrink-0 items-center justify-between border-t border-[#202623] bg-[#0F1110] px-4 text-[12px] text-[#8A968E] select-none font-sans">
+      <div className="flex items-center gap-2">
+        <span className={`h-2 w-2 rounded-full ${connected ? "bg-[#38A169]" : "bg-[#D97706]"}`} />
+        <span className="font-semibold text-[#E5EAE6]">{provider || "DIAD"}</span>
+        <span className="text-[#525D56]">/</span>
+        <span className="text-[#8A968E]">{model || "Agent"}</span>
+        {streaming && <span className="text-[#B32032] font-medium">· executing…</span>}
       </div>
 
-      <div className="flex items-center gap-3 text-slate-500 text-[11px] font-mono">
-        <span>DIAD Autonomous OS</span>
+      <div className="flex items-center gap-3 text-[#525D56] text-[11.5px] font-mono">
+        <span>DIAD OS · Protocol v1</span>
       </div>
     </footer>
   );

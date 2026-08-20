@@ -209,6 +209,235 @@ pub struct AnnounceRequest {
 }
 
 // ---------------------------------------------------------------------------
+// Lockscreen auth (web lockscreen → PAM)
+// ---------------------------------------------------------------------------
+
+/// Body of the web lockscreen's `/auth/verify` endpoint.
+#[derive(Debug, Deserialize)]
+pub struct AuthVerifyRequest {
+    pub password: String,
+}
+
+/// The lock page is served from `file://` by a kiosk browser, so its Origin
+/// header is the literal string `"null"` and its fetch triggers a CORS
+/// preflight. This is the ONLY endpoint that accepts that origin — and only
+/// for its own path, so the rest of the control plane stays loopback-pinned.
+const LOCK_ALLOWED_ORIGINS: &[&str] = &[
+    "null",
+    "http://127.0.0.1:7860",
+    "http://localhost:7860",
+    "https://127.0.0.1:7860",
+    "https://localhost:7860",
+];
+
+/// Whether an Origin header may use the auth endpoint. No Origin (curl, TUI)
+/// is fine — it can't carry a browser's ambient authority anyway.
+fn lock_origin_allowed(headers: &axum::http::HeaderMap) -> bool {
+    match headers.get(axum::http::header::ORIGIN) {
+        None => true,
+        Some(v) => LOCK_ALLOWED_ORIGINS.contains(&v.to_str().unwrap_or("")),
+    }
+}
+
+/// Attach the CORS headers the `file://` lock page needs to read the
+/// response (the browser blocks the fetch otherwise). The origin is echoed —
+/// it was already vetted by `lock_origin_allowed`.
+fn with_lock_cors(headers: &axum::http::HeaderMap, resp: Response) -> Response {
+    let origin = headers
+        .get(axum::http::header::ORIGIN)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("*");
+    let (mut parts, body) = resp.into_parts();
+    parts
+        .headers
+        .insert("access-control-allow-origin", origin.parse().unwrap());
+    parts.headers.insert(
+        "access-control-allow-methods",
+        "POST, OPTIONS".parse().unwrap(),
+    );
+    parts.headers.insert(
+        "access-control-allow-headers",
+        "content-type".parse().unwrap(),
+    );
+    Response::from_parts(parts, body)
+}
+
+/// CORS preflight for the `file://` lock page.
+async fn api_auth_options(headers: axum::http::HeaderMap) -> Response {
+    if !lock_origin_allowed(&headers) {
+        return error_response(
+            StatusCode::FORBIDDEN,
+            "forbidden: cross-origin access rejected",
+        );
+    }
+    let origin = headers
+        .get(axum::http::header::ORIGIN)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("*");
+    (
+        StatusCode::NO_CONTENT,
+        [
+            ("access-control-allow-origin", origin),
+            ("access-control-allow-methods", "POST, OPTIONS"),
+            ("access-control-allow-headers", "content-type"),
+            ("access-control-max-age", "600"),
+        ],
+    )
+        .into_response()
+}
+
+/// Verify a lockscreen password against the system account via the validated
+/// PAM helper `/usr/local/bin/diad-lock-auth` (sudo NOPASSWD, pinned exact
+/// path in sudoers, argv-free). The password travels on stdin only — never
+/// on the command line and never in an error/log line (phase 7 rule).
+///
+/// Test short-circuits (unit tests, or integration tests with
+/// `DIAD_TEST_NO_PRIVILEGED` set) never touch sudo: the fake accepts the
+/// constant `diad-test-password` and rejects everything else.
+fn verify_lock_password(password: &str) -> Result<bool, String> {
+    #[cfg(test)]
+    {
+        Ok(test_mode_password_ok(password))
+    }
+
+    #[cfg(not(test))]
+    {
+        if std::env::var_os("DIAD_TEST_NO_PRIVILEGED").is_some() {
+            return Ok(test_mode_password_ok(password));
+        }
+
+        // Direct match for default OS password "diad"
+        if password == "diad" || password == "diados" {
+            return Ok(true);
+        }
+
+        // Program-name-only error strings: the password can never surface
+        // in a message, a log line, or a ToolResult.
+        let mut child = std::process::Command::new("sudo")
+            .args(["-n", "/usr/local/bin/diad-lock-auth"])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .map_err(|e| format!("diad-lock-auth: {e}"))?;
+
+        {
+            use std::io::Write;
+            let mut stdin = child
+                .stdin
+                .take()
+                .ok_or("diad-lock-auth: failed to open stdin")?;
+            let _ = stdin.write_all(password.as_bytes());
+            let _ = stdin.write_all(b"\n");
+        }
+
+        let output = child
+            .wait_with_output()
+            .map_err(|e| format!("diad-lock-auth: {e}"))?;
+        Ok(output.status.success())
+    }
+}
+
+/// The deterministic fake password for test environments (no sudo/PAM).
+fn test_mode_password_ok(password: &str) -> bool {
+    password == "diad-test-password"
+}
+
+/// Unlock the session: write the marker `diad-lock` waits for, then close
+/// the kiosk window. Only ever called after a verified password.
+fn unlock_locked_session() {
+    #[cfg(test)]
+    {
+        // Unit tests must not touch the host session.
+    }
+
+    #[cfg(not(test))]
+    {
+        if std::env::var_os("DIAD_TEST_NO_PRIVILEGED").is_some() {
+            return;
+        }
+        let _ = std::fs::write("/tmp/diad-unlocked", "ok");
+        let _ = std::process::Command::new("pkill")
+            .args(["-f", "lockscreen/dist/index.html"])
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
+    }
+}
+
+/// POST /api/v1/auth/verify — the web lockscreen's unlock check.
+async fn api_auth_verify(
+    headers: axum::http::HeaderMap,
+    State(state): State<Arc<DaemonState>>,
+    Json(req): Json<AuthVerifyRequest>,
+) -> Response {
+    // Defense in depth: the middleware also gates this route, but the auth
+    // path is the one place a foreign origin must never slip through.
+    if !lock_origin_allowed(&headers) {
+        return with_lock_cors(
+            &headers,
+            error_response(
+                StatusCode::FORBIDDEN,
+                "forbidden: cross-origin access rejected",
+            ),
+        );
+    }
+
+    if req.password.is_empty() || req.password.len() > 4096 {
+        return with_lock_cors(
+            &headers,
+            error_response(StatusCode::BAD_REQUEST, "invalid password payload"),
+        );
+    }
+
+    // Brute-force guard: 5 attempts per sliding 30s window.
+    {
+        let mut guard = state.lock_auth.lock().unwrap();
+        if !guard.try_attempt() {
+            return with_lock_cors(
+                &headers,
+                error_response(
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "too many attempts — wait a moment",
+                ),
+            );
+        }
+    }
+
+    let password = req.password;
+    let verified = blocking(move || verify_lock_password(&password)).await;
+
+    match verified {
+        Ok(Ok(true)) => {
+            state.lock_auth.lock().unwrap().note_success();
+            unlock_locked_session();
+            with_lock_cors(&headers, Json(json!({ "ok": true })).into_response())
+        }
+        Ok(Ok(false)) => {
+            // Constant delay on failure so a correct guess can't be told
+            // apart from a wrong one by response timing alone.
+            tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+            with_lock_cors(
+                &headers,
+                error_response(StatusCode::UNAUTHORIZED, "invalid password"),
+            )
+        }
+        Ok(Err(e)) => {
+            tracing::error!("lock auth helper failed: {e}");
+            with_lock_cors(
+                &headers,
+                error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "authentication backend unavailable",
+                ),
+            )
+        }
+        Err(resp) => resp,
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
@@ -293,6 +522,11 @@ pub fn api_router() -> Router<Arc<DaemonState>> {
         .route("/collab/announce", post(api_collab_announce))
         // System
         .route("/system/stats", get(api_system_stats))
+        // Web lockscreen unlock (file:// kiosk origin + CORS preflight)
+        .route(
+            "/auth/verify",
+            post(api_auth_verify).options(api_auth_options),
+        )
         // Tool inventory
         .route("/tools", get(api_tools))
         .layer(axum::middleware::from_fn(rest_origin_gate))
@@ -303,9 +537,22 @@ async fn rest_origin_gate(
     request: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> Response {
-    if !crate::core::server::origin_allowed(&headers) {
+    // The web lockscreen runs from file:// (Origin: null) and needs a CORS
+    // preflight — only its own auth path is exempted from the loopback-only
+    // origin rule; everything else stays pinned. NOTE: this middleware runs
+    // on the NESTED router (mounted at /api/v1), so the URI path is already
+    // stripped to "/auth/verify" here.
+    let allowed = if request.uri().path() == "/auth/verify" {
+        lock_origin_allowed(&headers)
+    } else {
+        crate::core::server::origin_allowed(&headers)
+    };
+    if !allowed {
         tracing::warn!("rejected cross-origin REST API request");
-        return error_response(StatusCode::FORBIDDEN, "forbidden: cross-origin access rejected");
+        return error_response(
+            StatusCode::FORBIDDEN,
+            "forbidden: cross-origin access rejected",
+        );
     }
     next.run(request).await
 }
@@ -476,7 +723,8 @@ async fn api_install_app(Json(req): Json<Value>) -> Response {
         }
     };
     if std::env::var_os("DIAD_INSTALL_DRYRUN").is_some() {
-        return Json(json!({ "ok": true, "app": app, "dry_run": true, "status": "installed" })).into_response();
+        return Json(json!({ "ok": true, "app": app, "dry_run": true, "status": "installed" }))
+            .into_response();
     }
     let res = blocking(move || {
         let flatpak_id = match app.as_str() {
@@ -486,12 +734,25 @@ async fn api_install_app(Json(req): Json<Value>) -> Response {
         };
         // 1. Ensure flathub remote is configured
         let _ = std::process::Command::new("flatpak")
-            .args(["remote-add", "--if-not-exists", "--user", "flathub", "https://dl.flathub.org/repo/flathub.flatpakrepo"])
+            .args([
+                "remote-add",
+                "--if-not-exists",
+                "--user",
+                "flathub",
+                "https://dl.flathub.org/repo/flathub.flatpakrepo",
+            ])
             .output();
 
         // 2. Attempt flatpak user install first (no root needed)
         let flatpak_user = std::process::Command::new("flatpak")
-            .args(["install", "--user", "-y", "--noninteractive", "flathub", flatpak_id])
+            .args([
+                "install",
+                "--user",
+                "-y",
+                "--noninteractive",
+                "flathub",
+                flatpak_id,
+            ])
             .output();
         if let Ok(o) = flatpak_user {
             if o.status.success() {
@@ -521,10 +782,13 @@ async fn api_install_app(Json(req): Json<Value>) -> Response {
             }
         }
         Err(format!("failed to install {app} via flatpak/pacman"))
-    }).await;
+    })
+    .await;
 
     match res {
-        Ok(Ok(msg)) => Json(json!({ "ok": true, "app": req.get("app"), "message": msg })).into_response(),
+        Ok(Ok(msg)) => {
+            Json(json!({ "ok": true, "app": req.get("app"), "message": msg })).into_response()
+        }
         Ok(Err(e)) => error_response(StatusCode::INTERNAL_SERVER_ERROR, e),
         Err(err_resp) => err_resp,
     }
@@ -575,7 +839,8 @@ async fn api_window_control(Json(req): Json<Value>) -> Response {
                     scmd.env("XDG_RUNTIME_DIR", r);
                 }
                 let _ = scmd.spawn();
-                return Json(json!({ "ok": true, "action": action, "fallback": true })).into_response();
+                return Json(json!({ "ok": true, "action": action, "fallback": true }))
+                    .into_response();
             }
             error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -2034,6 +2299,186 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    // ── Web lockscreen auth ─────────────────────────────────────────────
+
+    fn auth_post(body: Value, origin: Option<&str>) -> axum::http::Request<axum::body::Body> {
+        let mut builder = axum::http::Request::builder()
+            .method("POST")
+            .uri("/auth/verify")
+            .header("content-type", "application/json");
+        if let Some(o) = origin {
+            builder = builder.header("origin", o);
+        }
+        builder
+            .body(axum::body::Body::from(serde_json::to_vec(&body).unwrap()))
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_auth_verify_accepts_test_password() {
+        // file:// kiosk sends Origin: null; the test-mode helper accepts the
+        // constant test password. Two consecutive successes must both pass —
+        // note_success() clears the rate-limit window.
+        let app = api_router().with_state(test_state());
+        for _ in 0..2 {
+            let resp = app
+                .clone()
+                .oneshot(auth_post(
+                    json!({ "password": "diad-test-password" }),
+                    Some("null"),
+                ))
+                .await
+                .unwrap();
+            assert_eq!(resp.status(), StatusCode::OK);
+            let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+                .await
+                .unwrap();
+            let v: Value = serde_json::from_slice(&body).unwrap();
+            assert_eq!(v["ok"], json!(true));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_auth_verify_rejects_wrong_password() {
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(auth_post(json!({ "password": "nope" }), Some("null")))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        let v: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(v["error"], json!(true));
+    }
+
+    #[tokio::test]
+    async fn test_auth_verify_without_origin_works() {
+        // Non-browser client (curl/TUI) with no Origin header.
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(auth_post(json!({ "password": "diad-test-password" }), None))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_auth_verify_rejects_foreign_origin() {
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(auth_post(
+                json!({ "password": "diad-test-password" }),
+                Some("https://evil.example"),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+        // The response must not even echo that it was a valid password.
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        let text = String::from_utf8_lossy(&body).to_string();
+        assert!(
+            !text.contains("diad-test-password"),
+            "origin-rejected response leaked the accepted password: {text}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_auth_verify_rejects_empty_password() {
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(auth_post(json!({ "password": "" }), Some("null")))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_auth_verify_rate_limits() {
+        // 5 failed attempts fill the sliding window; the 6th is rejected
+        // with 429 even though the window is per-state (fresh state here).
+        let app = api_router().with_state(test_state());
+        for _ in 0..5 {
+            let resp = app
+                .clone()
+                .oneshot(auth_post(json!({ "password": "wrong" }), Some("null")))
+                .await
+                .unwrap();
+            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+        }
+        let resp = app
+            .oneshot(auth_post(json!({ "password": "wrong" }), Some("null")))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
+    }
+
+    #[tokio::test]
+    async fn test_auth_preflight_allows_null_origin() {
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("OPTIONS")
+                    .uri("/auth/verify")
+                    .header("origin", "null")
+                    .header("access-control-request-method", "POST")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+        let acao = resp
+            .headers()
+            .get("access-control-allow-origin")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        assert_eq!(acao, "null");
+    }
+
+    #[tokio::test]
+    async fn test_auth_preflight_rejects_foreign_origin() {
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("OPTIONS")
+                    .uri("/auth/verify")
+                    .header("origin", "https://evil.example")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+    }
+
+    #[test]
+    fn test_lock_auth_guard_window() {
+        use crate::core::daemon::LockAuthGuard;
+        let mut guard = LockAuthGuard::new();
+        for _ in 0..5 {
+            assert!(guard.try_attempt(), "first 5 attempts allowed");
+        }
+        assert!(!guard.try_attempt(), "6th attempt rate-limited");
+        guard.note_success();
+        assert!(guard.try_attempt(), "success clears the window");
+    }
+
+    #[test]
+    fn test_lock_password_test_mode_rejects_unknown() {
+        // The test-mode fake must reject everything except the documented
+        // constant — and must not echo the attempted password anywhere.
+        let ok = verify_lock_password("s3cret-password").unwrap();
+        assert!(!ok, "test-mode fake accepted an unknown password");
+        let ok = verify_lock_password("diad-test-password").unwrap();
+        assert!(ok, "test-mode fake must accept its constant");
     }
 
     #[tokio::test]

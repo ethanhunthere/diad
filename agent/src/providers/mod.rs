@@ -576,7 +576,16 @@ mod tests {
         let factory = test_factory();
         assert_eq!(
             factory.models_for("openai"),
-            ["gpt-5", "gpt-5-codex", "codex-mini-latest", "o4-mini", "gpt-4o", "gpt-4o-mini", "o1", "o3-mini"]
+            [
+                "gpt-5",
+                "gpt-5-codex",
+                "codex-mini-latest",
+                "o4-mini",
+                "gpt-4o",
+                "gpt-4o-mini",
+                "o1",
+                "o3-mini"
+            ]
         );
         assert_eq!(factory.default_model("openai"), "gpt-5");
     }
@@ -617,7 +626,9 @@ mod tests {
                 preset.name
             );
             assert!(
-                factory.models_for(preset.name).contains(&preset.model.to_string()),
+                factory
+                    .models_for(preset.name)
+                    .contains(&preset.model.to_string()),
                 "{} must advertise its default model",
                 preset.name
             );

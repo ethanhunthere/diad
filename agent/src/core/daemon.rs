@@ -89,6 +89,57 @@ pub struct DaemonState {
 
     // Connected frontends (for broadcasts).
     clients: Arc<RwLock<Vec<Sender<ServerMsg>>>>,
+
+    /// Brute-force guard for the web lockscreen's `/auth/verify` endpoint.
+    /// A sliding window of recent attempts; once the window fills, further
+    /// attempts are rejected with 429 until the window drains (or a verified
+    /// password clears it).
+    pub lock_auth: Arc<Mutex<LockAuthGuard>>,
+}
+
+/// Sliding-window rate limiter for lockscreen password attempts.
+///
+/// `MAX_ATTEMPTS` attempts are allowed inside `WINDOW`; the window slides so
+/// a patient attacker is still capped at `MAX_ATTEMPTS / WINDOW` per second
+/// indefinitely. A successful verify clears the window immediately.
+pub struct LockAuthGuard {
+    attempts: Vec<std::time::Instant>,
+}
+
+impl LockAuthGuard {
+    const WINDOW: std::time::Duration = std::time::Duration::from_secs(30);
+    const MAX_ATTEMPTS: usize = 5;
+
+    pub fn new() -> Self {
+        Self {
+            attempts: Vec::new(),
+        }
+    }
+
+    /// Allow one more attempt if the window is not full. `true` reserves
+    /// the attempt; `false` means the caller must reject with 429.
+    pub fn try_attempt(&mut self) -> bool {
+        let now = std::time::Instant::now();
+        self.attempts
+            .retain(|t| now.duration_since(*t) < Self::WINDOW);
+        if self.attempts.len() >= Self::MAX_ATTEMPTS {
+            return false;
+        }
+        self.attempts.push(now);
+        true
+    }
+
+    /// A verified password clears the window (legitimate user, not an
+    /// attacker hammering the endpoint).
+    pub fn note_success(&mut self) {
+        self.attempts.clear();
+    }
+}
+
+impl Default for LockAuthGuard {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DaemonState {
@@ -144,6 +195,7 @@ impl DaemonState {
             thermal_throttled: Arc::new(AtomicBool::new(false)),
             inflight_chat: Arc::new(Mutex::new(std::collections::HashSet::new())),
             clients: Arc::new(RwLock::new(Vec::new())),
+            lock_auth: Arc::new(Mutex::new(LockAuthGuard::new())),
         }
     }
 
@@ -986,7 +1038,7 @@ pub(crate) async fn handle_chat_send(state: &DaemonState, conn: &Conn, id: Strin
 /// Route one client message.
 pub(crate) async fn handle_client_msg(state: &DaemonState, conn: &Conn, msg: ClientMsg) {
     match msg {
-        ClientMsg::ChatSend { id, text } => handle_chat_send(state, conn, id, text).await,
+        ClientMsg::ChatSend { id, text, .. } => handle_chat_send(state, conn, id, text).await,
         ClientMsg::ToolApprove { id } => {
             conn.prompts.resolve_confirm(&id, true);
         }

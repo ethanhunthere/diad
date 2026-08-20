@@ -51,3 +51,10 @@ diad ALL=(ALL) NOPASSWD: /usr/local/bin/diad-pacman, /usr/local/bin/diad-killpid
 #   to `diad`, length >= 8 enforced; the ONLY sudo path that touches the
 #   login password). Runs as root via `sudo diad-set-password`.
 diad ALL=(root) NOPASSWD: /usr/local/bin/diad-set-password
+
+# ---- Lockscreen auth --------------------------------------------------------
+#   diad-lock-auth  PAM  (reads ONE password line on stdin, authenticates the
+#   invoking user via system-auth; argv-pinned exact path, no args). Used by
+#   the web lockscreen's /auth/verify endpoint. The password never reaches
+#   the command line or logs.
+diad ALL=(root) NOPASSWD: /usr/local/bin/diad-lock-auth

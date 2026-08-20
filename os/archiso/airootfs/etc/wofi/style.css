@@ -1,36 +1,36 @@
 /* =============================================================================
-   DIAD Wofi — Titanium Obsidian & Cyber-Amber Theme
+   DIAD Wofi — Industrial Basalt & Crimson Design System
    ========================================================================== */
 
 window {
     margin: 0px;
-    border: 1px solid rgba(245, 158, 11, 0.35);
-    background-color: rgba(13, 14, 21, 0.96);
+    border: 1px solid #202623;
+    background-color: rgba(15, 17, 16, 0.98);
     border-radius: 14px;
-    font-family: "Inter", "JetBrains Mono", sans-serif;
-    font-size: 15px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    font-family: "Inter", "JetBrains Mono", -apple-system, sans-serif;
+    font-size: 14.5px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 #input {
-    margin: 12px;
-    padding: 10px 14px;
+    margin: 14px 14px 8px 14px;
+    padding: 12px 16px;
     border-radius: 10px;
-    border: 1px solid rgba(245, 158, 11, 0.30);
-    background-color: rgba(21, 23, 34, 0.95);
-    color: #f8fafc;
+    border: 1px solid #202623;
+    background-color: #161918;
+    color: #E5EAE6;
     font-size: 15px;
     font-weight: 500;
 }
 
 #input:focus {
-    border-color: #fbbf24;
-    box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+    border-color: #B32032;
+    box-shadow: 0 0 0 2px rgba(179, 32, 50, 0.35);
     outline: none;
 }
 
 #inner-box {
-    margin: 6px 12px 12px 12px;
+    margin: 6px 14px 14px 14px;
     background-color: transparent;
 }
 
@@ -45,23 +45,25 @@ window {
 
 #text {
     margin: 6px 8px;
-    color: #cbd5e1;
+    color: #8A968E;
+    font-size: 14px;
 }
 
 #entry {
-    padding: 6px 10px;
+    padding: 8px 12px;
     border-radius: 8px;
     margin: 2px 0px;
-    transition: all 100ms ease;
+    border: 1px solid transparent;
+    transition: all 120ms ease;
 }
 
 #entry:selected {
-    background-color: rgba(245, 158, 11, 0.25);
-    border: 1px solid rgba(245, 158, 11, 0.45);
-    color: #ffffff;
+    background-color: #1E2321;
+    border: 1px solid #B32032;
+    color: #FFFFFF;
 }
 
 #entry:selected #text {
-    color: #ffffff;
+    color: #FFFFFF;
     font-weight: 600;
 }

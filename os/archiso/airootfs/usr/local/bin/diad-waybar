@@ -4,7 +4,8 @@
 # =============================================================================
 set -uo pipefail
 
-# Ensure single instance
+# Ensure single instance and no error bars
+pkill -9 -f swaynag 2>/dev/null || true
 pkill -x waybar 2>/dev/null || true
 sleep 0.05
 

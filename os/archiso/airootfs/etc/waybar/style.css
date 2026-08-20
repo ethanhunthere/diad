@@ -1,89 +1,118 @@
 /* =============================================================================
-   DIAD Waybar — Floating Top Bar with Uniform Rounded Workspace Capsules (GTK3 CSS)
+   DIAD Waybar — Industrial Basalt & Crimson Design System (Scaled for Pro Displays)
    ========================================================================== */
 
 * {
-  font-family: "Inter", "DejaVu Sans", "Noto Sans", "JetBrains Mono", sans-serif;
-  font-size: 12px;
-  font-weight: bold;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
   border: none;
   border-radius: 0;
   min-height: 0;
 }
 
-/* Transparent floating top bar — no bottom border, no background box */
+/* Floating top status bar (Surface-Bar #0C0E0D @ 92% opacity) */
 window#waybar {
   background-color: transparent;
-  color: #f8fafc;
+  color: #E5EAE6;
 }
 
-/* Floating Clock on the Left (no box) */
+/* Left Clock (Text-Secondary #8A968E) */
 #clock {
   background-color: transparent;
-  color: #f8fafc;
-  font-size: 13px;
-  font-weight: bold;
-  padding: 4px 12px;
-  margin-left: 8px;
+  color: #8A968E;
+  font-size: 14.5px;
+  font-weight: 700;
+  padding: 4px 16px;
+  margin-left: 6px;
+  letter-spacing: 0.05em;
 }
 
-/* Individual Workspace Divs (Identical size, width, and style for all 3) */
+/* Workspace Capsules (Surface-Highlight #1E2321, Border #202623, Text #8A968E) */
 #custom-ws-agent,
 #custom-ws-browser,
 #custom-ws-comms {
-  background-color: #151722;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
-  min-width: 130px;
-  padding: 5px 0px;
+  background-color: #1E2321;
+  border: 1px solid #202623;
+  border-radius: 8px;
+  min-width: 128px;
+  padding: 6px 18px;
   margin: 0 4px;
-  color: #e2e8f0;
-  font-weight: bold;
-  font-size: 12px;
+  color: #8A968E;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  transition: all 140ms ease;
 }
 
+/* Workspace Capsule Hover */
 #custom-ws-agent:hover,
 #custom-ws-browser:hover,
 #custom-ws-comms:hover {
-  background-color: rgba(245, 158, 11, 0.25);
-  border-color: #f59e0b;
-  color: #ffffff;
+  background-color: #262E2A;
+  border-color: #B32032;
+  color: #E5EAE6;
 }
 
-/* Floating Icons on the Right (no boxes, completely floating) */
+/* Right Functional Controls */
 #custom-wifi,
+#custom-lock,
 #custom-reboot,
 #custom-power {
   background-color: transparent;
-  border: none;
-  font-family: "Font Awesome 6 Free", "Font Awesome 5 Free", "DejaVu Sans", monospace;
+  border-radius: 8px;
+  font-family: "Font Awesome 6 Free", "Font Awesome 5 Free", "Inter", sans-serif;
   font-weight: 900;
-  font-size: 14px;
-  padding: 4px 10px;
+  font-size: 16px;
+  padding: 6px 14px;
   margin: 0 3px;
+  color: #8A968E;
+  transition: all 140ms ease;
 }
 
 #custom-wifi {
-  color: #38bdf8;
+  color: #8A968E;
+}
+
+#custom-lock {
+  color: #8A968E;
 }
 
 #custom-reboot {
-  color: #cbd5e1;
+  color: #8A968E;
 }
 
 #custom-power {
-  color: #f87171;
-  margin-right: 8px;
+  color: #B32032;
+  margin-right: 6px;
 }
 
 #custom-wifi:hover {
-  color: #7dd3fc;
+  background-color: #1E2321;
+  color: #E5EAE6;
+}
+
+#custom-lock:hover {
+  background-color: #1E2321;
+  color: #D97706;
 }
 
 #custom-reboot:hover {
-  color: #ffffff;
+  background-color: #1E2321;
+  color: #38A169;
 }
 
 #custom-power:hover {
-  color: #ef4444;
+  background-color: #B32032;
+  color: #FFFFFF;
+}
+
+/* Focused active workspace state */
+#custom-ws-agent.active,
+#custom-ws-browser.active,
+#custom-ws-comms.active {
+  background-color: #B32032;
+  border-color: #D32F2F;
+  color: #FFFFFF;
+  font-weight: 700;
 }

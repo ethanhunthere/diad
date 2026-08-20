@@ -41,7 +41,7 @@ case "${action}" in
         systemctl suspend 2>/dev/null || sudo systemctl suspend
         ;;
     lock)
-        swaylock -f -c 0d0e15 2>/dev/null || true
+        /usr/local/bin/diad-lock
         ;;
     logout)
         swaymsg exit 2>/dev/null || true

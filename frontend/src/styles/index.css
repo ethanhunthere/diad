@@ -16,34 +16,34 @@
 [data-theme="copper"],
 [data-theme="monochrome"] {
   color-scheme: dark;
-  --bg-obsidian: #0d0e15;
-  --bg-obsidian-rgb: 13, 14, 21;
-  --bg-surface: #151722;
-  --bg-surface-rgb: 21, 23, 34;
-  --bg-surface-2: #1e2130;
-  --bg-surface-2-rgb: 30, 33, 48;
-  --bg-surface-3: #2a2f45;
-  --bg-surface-3-rgb: 42, 47, 69;
-  --accent: #f59e0b;
-  --accent-rgb: 245, 158, 11;
-  --accent-hover: #fbbf24;
-  --accent-hover-rgb: 251, 191, 36;
-  --accent-dim: #d97706;
-  --accent-dim-rgb: 217, 119, 6;
-  --text-ink: #f8fafc;
-  --text-ink-rgb: 248, 250, 252;
-  --text-dim: #cbd5e1;
-  --text-dim-rgb: 203, 213, 225;
-  --text-faint: #94a3b8;
-  --text-faint-rgb: 148, 163, 184;
-  --border-subtle: rgba(245, 158, 11, 0.20);
-  --border-strong: rgba(245, 158, 11, 0.40);
-  --success: #34d399;
-  --success-rgb: 52, 211, 153;
-  --warn: #fbbf24;
-  --warn-rgb: 251, 191, 36;
-  --danger: #f87171;
-  --danger-rgb: 248, 113, 113;
+  --bg-obsidian: #090A0A;
+  --bg-obsidian-rgb: 9, 10, 10;
+  --bg-surface: #0F1110;
+  --bg-surface-rgb: 15, 17, 16;
+  --bg-surface-2: #161918;
+  --bg-surface-2-rgb: 22, 25, 24;
+  --bg-surface-3: #1E2321;
+  --bg-surface-3-rgb: 30, 35, 33;
+  --accent: #B32032;
+  --accent-rgb: 179, 32, 50;
+  --accent-hover: #D32F2F;
+  --accent-hover-rgb: 211, 47, 47;
+  --accent-dim: #9B2C2C;
+  --accent-dim-rgb: 155, 44, 44;
+  --text-ink: #E5EAE6;
+  --text-ink-rgb: 229, 234, 230;
+  --text-dim: #8A968E;
+  --text-dim-rgb: 138, 150, 142;
+  --text-faint: #525D56;
+  --text-faint-rgb: 82, 93, 86;
+  --border-subtle: #202623;
+  --border-strong: #B32032;
+  --success: #38A169;
+  --success-rgb: 56, 161, 105;
+  --warn: #D97706;
+  --warn-rgb: 217, 119, 6;
+  --danger: #B32032;
+  --danger-rgb: 179, 32, 50;
   --radius-panel: 14px;
   --radius-control: 10px;
 }
@@ -478,18 +478,9 @@
 /* Misc                                                                */
 /* ------------------------------------------------------------------ */
 
-/* Subtle copper glow for streaming indicator */
-@keyframes copper-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 4px rgba(200, 127, 74, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 10px rgba(200, 127, 74, 0.7);
-  }
-}
-.streaming-dot {
-  animation: copper-glow 1.4s ease-in-out infinite;
+/* Clean status indicator */
+.status-indicator {
+  display: inline-block;
 }
 
 /* Diff card line coloring */

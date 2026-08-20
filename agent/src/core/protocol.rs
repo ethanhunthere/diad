@@ -25,6 +25,9 @@ pub enum ClientMsg {
         id: String,
         /// The raw user text.
         text: String,
+        /// Optional base64 or URL images for multimodal LLMs.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        images: Vec<String>,
     },
     /// Approve a tool call (response to `tool_use`).
     ToolApprove {
@@ -324,13 +327,15 @@ mod tests {
         let msg = ClientMsg::ChatSend {
             id: "req-1".into(),
             text: "hello".into(),
+            images: vec![],
         };
         let json = serde_json::to_string(&msg).unwrap();
         let back: ClientMsg = serde_json::from_str(&json).unwrap();
         match back {
-            ClientMsg::ChatSend { id, text } => {
+            ClientMsg::ChatSend { id, text, images } => {
                 assert_eq!(id, "req-1");
                 assert_eq!(text, "hello");
+                assert!(images.is_empty());
             }
             other => panic!("wrong variant: {other:?}"),
         }
@@ -463,6 +468,7 @@ mod tests {
                 ClientMsg::ChatSend {
                     id: "r1".into(),
                     text: "hi".into(),
+                    images: vec![],
                 },
                 "chat_send",
             ),

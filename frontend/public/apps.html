@@ -3,183 +3,382 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DIAD Apps</title>
+<title>DIAD Browser</title>
 <style>
   :root {
-    --bg-base: #09090b;
-    --bg-surface: #141417;
-    --bg-surface-2: #202024;
-    --accent: #e4e4e7;
-    --accent-hover: #ffffff;
-    --text-main: #f4f4f5;
-    --text-muted: #a1a1aa;
-    --text-dim: #71717a;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-hover: rgba(255, 255, 255, 0.20);
-    --radius-card: 16px;
-    --radius-btn: 10px;
+    --bg-base: #090A0A;
+    --bg-card: rgba(22, 25, 24, 0.94);
+    --bg-card-hover: rgba(30, 35, 33, 0.98);
+    --border: #202623;
+    --border-hover: #B32032;
+    --accent: #B32032;
+    --crimson: #B32032;
+    --text-primary: #E5EAE6;
+    --text-secondary: #8A968E;
+    --text-dim: #525D56;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; width: 100%; }
+  html, body { height: 100%; width: 100%; background-color: var(--bg-base); }
   body {
-    background-color: var(--bg-base);
-    color: var(--text-main);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 30%, #161918 0%, #090A0A 75%);
+    color: var(--text-primary);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
     user-select: none;
-    padding: 24px;
     overflow-y: auto;
   }
 
-  /* Center Launch Container */
-  .main-container {
+  .container {
     width: 100%;
-    max-width: 520px;
+    max-width: 680px;
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    margin: auto 0;
-    padding: 32px 24px;
-  }
-  .headline {
-    font-size: 26px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    color: var(--text-main);
-    margin-bottom: 8px;
-  }
-  .tagline {
-    font-size: 14px;
-    color: var(--text-muted);
-    margin-bottom: 36px;
+    gap: 32px;
   }
 
-  /* Big Launch Tile */
-  .launch-tile {
-    width: 100%;
-    max-width: 340px;
-    background: rgba(20, 20, 23, 0.7);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-card);
-    padding: 40px 32px;
+  /* Official DIAD Logo Image */
+  .logo-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 18px;
-    cursor: pointer;
-    transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
-    outline: none;
+    gap: 12px;
   }
-  .launch-tile:hover {
-    transform: translateY(-2px);
-    border-color: var(--border-hover);
-    background: rgba(32, 32, 36, 0.85);
+  .diad-official-logo {
+    height: 52px;
+    width: auto;
+    max-width: 220px;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
   }
-  .launch-tile:active {
-    transform: translateY(0);
+  .subtitle {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.28em;
+    color: var(--text-dim);
+    text-transform: uppercase;
   }
-  .icon-wrapper {
-    width: 72px;
-    height: 72px;
+
+  /* Search Input */
+  .search-form {
+    width: 100%;
+    position: relative;
+  }
+  .search-wrapper {
     display: flex;
     align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 100%;
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 16px;
+    gap: 12px;
+    transition: all 140ms ease;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
   }
-  .icon-wrapper svg {
-    width: 38px;
-    height: 38px;
-    color: var(--accent);
+  .search-wrapper:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(179, 32, 50, 0.25), 0 18px 44px rgba(0, 0, 0, 0.8);
+    background: rgba(26, 30, 29, 0.98);
   }
-  .tile-title {
-    font-size: 19px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+  .search-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--text-dim);
+    flex-shrink: 0;
   }
-  .tile-sub {
-    font-size: 13px;
+  .search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    font-size: 15.5px;
+    color: var(--text-primary);
+    caret-color: var(--accent);
+  }
+  .search-input::placeholder {
     color: var(--text-dim);
   }
 
-  .status-text {
-    margin-top: 24px;
-    font-size: 13px;
-    color: var(--text-muted);
-    min-height: 20px;
+  /* Custom High-Contrast Dark Dropdown */
+  .custom-dropdown {
+    position: relative;
+    user-select: none;
   }
-
-  .footer {
+  .dropdown-trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #1E2321;
+    border: 1px solid #202623;
+    color: var(--text-primary);
+    font-family: inherit;
     font-size: 12px;
-    color: var(--text-dim);
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    outline: none;
+    transition: all 140ms ease;
+  }
+  .dropdown-trigger:hover {
+    background: #262E2A;
+    border-color: var(--accent);
+    color: #ffffff;
+  }
+  .chevron-icon {
+    width: 13px;
+    height: 13px;
+    color: var(--text-secondary);
+    transition: transform 140ms ease;
+  }
+  .custom-dropdown.open .chevron-icon {
+    transform: rotate(180deg);
+  }
+  .dropdown-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    width: 146px;
+    background: #161918;
+    border: 1px solid #202623;
+    border-radius: 10px;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    padding: 5px;
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    z-index: 100;
+  }
+  .custom-dropdown.open .dropdown-menu {
+    display: flex;
+  }
+  .dropdown-item {
+    padding: 8px 12px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 120ms ease;
+  }
+  .dropdown-item:hover {
+    background: rgba(179, 32, 50, 0.18);
+    color: #ffffff;
+  }
+  .dropdown-item.active {
+    background: #1E2321;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  /* Shortcuts */
+  .shortcuts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    width: 100%;
+  }
+  .shortcut-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 12.5px;
+    font-weight: 600;
     letter-spacing: 0.02em;
-    margin-top: 16px;
+    transition: all 140ms ease;
+  }
+  .shortcut-card:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-hover);
+    color: #ffffff;
+    transform: translateY(-2px);
+  }
+  .shortcut-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--accent);
+    flex-shrink: 0;
   }
 </style>
 </head>
 <body>
-  <div class="main-container">
-    <div class="headline">Workspace 2 · Web</div>
-    <div class="tagline">One tap to open the browser</div>
-
-    <div class="launch-tile" id="launch-btn" role="button" tabindex="0">
-      <div class="icon-wrapper">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="2" y1="12" x2="22" y2="12"></line>
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-        </svg>
-      </div>
-      <div class="tile-title">Launch Browser</div>
-      <div class="tile-sub" id="browser-label">Chromium Engine · Hardware Accelerated</div>
+  <div class="container">
+    <div class="logo-container">
+      <img src="/diad-logo-white.png" alt="DIAD" class="diad-official-logo" />
+      <div class="subtitle">WORKSPACE 2 · BROWSER</div>
     </div>
 
-    <div class="status-text" id="status"></div>
-  </div>
+    <form class="search-form" id="searchForm" onsubmit="handleSearch(event)">
+      <div class="search-wrapper">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input 
+          id="searchInput"
+          class="search-input"
+          type="text" 
+          placeholder="Search the web or type a URL…" 
+          autocomplete="off" 
+          autofocus
+        />
+        
+        <!-- Custom Dark Dropdown -->
+        <div class="custom-dropdown" id="engineDropdown">
+          <button type="button" class="dropdown-trigger" id="dropdownTrigger">
+            <span id="selectedEngineName">DuckDuckGo</span>
+            <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="dropdown-menu" id="dropdownMenu">
+            <div class="dropdown-item active" data-value="duckduckgo" onclick="selectEngine('duckduckgo', 'DuckDuckGo')">DuckDuckGo</div>
+            <div class="dropdown-item" data-value="searxng" onclick="selectEngine('searxng', 'SearXNG')">SearXNG</div>
+            <div class="dropdown-item" data-value="brave" onclick="selectEngine('brave', 'Brave')">Brave</div>
+            <div class="dropdown-item" data-value="google" onclick="selectEngine('google', 'Google')">Google</div>
+            <div class="dropdown-item" data-value="wikipedia" onclick="selectEngine('wikipedia', 'Wikipedia')">Wikipedia</div>
+          </div>
+        </div>
+      </div>
+    </form>
 
-  <div class="footer">
-    Press Super+2 to switch to Workspace 2 · Super+B to open browser
+    <div class="shortcuts-grid">
+      <a class="shortcut-card" href="https://github.com" target="_self">
+        <svg class="shortcut-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+        </svg>
+        <span>GitHub</span>
+      </a>
+      <a class="shortcut-card" href="https://news.ycombinator.com" target="_self">
+        <svg class="shortcut-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+          <polyline points="2 17 12 22 22 17"></polyline>
+          <polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+        <span>Hacker News</span>
+      </a>
+      <a class="shortcut-card" href="https://reddit.com" target="_self">
+        <svg class="shortcut-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M8 12a2 2 0 1 0 4 0 2 2 0 1 0-4 0"></path>
+          <path d="M12 12a2 2 0 1 0 4 0 2 2 0 1 0-4 0"></path>
+        </svg>
+        <span>Reddit</span>
+      </a>
+      <a class="shortcut-card" href="https://wikipedia.org" target="_self">
+        <svg class="shortcut-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+        <span>Wikipedia</span>
+      </a>
+      <a class="shortcut-card" href="https://youtube.com" target="_self">
+        <svg class="shortcut-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+          <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+        </svg>
+        <span>YouTube</span>
+      </a>
+      <a class="shortcut-card" href="https://claude.ai" target="_self">
+        <svg class="shortcut-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+        <span>Claude</span>
+      </a>
+    </div>
   </div>
 
   <script>
-    const launchBtn = document.getElementById("launch-btn");
-    const browserLabel = document.getElementById("browser-label");
-    const status = document.getElementById("status");
+    const input = document.getElementById("searchInput");
+    const dropdown = document.getElementById("engineDropdown");
+    const trigger = document.getElementById("dropdownTrigger");
+    const selectedName = document.getElementById("selectedEngineName");
+    let currentEngine = "duckduckgo";
 
-    fetch("/api/v1/launch/status", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((s) => {
-        if (s.browser === "brave") browserLabel.textContent = "Brave Browser · Private & Ad-Free";
-        else if (s.browser === "helium") browserLabel.textContent = "Helium Browser · Minimal & Fast";
-        else browserLabel.textContent = "Chromium Engine · Hardware Accelerated";
-      })
-      .catch(() => { browserLabel.textContent = "Chromium Engine"; });
-
-    async function openBrowser() {
-      status.textContent = "Opening browser…";
-      try {
-        await fetch("/api/v1/launch", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ app: "browser" }),
-        });
-        status.textContent = "Browser active on Workspace 2";
-        // Close launcher after browser opens
-        setTimeout(() => { window.close(); }, 600);
-      } catch (e) {
-        status.textContent = "Failed to launch browser";
-      }
-    }
-
-    launchBtn.addEventListener("click", openBrowser);
-    launchBtn.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        openBrowser();
+    // Auto-focus search on load
+    input.focus();
+    window.addEventListener("keydown", (e) => {
+      if (document.activeElement !== input && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        input.focus();
       }
     });
+
+    // Toggle dropdown
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle("open");
+    });
+
+    window.addEventListener("click", () => {
+      dropdown.classList.remove("open");
+    });
+
+    function selectEngine(val, label) {
+      currentEngine = val;
+      selectedName.textContent = label;
+      document.querySelectorAll(".dropdown-item").forEach(el => {
+        el.classList.toggle("active", el.getAttribute("data-value") === val);
+      });
+      dropdown.classList.remove("open");
+      input.focus();
+    }
+
+    function handleSearch(e) {
+      e.preventDefault();
+      const query = input.value.trim();
+      if (!query) return;
+
+      // If it looks like a URL, navigate directly
+      if (/^(https?:\/\/|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(\/.*)?$/.test(query)) {
+        const url = query.startsWith("http://") || query.startsWith("https://") ? query : "https://" + query;
+        window.location.href = url;
+        return;
+      }
+
+      // Search engine dispatch
+      const encoded = encodeURIComponent(query);
+      let target = "";
+
+      switch (currentEngine) {
+        case "duckduckgo":
+          target = `https://duckduckgo.com/?q=${encoded}`;
+          break;
+        case "searxng":
+          target = `https://searx.be/search?q=${encoded}`;
+          break;
+        case "brave":
+          target = `https://search.brave.com/search?q=${encoded}`;
+          break;
+        case "google":
+          target = `https://www.google.com/search?q=${encoded}`;
+          break;
+        case "wikipedia":
+          target = `https://en.wikipedia.org/wiki/Special:Search?search=${encoded}`;
+          break;
+        default:
+          target = `https://duckduckgo.com/?q=${encoded}`;
+      }
+
+      window.location.href = target;
+    }
   </script>
 </body>
 </html>

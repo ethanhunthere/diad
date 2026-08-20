@@ -35,6 +35,11 @@ file_permissions=(
     ["/home/diad/.bashrc"]="1000:1000:644"
     ["/home/diad/.bash_profile"]="1000:1000:644"
     ["/home/diad/.config/foot/foot.ini"]="1000:1000:644"
+    ["/home/diad/.config/sway/config"]="1000:1000:644"
+    ["/home/diad/.ssh"]="1000:1000:700"
+    ["/home/diad/.ssh/authorized_keys"]="1000:1000:600"
+    ["/root/.ssh"]="0:0:700"
+    ["/root/.ssh/authorized_keys"]="0:0:600"
     ["/etc/skel/.bash_profile"]="0:0:644"
     ["/etc/skel/.config/foot/foot.ini"]="0:0:644"
     ["/etc/xdg/foot/foot.ini"]="0:0:644"
@@ -57,6 +62,7 @@ file_permissions=(
     ["/etc/nftables.conf"]="0:0:600"
     ["/etc/NetworkManager/conf.d/diad.conf"]="0:0:600"
     ["/etc/polkit-1/rules.d/00-diad-admin.rules"]="0:0:644"
+    ["/usr/share/polkit-1/rules.d/00-diad-admin.rules"]="0:0:644"
 
     # --- display session ---
     ["/etc/mako/config"]="0:0:644"
@@ -71,6 +77,7 @@ file_permissions=(
     ["/etc/diad/sway-overrides.conf"]="0:0:644"
 
     # --- systemd units / drop-ins ---
+    ["/etc/systemd/system/getty@.service.d/autologin.conf"]="0:0:644"
     ["/etc/systemd/system/getty@tty1.service.d/autologin.conf"]="0:0:644"
     ["/etc/systemd/system/diad-firewall.service"]="0:0:644"
     ["/etc/systemd/system/diad-perf-tier.service"]="0:0:644"
@@ -90,12 +97,17 @@ file_permissions=(
     ["/usr/share/glib-2.0/schemas/99_diad_dark.gschema.override"]="0:0:644"
     ["/usr/share/backgrounds/diad/wallpaper.png"]="0:0:644"
     ["/usr/share/backgrounds/diad/wallpaper.svg"]="0:0:644"
+    ["/usr/share/backgrounds/diad/lockscreen.png"]="0:0:644"
+    ["/usr/share/pixmaps/diad-logo-white.png"]="0:0:644"
+    ["/usr/share/pixmaps/diad-logo-black.png"]="0:0:644"
+    ["/usr/share/pixmaps/diad.png"]="0:0:644"
 
     # --- initramfs (archiso hooks) ---
     ["/etc/mkinitcpio.conf.d/archiso.conf"]="0:0:644"
     ["/etc/mkinitcpio.d/linux-lts.preset"]="0:0:644"
 
     # --- DIAD binaries & scripts (executable, root-owned) ---
+    ["/usr/local/bin/diad"]="0:0:755"
     ["/usr/local/bin/diad-agent"]="0:0:755"
     ["/usr/local/bin/diad-diagnose.sh"]="0:0:755"
     ["/usr/local/bin/diad-launch.sh"]="0:0:755"
@@ -116,6 +128,7 @@ file_permissions=(
     ["/usr/local/bin/diad-set-password"]="0:0:755"
     ["/usr/local/bin/diad-sysfs-write"]="0:0:755"
     ["/usr/local/bin/diad-pacman"]="0:0:755"
+    ["/usr/local/bin/diad-pacman"]="0:0:755"
     ["/usr/local/bin/diad-killpid"]="0:0:755"
     ["/usr/local/bin/diad-clone-disk"]="0:0:755"
     ["/usr/local/bin/diad-conf-write"]="0:0:755"
@@ -129,8 +142,16 @@ file_permissions=(
     ["/usr/local/bin/diad-wifi.sh"]="0:0:755"
     ["/usr/local/bin/diad-telegram"]="0:0:755"
     ["/usr/local/bin/diad-slack"]="0:0:755"
+    ["/usr/local/bin/diad-workspace.sh"]="0:0:755"
     ["/usr/local/bin/diad-workspace-jump.sh"]="0:0:755"
     ["/usr/local/bin/diad-waybar"]="0:0:755"
+    ["/usr/local/bin/swaynag"]="0:0:755"
+    ["/usr/local/bin/diad-rfkill"]="0:0:755"
+    ["/usr/local/bin/diad-screenshot"]="0:0:755"
+    # Web lockscreen: kiosk orchestrator (sway lock mode) + PAM auth helper
+    # (compiled from os/lock-auth/diad-lock-auth.c at ISO build time).
+    ["/usr/local/bin/diad-lock"]="0:0:755"
+    ["/usr/local/bin/diad-lock-auth"]="0:0:755"
     ["/etc/wofi/style.css"]="0:0:644"
     ["/usr/local/bin/brave"]="0:0:755"
 )

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if nmcli radio wifi | grep -q enabled; then
+    nmcli radio wifi off
+    notify-send "Wi-Fi" "Radio OFF" -i network-wireless-offline
+else
+    nmcli radio wifi on
+    notify-send "Wi-Fi" "Radio ON" -i network-wireless
+fi

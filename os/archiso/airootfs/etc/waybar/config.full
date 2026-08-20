@@ -1,55 +1,61 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 38,
-  "margin-top": 6,
-  "margin-bottom": 10,
-  "margin-left": 10,
-  "margin-right": 10,
+  "height": 24,
+  "margin-top": 8,
+  "margin-bottom": 8,
+  "margin-left": 8,
+  "margin-right": 8,
   "exclusive": true,
-  "spacing": 8,
+  "spacing": 6,
   "modules-left": ["clock"],
   "modules-center": ["custom/ws-agent", "custom/ws-browser", "custom/ws-comms"],
-  "modules-right": ["custom/wifi", "custom/reboot", "custom/power"],
+  "modules-right": ["custom/wifi", "custom/lock", "custom/reboot", "custom/power"],
   "clock": {
     "format": "{:%H:%M}",
-    "tooltip-format": "{:%Y-%m-%d}",
+    "tooltip": false,
     "interval": 10
   },
   "custom/ws-agent": {
     "format": "DIAD AGENT",
-    "tooltip": "Workspace 1: DIAD Agent (F1)",
-    "on-click": "swaymsg workspace 'DIAD AGENT'",
+    "tooltip": false,
+    "on-click": "/usr/local/bin/diad-workspace.sh 1",
     "interval": "once"
   },
   "custom/ws-browser": {
     "format": "BROWSER",
-    "tooltip": "Workspace 2: Web Browser (F2)",
-    "on-click": "swaymsg workspace 'BROWSER'",
+    "tooltip": false,
+    "on-click": "/usr/local/bin/diad-workspace.sh 2",
     "interval": "once"
   },
   "custom/ws-comms": {
     "format": "COMMS",
-    "tooltip": "Workspace 3: Communications & Launchpad (F3)",
-    "on-click": "swaymsg workspace 'COMMS'",
+    "tooltip": false,
+    "on-click": "/usr/local/bin/diad-workspace.sh 3",
     "interval": "once"
   },
   "custom/wifi": {
     "format": "",
-    "tooltip": "Wi-Fi Networks",
+    "tooltip": false,
     "on-click": "/usr/local/bin/diad-wifi.sh",
+    "interval": "once"
+  },
+  "custom/lock": {
+    "format": "",
+    "tooltip": false,
+    "on-click": "/usr/local/bin/diad-lock",
     "interval": "once"
   },
   "custom/reboot": {
     "format": "",
-    "tooltip": "Restart",
+    "tooltip": false,
     "on-click": "/usr/local/bin/diad-power.sh reboot",
     "interval": "once"
   },
   "custom/power": {
     "format": "",
-    "tooltip": "Shutdown",
-    "on-click": "/usr/local/bin/diad-power.sh power",
+    "tooltip": false,
+    "on-click": "/usr/local/bin/diad-power.sh dialog",
     "interval": "once"
   }
 }

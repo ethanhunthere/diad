@@ -2,6 +2,7 @@
 //!
 //! Stateless draw functions for the chat, file tree, code editor and system
 //! status views; the app supplies state, this module supplies pixels.
+//! Responsive down to compact split panes without size errors.
 
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -14,17 +15,18 @@ use ratatui::{
 use super::app::{App, AppMode};
 
 /// Compute accent color for the active TUI theme (/tuicolor).
+/// Default: Brand Crimson Oxide `#B32032`.
 pub fn theme_accent_color(theme: &str) -> Color {
     match theme.to_lowercase().as_str() {
-        "slate" => Color::Rgb(56, 189, 248),
+        "slate" => Color::Rgb(138, 150, 142),
         "tokyo_night" | "cyber" => Color::Rgb(122, 162, 247),
         "catppuccin" => Color::Rgb(203, 166, 247),
         "nord" => Color::Rgb(136, 192, 208),
         "gruvbox" => Color::Rgb(250, 189, 47),
-        "matrix" => Color::Rgb(34, 197, 94),
-        "copper" | "amber" => Color::Rgb(245, 158, 11),
-        "obsidian" => Color::Rgb(251, 191, 36),
-        _ => Color::Rgb(245, 158, 11), // 2040 cyber-amber default
+        "matrix" => Color::Rgb(56, 161, 105),
+        "copper" | "amber" => Color::Rgb(217, 119, 6),
+        "obsidian" => Color::Rgb(179, 32, 50),
+        _ => Color::Rgb(179, 32, 50), // #B32032 Brand Crimson default
     }
 }
 
@@ -41,54 +43,50 @@ fn provider_color(provider: &str) -> Color {
         "mistral" => Color::Rgb(234, 179, 8),      // yellow
         "openrouter" => Color::Rgb(167, 139, 250), // violet
         "ollama" => Color::Rgb(148, 163, 184),     // slate
-        _ => Color::Gray,
+        _ => Color::Rgb(138, 150, 142),
     }
 }
 
-/// Render the complete TUI frame.
-///
-/// Minimum usable size (spec 2.8): below 60x15 the layout would overlap,
-/// so a centered resize hint is drawn instead — the TUI recovers the
-/// moment the terminal grows again.
+/// Render the complete TUI frame with 100% fluid responsiveness.
 pub fn render(frame: &mut Frame, app: &App) {
     let area = frame.area();
 
-    if area.width < 60 || area.height < 15 {
-        let hint = ratatui::widgets::Paragraph::new(vec![
-            ratatui::text::Line::from("DIAD AGENT"),
-            ratatui::text::Line::from(""),
-            ratatui::text::Line::from("Terminal too small — resize to at least 60x15."),
-            ratatui::text::Line::from(format!("Current: {}x{}", area.width, area.height)),
-        ])
-        .alignment(ratatui::layout::Alignment::Center)
-        .style(ratatui::style::Style::default().fg(ratatui::style::Color::Gray));
-        frame.render_widget(hint, area);
+    if area.width < 8 || area.height < 2 {
         return;
     }
 
+    // Adaptive height allocation
+    let show_top = area.height >= 5;
+    let top_height: u16 = if show_top { 1 } else { 0 };
+    let bottom_height: u16 = if area.height < 7 {
+        1
+    } else if area.height < 12 {
+        2
+    } else {
+        3
+    };
+
     // ---- Top Bar ----
-    let top_bar = render_top_bar(app);
-    frame.render_widget(top_bar, Rect::new(area.x, area.y, area.width, 1));
+    if show_top {
+        let top_bar = render_top_bar(app, area.width);
+        frame.render_widget(top_bar, Rect::new(area.x, area.y, area.width, 1));
+    }
 
     // ---- Bottom Bar (input) ----
-    let bottom_bar = render_bottom_bar(app);
+    let bottom_bar = render_bottom_bar(app, bottom_height);
     frame.render_widget(
         bottom_bar,
         Rect::new(
             area.x,
-            area.y + area.height.saturating_sub(3),
+            area.y + area.height.saturating_sub(bottom_height),
             area.width,
-            3,
+            bottom_height,
         ),
     );
 
     // ---- Main content area ----
-    let main_area = Rect::new(
-        area.x,
-        area.y + 1,
-        area.width,
-        area.height.saturating_sub(4),
-    );
+    let main_height = area.height.saturating_sub(top_height + bottom_height);
+    let main_area = Rect::new(area.x, area.y + top_height, area.width, main_height);
 
     match app.mode {
         AppMode::Chat => render_chat_view(frame, app, main_area),
@@ -108,8 +106,8 @@ pub fn render(frame: &mut Frame, app: &App) {
     }
 }
 
-/// Top bar: DIAD Agent title + active provider·model pill + connection status.
-fn render_top_bar(app: &App) -> Paragraph<'static> {
+/// Top bar: responsive DIAD Agent title + active provider·model pill + connection status.
+fn render_top_bar(app: &App, width: u16) -> Paragraph<'static> {
     let accent = theme_accent_color(&app.config.theme);
     let status = if app.connected {
         "● CONNECTED"
@@ -117,156 +115,192 @@ fn render_top_bar(app: &App) -> Paragraph<'static> {
         "○ OFFLINE"
     };
     let status_color = if app.connected {
-        Color::Green
+        Color::Rgb(56, 161, 105) // #38A169 Muted Zinc Green
     } else {
-        Color::Yellow
+        Color::Rgb(217, 119, 6) // #D97706 Industrial Amber
     };
 
-    let provider_pill = if app.model.is_empty() {
-        app.provider.to_uppercase()
+    let spans = if width < 42 {
+        // Ultra-compact: ◈ DIAD | OFFLINE
+        vec![
+            Span::styled(
+                " ◈ DIAD ",
+                Style::default().fg(Color::Rgb(229, 234, 230)).bg(accent).bold(),
+            ),
+            Span::raw(" "),
+            Span::styled(status, Style::default().fg(status_color).bold()),
+        ]
+    } else if width < 68 {
+        // Compact: ◈ DIAD | PROVIDER | STATUS
+        let prov = app.provider.to_uppercase();
+        vec![
+            Span::styled(
+                " ◈ DIAD ",
+                Style::default().fg(Color::Rgb(229, 234, 230)).bg(accent).bold(),
+            ),
+            Span::raw(" │ "),
+            Span::styled(
+                format!(" {prov} "),
+                Style::default()
+                    .fg(Color::Rgb(229, 234, 230))
+                    .bg(Color::Rgb(30, 35, 33))
+                    .bold(),
+            ),
+            Span::raw(" │ "),
+            Span::styled(status, Style::default().fg(status_color).bold()),
+        ]
     } else {
-        format!("{} · {}", app.provider.to_uppercase(), app.model)
+        // Full rich bar
+        let provider_pill = if app.model.is_empty() {
+            app.provider.to_uppercase()
+        } else {
+            format!("{} · {}", app.provider.to_uppercase(), app.model)
+        };
+        vec![
+            Span::styled(
+                " ◈ DIAD ",
+                Style::default().fg(Color::Rgb(229, 234, 230)).bg(accent).bold(),
+            ),
+            Span::raw(" │ "),
+            Span::styled(
+                " [F5 GUI STUDIO] ",
+                Style::default()
+                    .fg(Color::Rgb(9, 10, 10))
+                    .bg(Color::Rgb(138, 150, 142))
+                    .bold(),
+            ),
+            Span::raw(" │ "),
+            Span::styled(
+                format!(" {provider_pill} "),
+                Style::default()
+                    .fg(Color::Rgb(229, 234, 230))
+                    .bg(Color::Rgb(30, 35, 33))
+                    .bold(),
+            ),
+            Span::raw(" │ "),
+            Span::styled(
+                format!(" {} ", app.mode),
+                Style::default()
+                    .fg(Color::Rgb(138, 150, 142))
+                    .bg(Color::Rgb(22, 25, 24)),
+            ),
+            Span::raw(" │ "),
+            Span::styled(status, Style::default().fg(status_color).bold()),
+        ]
     };
 
-    let line = Line::from(vec![
-        Span::styled(
-            " ◈ DIAD ",
-            Style::default().fg(Color::Black).bg(accent).bold(),
-        ),
-        Span::raw(" │ "),
-        Span::styled(
-            " [F5 GUI STUDIO] ",
-            Style::default().fg(Color::Black).bg(Color::Rgb(56, 189, 248)).bold(),
-        ),
-        Span::raw(" │ "),
-        Span::styled(
-            format!(" {provider_pill} "),
-            Style::default()
-                .fg(Color::Black)
-                .bg(provider_color(&app.provider))
-                .bold(),
-        ),
-        Span::raw(" │ "),
-        Span::styled(
-            format!(" {} ", app.mode),
-            Style::default().fg(Color::Rgb(248, 250, 252)).bg(Color::Rgb(30, 33, 48)),
-        ),
-        Span::raw(" │ "),
-        Span::styled(status, Style::default().fg(status_color).bold()),
-    ]);
-
-    Paragraph::new(line).style(Style::default().bg(Color::Rgb(13, 14, 21)))
+    Paragraph::new(Line::from(spans)).style(Style::default().bg(Color::Rgb(15, 17, 16)))
 }
 
 /// Bottom bar: input field with cursor (or masked secret/confirmation prompt).
-fn render_bottom_bar(app: &App) -> Paragraph<'_> {
+fn render_bottom_bar(app: &App, height: u16) -> Paragraph<'_> {
     if app.mode == AppMode::Connect {
         let prompt = format!(" Paste API key for {} (hidden): ", app.connect_target);
         let masked: String = app.connect_input.chars().map(|_| '•').collect();
         let line = Line::from(vec![
-            Span::styled(prompt, Style::default().fg(Color::Yellow)),
-            Span::styled(masked, Style::default().fg(Color::White)),
+            Span::styled(prompt, Style::default().fg(Color::Rgb(217, 119, 6))),
+            Span::styled(masked, Style::default().fg(Color::Rgb(229, 234, 230))),
             Span::styled(
-                if app.connect_input.is_empty() {
-                    "▊"
-                } else {
-                    ""
-                },
-                Style::default().fg(Color::Cyan),
+                if app.connect_input.is_empty() { "▊" } else { "" },
+                Style::default().fg(Color::Rgb(179, 32, 50)),
             ),
         ]);
 
-        let block = Block::default()
-            .borders(Borders::TOP)
-            .border_style(Style::default().fg(Color::Yellow));
-
-        return Paragraph::new(line)
-            .block(block)
-            .style(Style::default().fg(Color::White));
+        let mut p = Paragraph::new(line).style(Style::default().bg(Color::Rgb(15, 17, 16)));
+        if height > 1 {
+            p = p.block(
+                Block::default()
+                    .borders(Borders::TOP)
+                    .border_style(Style::default().fg(Color::Rgb(32, 38, 35))),
+            );
+        }
+        return p;
     }
 
-    // ---- SecurePrompt mode (masked secret input) ----
+    // ---- SecurePrompt mode ----
     if app.mode == AppMode::SecurePrompt {
-        // Confirmation prompt: show the label and wait for y/n
         if let Some(confirm) = &app.confirmation_prompt {
             let line = Line::from(vec![
                 Span::styled(
                     format!(" {}\u{00a0} ", confirm.label),
-                    Style::default().fg(Color::Yellow),
+                    Style::default().fg(Color::Rgb(217, 119, 6)),
                 ),
-                Span::styled(" [y/N] ", Style::default().fg(Color::Cyan)),
+                Span::styled(" [y/N] ", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
             ]);
 
-            let block = Block::default()
-                .borders(Borders::TOP)
-                .border_style(Style::default().fg(Color::Yellow));
-
-            return Paragraph::new(line)
-                .block(block)
-                .style(Style::default().fg(Color::White));
+            let mut p = Paragraph::new(line).style(Style::default().bg(Color::Rgb(15, 17, 16)));
+            if height > 1 {
+                p = p.block(
+                    Block::default()
+                        .borders(Borders::TOP)
+                        .border_style(Style::default().fg(Color::Rgb(32, 38, 35))),
+                );
+            }
+            return p;
         }
 
-        // Masked secret input
         if let Some(prompt) = &app.secret_prompt {
             let masked: String = prompt.buffer.chars().map(|_| '•').collect();
             let line = Line::from(vec![
                 Span::styled(
                     format!(" {} ", prompt.label),
-                    Style::default().fg(Color::Yellow),
+                    Style::default().fg(Color::Rgb(217, 119, 6)),
                 ),
-                Span::styled(masked, Style::default().fg(Color::White)),
+                Span::styled(masked, Style::default().fg(Color::Rgb(229, 234, 230))),
                 Span::styled(
                     if prompt.buffer.is_empty() { "▊" } else { "" },
-                    Style::default().fg(Color::Cyan),
-                ),
-                Span::styled(
-                    " (Enter to confirm, Esc to cancel)",
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(Color::Rgb(179, 32, 50)),
                 ),
             ]);
 
-            let block = Block::default()
-                .borders(Borders::TOP)
-                .border_style(Style::default().fg(Color::Yellow));
-
-            return Paragraph::new(line)
-                .block(block)
-                .style(Style::default().fg(Color::White));
+            let mut p = Paragraph::new(line).style(Style::default().bg(Color::Rgb(15, 17, 16)));
+            if height > 1 {
+                p = p.block(
+                    Block::default()
+                        .borders(Borders::TOP)
+                        .border_style(Style::default().fg(Color::Rgb(32, 38, 35))),
+                );
+            }
+            return p;
         }
-
-        // No active prompt — fall back to chat input
     }
 
     let text = if app.input_buffer.is_empty() {
         if app.offline_flow == Some(super::app::OfflineFlow::WifiSelect) {
             Line::from(vec![
-                Span::styled("✦ Wi-Fi ❯ ", Style::default().fg(Color::Rgb(245, 158, 11)).bold()),
                 Span::styled(
-                    "Type SSID name to connect, then press Enter (Esc to cancel)",
-                    Style::default().fg(Color::Rgb(251, 191, 36)),
+                    "✦ Wi-Fi ❯ ",
+                    Style::default().fg(Color::Rgb(217, 119, 6)).bold(),
+                ),
+                Span::styled(
+                    "Type SSID name to connect, then press Enter",
+                    Style::default().fg(Color::Rgb(138, 150, 142)),
                 ),
             ])
         } else {
             Line::from(vec![
-                Span::styled("✦ DIAD ❯ ", Style::default().fg(Color::Rgb(245, 158, 11)).bold()),
+                Span::styled("✦ DIAD ❯ ", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
                 Span::styled(
-                    "Type intent or command... (e.g. 'connect wifi', 'make screen warmer', /help)",
-                    Style::default().fg(Color::Rgb(148, 163, 184)),
+                    "Type intent or command... (e.g. 'connect wifi', /help)",
+                    Style::default().fg(Color::Rgb(138, 150, 142)),
                 ),
             ])
         }
     } else {
-        // Build the input line with cursor indicator
         let mut spans: Vec<Span> = Vec::new();
-        spans.push(Span::styled("✦ DIAD ❯ ", Style::default().fg(Color::Rgb(245, 158, 11)).bold()));
+        spans.push(Span::styled(
+            "✦ DIAD ❯ ",
+            Style::default().fg(Color::Rgb(179, 32, 50)).bold(),
+        ));
         let input = &app.input_buffer;
 
-        // Text before cursor
-        if app.cursor_position > 0 {
-            spans.push(Span::styled(&input[..app.cursor_position], Style::default().fg(Color::Rgb(248, 250, 252))));
+        if app.cursor_position > 0 && app.cursor_position <= input.len() {
+            spans.push(Span::styled(
+                &input[..app.cursor_position],
+                Style::default().fg(Color::Rgb(229, 234, 230)),
+            ));
         }
 
-        // Cursor indicator
         let cursor_char = if app.cursor_position < input.len() {
             input.chars().nth(app.cursor_position).unwrap_or(' ')
         } else {
@@ -278,26 +312,30 @@ fn render_bottom_bar(app: &App) -> Paragraph<'_> {
             Style::default().fg(Color::Black).bg(accent).bold(),
         ));
 
-        // Text after cursor
         if app.cursor_position < input.len() {
-            spans.push(Span::styled(&input[app.cursor_position + 1..], Style::default().fg(Color::Rgb(248, 250, 252))));
+            spans.push(Span::styled(
+                &input[app.cursor_position + 1..],
+                Style::default().fg(Color::Rgb(229, 234, 230)),
+            ));
         }
 
         Line::from(spans)
     };
 
-    let block = Block::default()
-        .borders(Borders::TOP)
-        .border_style(Style::default().fg(Color::Rgb(35, 39, 56)));
-
-    Paragraph::new(text)
-        .block(block)
-        .style(Style::default().bg(Color::Rgb(13, 14, 21)))
+    let mut p = Paragraph::new(text).style(Style::default().bg(Color::Rgb(15, 17, 16)));
+    if height > 1 {
+        p = p.block(
+            Block::default()
+                .borders(Borders::TOP)
+                .border_style(Style::default().fg(Color::Rgb(32, 38, 35))),
+        );
+    }
+    p
 }
 
-/// Chat view: message list (newest at bottom).
+/// Chat view: message list with wrapping.
 fn render_chat_view(frame: &mut Frame, app: &App, area: Rect) {
-    let visible = area.height.saturating_sub(2) as usize;
+    let visible = area.height.saturating_sub(1) as usize;
     let skip = app.messages.len().saturating_sub(visible);
     let accent = theme_accent_color(&app.config.theme);
     let messages: Vec<ListItem> = app
@@ -307,44 +345,81 @@ fn render_chat_view(frame: &mut Frame, app: &App, area: Rect) {
         .map(|msg| {
             let styled = if let Some(content) = msg.strip_prefix("[You] ") {
                 Line::from(vec![
-                    Span::styled("◈ USER ", Style::default().fg(Color::Black).bg(accent).bold()),
+                    Span::styled(
+                        "◈ USER ",
+                        Style::default().fg(Color::White).bg(accent).bold(),
+                    ),
                     Span::raw(" "),
-                    Span::styled(content.to_string(), Style::default().fg(Color::Rgb(248, 250, 252)).bold()),
+                    Span::styled(
+                        content.to_string(),
+                        Style::default().fg(Color::Rgb(229, 234, 230)).bold(),
+                    ),
                 ])
             } else if msg.starts_with("[You]") {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(accent).bold()))
+                Line::from(Span::styled(
+                    msg.clone(),
+                    Style::default().fg(accent).bold(),
+                ))
             } else if let Some(content) = msg.strip_prefix("[Assistant] ") {
                 Line::from(vec![
-                    Span::styled("❖ DIAD AI ", Style::default().fg(Color::Black).bg(Color::Rgb(56, 189, 248)).bold()),
+                    Span::styled(
+                        "❖ DIAD ",
+                        Style::default()
+                            .fg(Color::Rgb(229, 234, 230))
+                            .bg(Color::Rgb(30, 35, 33))
+                            .bold(),
+                    ),
                     Span::raw(" "),
-                    Span::styled(content.to_string(), Style::default().fg(Color::Rgb(248, 250, 252))),
+                    Span::styled(
+                        content.to_string(),
+                        Style::default().fg(Color::Rgb(229, 234, 230)),
+                    ),
                 ])
             } else if let Some(content) = msg.strip_prefix("[Tool Result] ") {
                 Line::from(vec![
-                    Span::styled("✓ SUCCESS ", Style::default().fg(Color::Black).bg(Color::Rgb(52, 211, 153)).bold()),
+                    Span::styled(
+                        "✓ SUCCESS ",
+                        Style::default()
+                            .fg(Color::Black)
+                            .bg(Color::Rgb(56, 161, 105))
+                            .bold(),
+                    ),
                     Span::raw(" "),
-                    Span::styled(content.to_string(), Style::default().fg(Color::Rgb(167, 243, 208))),
+                    Span::styled(
+                        content.to_string(),
+                        Style::default().fg(Color::Rgb(167, 243, 208)),
+                    ),
                 ])
             } else if let Some(content) = msg.strip_prefix("[Error] ") {
                 Line::from(vec![
-                    Span::styled("✗ ERROR ", Style::default().fg(Color::White).bg(Color::Rgb(239, 68, 68)).bold()),
+                    Span::styled(
+                        "✗ ERROR ",
+                        Style::default()
+                            .fg(Color::White)
+                            .bg(Color::Rgb(179, 32, 50))
+                            .bold(),
+                    ),
                     Span::raw(" "),
-                    Span::styled(content.to_string(), Style::default().fg(Color::Rgb(254, 202, 202))),
+                    Span::styled(
+                        content.to_string(),
+                        Style::default().fg(Color::Rgb(254, 202, 202)),
+                    ),
                 ])
             } else if msg.starts_with("[tool]") {
-                // Dim system line for tool executions
                 Line::from(Span::styled(
                     msg.clone(),
-                    Style::default().fg(Color::Rgb(56, 189, 248)).italic(),
+                    Style::default().fg(Color::Rgb(138, 150, 142)).italic(),
                 ))
             } else if msg.starts_with("[local]") || msg.starts_with("[system]") {
-                // Dim system line for offline intent execution
                 Line::from(Span::styled(
                     msg.clone(),
-                    Style::default().fg(Color::Rgb(148, 163, 184)).italic(),
+                    Style::default().fg(Color::Rgb(138, 150, 142)).italic(),
                 ))
             } else {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Rgb(248, 250, 252))))
+                Line::from(Span::styled(
+                    msg.clone(),
+                    Style::default().fg(Color::Rgb(229, 234, 230)),
+                ))
             };
             ListItem::new(styled)
         })
@@ -352,7 +427,7 @@ fn render_chat_view(frame: &mut Frame, app: &App, area: Rect) {
 
     let list = List::new(messages)
         .block(Block::default().borders(Borders::NONE))
-        .style(Style::default().bg(Color::Rgb(13, 14, 21)));
+        .style(Style::default().bg(Color::Rgb(15, 17, 16)));
 
     frame.render_widget(list, area);
 }
@@ -364,11 +439,10 @@ fn render_filetree_view(frame: &mut Frame, _app: &App, area: Rect) {
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
         .split(area);
 
-    // Left: file tree placeholder
     let tree_block = Block::default()
         .title(" File Tree ")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::DarkGray));
+        .border_style(Style::default().fg(Color::Rgb(32, 38, 35)));
 
     let tree_items = vec![
         ListItem::new("📁 ~/"),
@@ -379,17 +453,19 @@ fn render_filetree_view(frame: &mut Frame, _app: &App, area: Rect) {
         ListItem::new("  📄 .bashrc"),
     ];
 
-    let tree_list = List::new(tree_items).block(tree_block);
+    let tree_list = List::new(tree_items)
+        .block(tree_block)
+        .style(Style::default().bg(Color::Rgb(15, 17, 16)).fg(Color::Rgb(229, 234, 230)));
     frame.render_widget(tree_list, layout[0]);
 
-    // Right: file preview placeholder
     let preview_block = Block::default()
         .title(" Preview ")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::DarkGray));
+        .border_style(Style::default().fg(Color::Rgb(32, 38, 35)));
 
     let preview_text = Paragraph::new("Select a file to preview...\n\nUse the input bar to search or navigate.\nType a path to jump to a directory.")
         .block(preview_block)
+        .style(Style::default().bg(Color::Rgb(15, 17, 16)).fg(Color::Rgb(138, 150, 142)))
         .wrap(Wrap { trim: true });
 
     frame.render_widget(preview_text, layout[1]);
@@ -400,13 +476,13 @@ fn render_code_view(frame: &mut Frame, _app: &App, area: Rect) {
     let code_block = Block::default()
         .title(" Code View ")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::DarkGray));
+        .border_style(Style::default().fg(Color::Rgb(32, 38, 35)));
 
     let code_text = Paragraph::new(
         "// No file open.\n// Use the input bar to open a file.\n// Type 'open <path>' or describe what you want to edit.\n\n// The agent will show code here with syntax highlighting\n// when you open or create a file.",
     )
     .block(code_block)
-    .style(Style::default().fg(Color::White))
+    .style(Style::default().bg(Color::Rgb(15, 17, 16)).fg(Color::Rgb(229, 234, 230)))
     .wrap(Wrap { trim: false });
 
     frame.render_widget(code_text, area);
@@ -428,7 +504,7 @@ fn render_system_view(frame: &mut Frame, app: &App, area: Rect) {
 
     let info_lines = [
         ("OS", "DIAD (Arch Linux)"),
-        ("Kernel", env!("CARGO_PKG_VERSION")), // placeholder
+        ("Kernel", env!("CARGO_PKG_VERSION")),
         ("Provider", &app.provider),
         (
             "Connection",
@@ -444,49 +520,52 @@ fn render_system_view(frame: &mut Frame, app: &App, area: Rect) {
     for (i, (label, value)) in info_lines.iter().enumerate() {
         let block = Block::default()
             .borders(Borders::LEFT)
-            .border_style(Style::default().fg(Color::DarkGray));
+            .border_style(Style::default().fg(Color::Rgb(179, 32, 50)));
 
         let line = Line::from(vec![
             Span::styled(
                 format!(" {label:>12}  "),
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(Color::Rgb(138, 150, 142)),
             ),
-            Span::styled(*value, Style::default().fg(Color::White)),
+            Span::styled(*value, Style::default().fg(Color::Rgb(229, 234, 230))),
         ]);
 
-        let para = Paragraph::new(line).block(block);
+        let para = Paragraph::new(line)
+            .block(block)
+            .style(Style::default().bg(Color::Rgb(15, 17, 16)));
         frame.render_widget(para, layout[i]);
     }
 
-    // Help panel
     let help_block = Block::default()
         .title(" Help ")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::DarkGray));
+        .border_style(Style::default().fg(Color::Rgb(32, 38, 35)));
 
     let help_text = Text::from(vec![
         Line::from(vec![
-            Span::styled("F1", Style::default().fg(Color::Cyan).bold()),
+            Span::styled("F1", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
             Span::raw(" Chat    "),
-            Span::styled("F2", Style::default().fg(Color::Cyan).bold()),
+            Span::styled("F2", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
             Span::raw(" File Tree    "),
-            Span::styled("F3", Style::default().fg(Color::Cyan).bold()),
+            Span::styled("F3", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
             Span::raw(" Code View    "),
-            Span::styled("F4", Style::default().fg(Color::Cyan).bold()),
+            Span::styled("F4", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
             Span::raw(" System"),
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("Ctrl+C/D", Style::default().fg(Color::Cyan).bold()),
+            Span::styled("Ctrl+C/D", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
             Span::raw(" Quit    "),
-            Span::styled("Ctrl+L", Style::default().fg(Color::Cyan).bold()),
+            Span::styled("Ctrl+L", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
             Span::raw(" Clear chat    "),
-            Span::styled("Esc", Style::default().fg(Color::Cyan).bold()),
+            Span::styled("Esc", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
             Span::raw(" Clear input"),
         ]),
     ]);
 
-    let help_para = Paragraph::new(help_text).block(help_block);
+    let help_para = Paragraph::new(help_text)
+        .block(help_block)
+        .style(Style::default().bg(Color::Rgb(15, 17, 16)).fg(Color::Rgb(229, 234, 230)));
     frame.render_widget(help_para, layout[5]);
 }
 
@@ -501,18 +580,17 @@ fn render_connect_view(frame: &mut Frame, app: &App, area: Rect) {
         ])
         .split(area);
 
-    let title_block = Block::default().borders(Borders::NONE);
     let title = Paragraph::new(Line::from(vec![Span::styled(
         format!(" Connect to {} ", app.connect_target),
-        Style::default().fg(Color::Yellow).bold(),
+        Style::default().fg(Color::Rgb(217, 119, 6)).bold(),
     )]))
-    .block(title_block)
-    .centered();
+    .centered()
+    .style(Style::default().bg(Color::Rgb(15, 17, 16)));
     frame.render_widget(title, layout[0]);
 
     let info_block = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::DarkGray))
+        .border_style(Style::default().fg(Color::Rgb(32, 38, 35)))
         .title(" Instructions ");
     let info = Paragraph::new(vec![
         Line::from(""),
@@ -523,29 +601,29 @@ fn render_connect_view(frame: &mut Frame, app: &App, area: Rect) {
             Span::raw("  in the "),
             Span::styled(
                 format!("'{}'", app.connect_target),
-                Style::default().fg(Color::Cyan).bold(),
+                Style::default().fg(Color::Rgb(179, 32, 50)).bold(),
             ),
             Span::raw(" slot."),
         ]),
         Line::from(vec![
             Span::raw("  It is "),
-            Span::styled("never", Style::default().fg(Color::Red).bold()),
+            Span::styled("never", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
             Span::raw(" written to disk in plaintext or logged."),
         ]),
         Line::from(""),
         Line::from(vec![
             Span::raw("  Press "),
-            Span::styled("Enter", Style::default().fg(Color::Cyan).bold()),
+            Span::styled("Enter", Style::default().fg(Color::Rgb(56, 161, 105)).bold()),
             Span::raw(" to save and validate, "),
-            Span::styled("Esc", Style::default().fg(Color::Cyan).bold()),
+            Span::styled("Esc", Style::default().fg(Color::Rgb(138, 150, 142)).bold()),
             Span::raw(" to cancel."),
         ]),
     ])
     .block(info_block)
+    .style(Style::default().bg(Color::Rgb(15, 17, 16)).fg(Color::Rgb(229, 234, 230)))
     .wrap(Wrap { trim: true });
     frame.render_widget(info, layout[1]);
 
-    // Show the rest of the chat messages below
     let visible = layout[2].height.saturating_sub(2) as usize;
     let skip = app.messages.len().saturating_sub(visible);
     let msg_items: Vec<ListItem> = app
@@ -554,31 +632,31 @@ fn render_connect_view(frame: &mut Frame, app: &App, area: Rect) {
         .skip(skip)
         .map(|msg| {
             let styled = if msg.starts_with("[You]") {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Cyan)))
+                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Rgb(179, 32, 50))))
             } else if msg.starts_with("[Error]") {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Red)))
+                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Rgb(179, 32, 50))))
             } else {
                 Line::from(Span::styled(
                     msg.clone(),
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(Color::Rgb(138, 150, 142)),
                 ))
             };
             ListItem::new(styled)
         })
         .collect();
-    let list = List::new(msg_items).block(Block::default().borders(Borders::NONE));
+    let list = List::new(msg_items)
+        .block(Block::default().borders(Borders::NONE))
+        .style(Style::default().bg(Color::Rgb(15, 17, 16)));
     frame.render_widget(list, layout[2]);
 }
 
-/// SecurePrompt view: shows the prompt label and the chat history below.
-/// The actual masked input is rendered in the bottom bar.
+/// SecurePrompt view.
 fn render_secure_prompt_view(frame: &mut Frame, app: &App, area: Rect) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(2), Constraint::Min(0)])
         .split(area);
 
-    let title_block = Block::default().borders(Borders::NONE);
     let title_text = if let Some(confirm) = &app.confirmation_prompt {
         format!(" Confirm: {}", confirm.label)
     } else if let Some(prompt) = &app.secret_prompt {
@@ -588,12 +666,11 @@ fn render_secure_prompt_view(frame: &mut Frame, app: &App, area: Rect) {
     };
     let title = Paragraph::new(Line::from(vec![Span::styled(
         title_text,
-        Style::default().fg(Color::Yellow).bold(),
+        Style::default().fg(Color::Rgb(217, 119, 6)).bold(),
     )]))
-    .block(title_block);
+    .style(Style::default().bg(Color::Rgb(15, 17, 16)));
     frame.render_widget(title, layout[0]);
 
-    // Show the chat history below the prompt title
     let visible = layout[1].height.saturating_sub(2) as usize;
     let skip = app.messages.len().saturating_sub(visible);
     let msg_items: Vec<ListItem> = app
@@ -602,34 +679,35 @@ fn render_secure_prompt_view(frame: &mut Frame, app: &App, area: Rect) {
         .skip(skip)
         .map(|msg| {
             let styled = if msg.starts_with("[You]") {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Cyan)))
+                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Rgb(179, 32, 50))))
             } else if msg.starts_with("[Error]") {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Red)))
+                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Rgb(179, 32, 50))))
             } else if msg.starts_with("[local]") {
                 Line::from(Span::styled(
                     msg.clone(),
-                    Style::default().fg(Color::DarkGray).italic(),
+                    Style::default().fg(Color::Rgb(138, 150, 142)).italic(),
                 ))
             } else if msg.starts_with("[tool]") {
                 Line::from(Span::styled(
                     msg.clone(),
-                    Style::default().fg(Color::Blue).italic(),
+                    Style::default().fg(Color::Rgb(179, 32, 50)).italic(),
                 ))
             } else {
                 Line::from(Span::styled(
                     msg.clone(),
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(Color::Rgb(138, 150, 142)),
                 ))
             };
             ListItem::new(styled)
         })
         .collect();
-    let list = List::new(msg_items).block(Block::default().borders(Borders::NONE));
+    let list = List::new(msg_items)
+        .block(Block::default().borders(Borders::NONE))
+        .style(Style::default().bg(Color::Rgb(15, 17, 16)));
     frame.render_widget(list, layout[1]);
 }
 
-/// Provider picker popup (F6 / `/model`): all configured providers with
-/// connection status. Selecting one is resolved by the event loop.
+/// Provider picker popup (F6 / `/model`).
 fn render_provider_picker(frame: &mut Frame, app: &App, area: Rect) {
     let popup = centered_rect(64, 70, area);
 
@@ -637,9 +715,11 @@ fn render_provider_picker(frame: &mut Frame, app: &App, area: Rect) {
         let block = Block::default()
             .title(" Providers ")
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan));
+            .border_style(Style::default().fg(Color::Rgb(179, 32, 50)));
         frame.render_widget(
-            Paragraph::new("No providers configured.").block(block),
+            Paragraph::new("No providers configured.")
+                .block(block)
+                .style(Style::default().bg(Color::Rgb(22, 25, 24)).fg(Color::Rgb(229, 234, 230))),
             popup,
         );
         return;
@@ -659,9 +739,9 @@ fn render_provider_picker(frame: &mut Frame, app: &App, area: Rect) {
                 "✓ no key needed"
             };
             let status_color = if e.has_key {
-                Color::Green
+                Color::Rgb(56, 161, 105)
             } else {
-                Color::Yellow
+                Color::Rgb(217, 119, 6)
             };
             let active = if e.name == app.provider { "►" } else { " " };
             ListItem::new(Line::from(vec![
@@ -679,19 +759,19 @@ fn render_provider_picker(frame: &mut Frame, app: &App, area: Rect) {
     let block = Block::default()
         .title(" Providers — ↑/↓ select · Enter pick · Esc close ")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(Color::Rgb(179, 32, 50)));
 
     let list = List::new(items)
         .block(block)
-        .highlight_style(Style::default().bg(Color::Cyan).fg(Color::Black));
+        .style(Style::default().bg(Color::Rgb(22, 25, 24)).fg(Color::Rgb(229, 234, 230)))
+        .highlight_style(Style::default().bg(Color::Rgb(179, 32, 50)).fg(Color::White).bold());
 
     let mut state = ratatui::widgets::ListState::default();
     state.select(Some(app.picker_index.min(app.provider_entries.len() - 1)));
     frame.render_stateful_widget(list, popup, &mut state);
 }
 
-/// Model picker popup: shown after choosing a provider. Arrow keys select
-/// the active model; Enter applies it.
+/// Model picker popup.
 fn render_model_picker(frame: &mut Frame, app: &App, area: Rect) {
     let popup = centered_rect(56, 50, area);
 
@@ -699,9 +779,11 @@ fn render_model_picker(frame: &mut Frame, app: &App, area: Rect) {
         let block = Block::default()
             .title(format!(" {} — models ", app.provider))
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan));
+            .border_style(Style::default().fg(Color::Rgb(179, 32, 50)));
         frame.render_widget(
-            Paragraph::new("No models listed for this provider.").block(block),
+            Paragraph::new("No models listed for this provider.")
+                .block(block)
+                .style(Style::default().bg(Color::Rgb(22, 25, 24)).fg(Color::Rgb(229, 234, 230))),
             popup,
         );
         return;
@@ -714,7 +796,7 @@ fn render_model_picker(frame: &mut Frame, app: &App, area: Rect) {
             let active = if *m == app.model { "►" } else { " " };
             ListItem::new(Line::from(vec![
                 Span::raw(format!(" {active} ")),
-                Span::styled(m.clone(), Style::default().fg(Color::White)),
+                Span::styled(m.clone(), Style::default().fg(Color::Rgb(229, 234, 230))),
             ]))
         })
         .collect();
@@ -722,11 +804,12 @@ fn render_model_picker(frame: &mut Frame, app: &App, area: Rect) {
     let block = Block::default()
         .title(format!(" {} — pick a model · Enter apply ", app.provider))
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(Color::Rgb(179, 32, 50)));
 
     let list = List::new(items)
         .block(block)
-        .highlight_style(Style::default().bg(Color::Cyan).fg(Color::Black));
+        .style(Style::default().bg(Color::Rgb(22, 25, 24)).fg(Color::Rgb(229, 234, 230)))
+        .highlight_style(Style::default().bg(Color::Rgb(179, 32, 50)).fg(Color::White).bold());
 
     let mut state = ratatui::widgets::ListState::default();
     state.select(Some(app.model_index.min(app.model_list.len() - 1)));

@@ -26,7 +26,7 @@ use crate::tui::event::Event;
 pub const MAX_ITERATIONS: usize = 5;
 
 /// Master AI System Prompt for DIAD OS.
-pub const DIAD_SYSTEM_PROMPT: &str = r#"You are DIAD AI — the autonomous, sovereign operating system intelligence for DIAD OS.
+pub const DIAD_SYSTEM_PROMPT: &str = r#"You are DIAD — the sovereign operating system intelligence for DIAD OS.
 You have direct, full-spectrum authority to execute native tools to configure, inspect, automate, and control the user's computer.
 
 SYSTEM ARCHITECTURE:

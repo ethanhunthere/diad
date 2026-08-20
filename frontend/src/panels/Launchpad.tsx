@@ -29,7 +29,7 @@ export function Launchpad() {
       <div className="mb-4 flex flex-col items-center">
         <DiadLogo size={32} />
       </div>
-      <p className="mt-1 text-[13px] text-slate-400 font-sans">Autonomous Operating System · Workspace Navigation</p>
+      <p className="mt-1 text-[13px] text-slate-400 font-sans">Intent-Driven Operating System · Workspace Navigation</p>
 
       <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-xl w-full">
         <button

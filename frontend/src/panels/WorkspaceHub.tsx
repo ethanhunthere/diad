@@ -89,7 +89,7 @@ export function WorkspaceHub() {
             <DiadLogo size={36} />
           </div>
           <p className="mt-1 text-[13px] text-slate-400 font-sans tracking-wide">
-            Autonomous Operating System
+            Intent-Driven Operating System
           </p>
 
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
@@ -104,7 +104,7 @@ export function WorkspaceHub() {
                 Launch DIAD Studio
               </span>
               <span className="text-[11.5px] text-slate-400 font-sans">
-                Full visual AI programming & OS controls
+                Visual programming & OS controls
               </span>
             </button>
 
@@ -119,7 +119,7 @@ export function WorkspaceHub() {
                 Open Terminal (TUI)
               </span>
               <span className="text-[11.5px] text-slate-400 font-sans">
-                High-speed lightweight Foot console (F5)
+                High-speed lightweight console (F5)
               </span>
             </button>
           </div>
@@ -130,7 +130,7 @@ export function WorkspaceHub() {
       {ws === 2 && (
         <div className="flex flex-col items-center max-w-xl w-full text-center animate-fade-in my-auto">
           <div className="mb-4 flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-3xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shadow-2xl shadow-cyan-500/20">
-            <Globe size={36} className="animate-pulse" />
+            <Globe size={36} />
           </div>
           <h1 className="text-lg sm:text-xl font-bold tracking-wider font-mono text-slate-100 uppercase">
             WEB BROWSER

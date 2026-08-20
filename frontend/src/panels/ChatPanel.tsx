@@ -2,15 +2,59 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
+import { Copy, Check, Sparkles, Terminal, Wrench, Shield, HelpCircle, Plus, ChevronRight, Eye } from "lucide-react";
 import { useStore, sendMsg } from "../stores/useStore";
 import { nextId } from "../lib/format";
 import type { ChatMessage } from "../lib/types";
 import { ToolCallCard } from "../components/ToolCallCard";
 import { EditDiffCard } from "../components/EditDiffCard";
 import { ChatInput } from "../components/ChatInput";
+import { AgentExplainerModal } from "../components/AgentExplainerModal";
+
+function CodeBlock({ children, className }: { children: React.ReactNode; className?: string }) {
+  const [copied, setCopied] = useState(false);
+  const match = /language-(\w+)/.exec(className || "");
+  const lang = match ? match[1] : "";
+  const codeText = String(children).replace(/\n$/, "");
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(codeText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="relative my-3.5 overflow-hidden rounded-xl border border-[#202623] bg-[#090A0A]">
+      <div className="flex items-center justify-between border-b border-[#202623] bg-[#161918] px-3.5 py-1.5 text-[11.5px] font-mono text-[#8A968E]">
+        <span className="font-semibold text-[#E5EAE6]">{lang || "code"}</span>
+        <button
+          onClick={copyCode}
+          className="flex items-center gap-1.5 rounded px-2 py-0.5 text-[11px] text-[#8A968E] hover:bg-[#1E2321] hover:text-[#E5EAE6] transition-colors"
+          title="Copy code"
+        >
+          {copied ? (
+            <>
+              <Check size={12} className="text-[#38A169]" />
+              <span className="text-[#38A169]">Copied</span>
+            </>
+          ) : (
+            <>
+              <Copy size={12} />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      </div>
+      <div className="overflow-x-auto p-4 text-[13.5px] font-mono leading-relaxed text-[#E5EAE6]">
+        <code>{children}</code>
+      </div>
+    </div>
+  );
+}
 
 function MessageBubble({ m }: { m: ChatMessage }) {
   const [copied, setCopied] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const copyContent = () => {
     if (!m.content) return;
@@ -21,8 +65,8 @@ function MessageBubble({ m }: { m: ChatMessage }) {
 
   if (m.role === "system") {
     return (
-      <div className="flex items-start gap-2.5 px-3 py-1.5 text-[13px] text-slate-400 animate-fade-in font-mono bg-surface-2/40 rounded-xl border border-border-subtle/50 my-1">
-        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
+      <div className="flex items-start gap-2.5 px-3.5 py-2 text-[13px] text-[#8A968E] animate-fade-in font-mono bg-[#161918] rounded-xl border border-[#202623] my-2 max-w-2xl mx-auto">
+        <span className="mt-0.5 text-[#B32032] font-bold">◈</span>
         <span className="break-words leading-relaxed">{m.content}</span>
       </div>
     );
@@ -30,31 +74,42 @@ function MessageBubble({ m }: { m: ChatMessage }) {
 
   const isUser = m.role === "user";
   return (
-    <div
-      className={`flex ${isUser ? "justify-end" : "justify-start"} animate-fade-in my-2 group`}
-    >
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} animate-fade-in my-3 group`}>
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
+          onClick={() => setPreviewImage(null)}
+        >
+          <img
+            src={previewImage}
+            alt="Preview"
+            className="max-h-[90vh] max-w-[90vw] rounded-xl border border-[#202623] object-contain shadow-2xl"
+          />
+        </div>
+      )}
+
       <div
-        className={`max-w-[92%] sm:max-w-[85%] rounded-2xl border px-5 py-4 shadow-xl transition-all ${
+        className={`max-w-[94%] sm:max-w-[85%] rounded-2xl border px-5 py-4 transition-all ${
           isUser
-            ? "border-amber-500/50 bg-gradient-to-br from-amber-500/20 to-amber-600/10 text-slate-50 shadow-amber-950/20"
-            : "border-border-subtle/80 bg-surface/95 backdrop-blur-xl text-slate-100 shadow-black/40 hover:border-border-strong"
+            ? "border-[#202623] bg-[#161918] text-[#E5EAE6] shadow-lg hover:border-[#B32032]/50"
+            : "border-transparent bg-transparent text-[#E5EAE6] px-2 sm:px-4"
         }`}
       >
-        <div className="mb-2 flex items-center justify-between gap-3 text-[11.5px] font-semibold tracking-wider">
+        {/* Message Header */}
+        <div className="mb-2.5 flex items-center justify-between gap-3 text-[12px] font-semibold">
           <div className="flex items-center gap-2">
             {isUser ? (
-              <span className="px-2 py-0.5 rounded-md bg-amber-500/30 text-amber-300 font-bold border border-amber-500/40 uppercase">
-                ◈ USER
+              <span className="text-[11.5px] font-bold text-[#E5EAE6] font-mono flex items-center gap-1.5">
+                <span className="text-[#B32032]">◈</span> You
               </span>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 font-bold border border-sky-500/40 uppercase flex items-center gap-1">
-                  ❖ DIAD AI
+                <span className="text-[12px] font-bold text-[#E5EAE6] font-mono flex items-center gap-1.5">
+                  <span className="text-[#B32032]">✦</span> DIAD Agent
                 </span>
                 {m.streaming && (
-                  <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-400 font-normal">
-                    <span className="streaming-dot h-2 w-2 rounded-full bg-amber-400" />
-                    generating…
+                  <span className="text-[11px] text-[#8A968E] font-mono font-normal">
+                    executing…
                   </span>
                 )}
               </div>
@@ -64,19 +119,97 @@ function MessageBubble({ m }: { m: ChatMessage }) {
           {!isUser && (
             <button
               onClick={copyContent}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] text-slate-400 hover:text-amber-400 flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-2/60 border border-border-subtle"
-              title="Copy response"
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] text-[#8A968E] hover:text-[#E5EAE6] flex items-center gap-1 px-2 py-0.5 rounded bg-[#161918] border border-[#202623]"
+              title="Copy message"
             >
-              {copied ? "✓ Copied" : "Copy"}
+              {copied ? (
+                <>
+                  <Check size={11} className="text-[#38A169]" />
+                  <span className="text-[#38A169]">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={11} />
+                  <span>Copy</span>
+                </>
+              )}
             </button>
           )}
         </div>
 
-        <div className={isUser ? "text-[15.5px] leading-relaxed font-normal whitespace-pre-wrap break-words text-slate-50" : "markdown text-[15px] leading-relaxed text-slate-100"}>
+        {/* Attached Images in User Message */}
+        {m.images && m.images.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2.5">
+            {m.images.map((imgUrl, idx) => (
+              <div
+                key={idx}
+                className="group/img relative cursor-pointer overflow-hidden rounded-xl border border-[#202623] hover:border-[#B32032] transition-all"
+                onClick={() => setPreviewImage(imgUrl)}
+              >
+                <img
+                  src={imgUrl}
+                  alt={`Attachment ${idx + 1}`}
+                  className="h-24 w-24 object-cover sm:h-32 sm:w-32"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity">
+                  <Eye size={18} className="text-white" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Message Content */}
+        <div className={isUser ? "text-[15px] sm:text-[15.5px] leading-relaxed whitespace-pre-wrap break-words text-[#E5EAE6]" : "markdown text-[15px] sm:text-[15.5px] leading-[1.75] text-[#E5EAE6]"}>
           {isUser ? (
             <span>{m.content}</span>
           ) : (
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeHighlight]}
+              components={{
+                code({ node, inline, className, children, ...props }: any) {
+                  if (inline) {
+                    return (
+                      <code className="rounded bg-[#1E2321] px-1.5 py-0.5 font-mono text-[13px] text-[#E5EAE6] border border-[#202623]" {...props}>
+                        {children}
+                      </code>
+                    );
+                  }
+                  return <CodeBlock className={className}>{children}</CodeBlock>;
+                },
+                table({ children }) {
+                  return (
+                    <div className="my-4 overflow-x-auto rounded-xl border border-[#202623] bg-[#0F1110]">
+                      <table className="w-full text-left text-[13.5px] border-collapse">
+                        {children}
+                      </table>
+                    </div>
+                  );
+                },
+                th({ children }) {
+                  return (
+                    <th className="border-b border-[#202623] bg-[#161918] px-4 py-2.5 font-semibold text-[#E5EAE6]">
+                      {children}
+                    </th>
+                  );
+                },
+                td({ children }) {
+                  return (
+                    <td className="border-b border-[#202623]/60 px-4 py-2.5 text-[#8A968E]">
+                      {children}
+                    </td>
+                  );
+                },
+                blockquote({ children }) {
+                  return (
+                    <blockquote className="my-3 border-l-2 border-[#B32032] bg-[#161918]/60 px-4 py-2 text-[#8A968E] rounded-r-lg">
+                      {children}
+                    </blockquote>
+                  );
+                },
+              }}
+            >
               {m.content || (m.streaming ? "…" : "")}
             </ReactMarkdown>
           )}
@@ -84,7 +217,7 @@ function MessageBubble({ m }: { m: ChatMessage }) {
 
         {/* Tool call cards */}
         {m.tools.length > 0 && (
-          <div className="mt-3.5 space-y-2.5">
+          <div className="mt-4 space-y-3">
             {m.tools.map((t) => (
               <ToolCallCard key={t.requestId} msgId={m.id} card={t} />
             ))}
@@ -93,7 +226,7 @@ function MessageBubble({ m }: { m: ChatMessage }) {
 
         {/* Edit diff cards */}
         {m.diffs.length > 0 && (
-          <div className="mt-3.5 space-y-2.5">
+          <div className="mt-4 space-y-3">
             {m.diffs.map((d) => (
               <EditDiffCard key={d.requestId} card={d} />
             ))}
@@ -105,7 +238,7 @@ function MessageBubble({ m }: { m: ChatMessage }) {
 }
 
 /**
- * Chat panel — clean, spacious, high-contrast AI coding & pair-programming workspace.
+ * Chat panel — clean, spacious, world-class AI coding & pair-programming workspace.
  */
 export function ChatPanel() {
   const messages = useStore((s) => s.messages);
@@ -117,6 +250,7 @@ export function ChatPanel() {
   const wsConnected = useStore((s) => s.wsConnected);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [stick, setStick] = useState(true);
+  const [showExplainer, setShowExplainer] = useState(false);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -129,66 +263,135 @@ export function ChatPanel() {
     setStick(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
   };
 
-  const send = (text: string) => {
+  const send = (text: string, images?: string[]) => {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed && (!images || images.length === 0)) return;
     const lower = trimmed.toLowerCase();
     if (lower === "/tuicolor" || lower === "/theme" || lower === "/personalize" || lower.startsWith("/tuicolor") || lower.startsWith("/theme")) {
       setView("settings");
       useStore.getState().appendMessage({
         role: "system",
-        content: "◈ Opening the Settings and Appearance panel.",
+        content: "◈ Opening Settings & Appearance panel.",
       });
       return;
     }
-    useStore.getState().appendMessage({ role: "user", content: trimmed });
-    sendMsg({ type: "chat_send", id: nextId("chat"), text: trimmed });
+    if (lower === "/help" || lower === "/explainer" || lower === "/guide") {
+      setShowExplainer(true);
+      return;
+    }
+
+    useStore.getState().appendMessage({
+      role: "user",
+      content: trimmed,
+      images,
+    });
+
+    sendMsg({
+      type: "chat_send",
+      id: nextId("chat"),
+      text: trimmed,
+      images: images && images.length > 0 ? images : undefined,
+    });
   };
 
+  const QUICK_PROMPTS = [
+    { label: "Check Wi-Fi & Network", cmd: "/wifi", icon: Wrench },
+    { label: "Hardware Diagnostics", cmd: "/status", icon: Shield },
+    { label: "How DIAD Agent Works", action: () => setShowExplainer(true), icon: HelpCircle },
+    { label: "Open TUI Client", cmd: "/tui", icon: Terminal },
+  ];
+
   return (
-    <div className="flex h-full flex-col bg-obsidian">
-      {/* Top chat action bar if messages exist */}
-      {messages.length > 0 && (
-        <div className="flex items-center justify-between border-b border-border-subtle/80 bg-surface/70 backdrop-blur-md px-5 py-2.5 text-[12px]">
-          <div className="flex items-center gap-2.5 text-slate-300">
-            <span className="text-amber-400 font-bold">◈</span>
-            <span className="font-semibold text-slate-100">{provider || "DIAD"} · {model || "Agent"}</span>
-            <span className="text-slate-500">({messages.length} messages)</span>
-          </div>
-          <div className="flex items-center gap-2">
+    <div className="flex h-full flex-col bg-[#090A0A]">
+      {showExplainer && <AgentExplainerModal onClose={() => setShowExplainer(false)} />}
+
+      {/* Top chat action bar */}
+      <div className="flex h-11 items-center justify-between border-b border-[#202623] bg-[#0F1110] px-4 sm:px-6 text-[12.5px] select-none">
+        <div className="flex items-center gap-2.5 text-[#8A968E]">
+          <span className="text-[#B32032] font-bold">✦</span>
+          <span className="font-semibold text-[#E5EAE6]">{provider || "DIAD"} · {model || "Agent"}</span>
+          {messages.length > 0 && (
+            <span className="text-[#525D56] text-[11.5px]">({messages.length} messages)</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowExplainer(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-[#202623] bg-[#161918] px-2.5 py-1 text-[11.5px] font-medium text-[#8A968E] hover:border-[#B32032] hover:text-[#E5EAE6] transition-colors"
+            title="How DIAD Agent Works"
+          >
+            <HelpCircle size={13} />
+            <span className="hidden sm:inline">How it Works</span>
+          </button>
+          {messages.length > 0 && (
             <button
-              className="flex items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-2 px-3 py-1.5 text-[12px] font-medium text-slate-300 hover:border-amber-500/50 hover:text-amber-300 transition-colors shadow-sm"
+              className="flex items-center gap-1.5 rounded-lg border border-[#202623] bg-[#161918] px-2.5 py-1 text-[11.5px] font-medium text-[#8A968E] hover:border-[#B32032] hover:text-[#E5EAE6] transition-colors"
               onClick={clearMessages}
               title="Start a fresh conversation"
             >
-              + New Chat
+              <Plus size={13} />
+              <span>New Chat</span>
             </button>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5"
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 sm:px-8 py-6"
       >
         {messages.length === 0 && (
-          <div className="flex h-full flex-col items-center justify-center text-center px-4 my-auto">
-            <p className="text-[14px] text-slate-500 font-mono">
-              Ready · Type an intent or command below
+          <div className="flex h-full flex-col items-center justify-center text-center px-4 my-auto animate-fade-in max-w-xl mx-auto">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#202623] bg-[#161918] text-[#B32032] shadow-xl mb-4">
+              <Sparkles size={22} />
+            </div>
+            <h3 className="text-[17px] font-bold text-[#E5EAE6]">
+              DIAD Agent Studio
+            </h3>
+            <p className="mt-1.5 text-[13px] text-[#8A968E] max-w-md">
+              Intent-driven OS execution engine. Run shell tools, manage filesystem diffs, paste images, or control native desktop subsystems.
             </p>
+
+            {/* Quick action cards */}
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
+              {QUICK_PROMPTS.map((p, idx) => {
+                const Icon = p.icon;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      if (p.action) p.action();
+                      else if (p.cmd) send(p.cmd);
+                    }}
+                    className="flex items-center justify-between rounded-xl border border-[#202623] bg-[#161918] p-3 text-left hover:border-[#B32032] hover:bg-[#1E2321] transition-all group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon size={16} className="text-[#B32032]" />
+                      <span className="text-[13px] font-medium text-[#E5EAE6]">
+                        {p.label}
+                      </span>
+                    </div>
+                    <ChevronRight size={14} className="text-[#525D56] group-hover:text-[#E5EAE6] transition-colors" />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
+
         {messages.map((m) => (
           <MessageBubble key={m.id} m={m} />
         ))}
+
         {streaming && messages.length > 0 && (
-          <div className="px-3 py-1 text-[13px] text-amber-400 flex items-center gap-2 animate-pulse font-mono">
-            <span className="streaming-dot h-2 w-2 rounded-full bg-amber-400" />
+          <div className="px-4 py-1 text-[13px] text-[#8A968E] font-mono flex items-center gap-2">
+            <span className="text-[#B32032]">✦</span>
             <span>DIAD Agent is reasoning…</span>
           </div>
         )}
       </div>
+
       <ChatInput onSend={send} disabled={!wsConnected} />
     </div>
   );

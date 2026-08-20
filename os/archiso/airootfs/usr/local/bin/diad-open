@@ -22,7 +22,7 @@ case "${app}" in
         fi
         swaymsg workspace 2 >/dev/null 2>&1
         swaymsg '[title="DIAD Apps"] kill' >/dev/null 2>&1 || true
-        brave "https://duckduckgo.com" >/dev/null 2>&1 &
+        brave "http://127.0.0.1:7860/apps" >/dev/null 2>&1 &
         exit 0
         ;;
     telegram)

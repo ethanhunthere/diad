@@ -188,7 +188,7 @@ async fn static_handler(
     // Serving the SPA here was the root cause of the workspace floods — the
     // pages must keep their real titles for the sway assign rules to match.
     let (asset_name, asset) = match clean {
-        "apps" => ("apps.html", Assets::get("apps.html")),
+        "apps" | "apps.html" => ("apps.html", Assets::get("apps.html")),
         "launch" => ("launch.html", Assets::get("launch.html")),
         _ => match Assets::get(clean) {
             Some(file) => (clean, Some(file)),

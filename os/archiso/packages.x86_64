@@ -39,6 +39,7 @@ pkg-config
 playerctl
 polkit
 power-profiles-daemon
+psmisc
 pv
 rustup
 slurp

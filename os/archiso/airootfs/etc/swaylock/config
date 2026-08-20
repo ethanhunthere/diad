@@ -1,0 +1,34 @@
+# =============================================================================
+# DIAD OS — Swaylock Configuration (Titanium Obsidian Theme)
+# =============================================================================
+image=/usr/share/backgrounds/diad/lockscreen.png
+scaling=fill
+color=0d0e15
+ignore-empty-password
+show-failed-attempts
+
+font=Noto Sans
+font-size=12
+indicator-radius=50
+indicator-thickness=4
+
+inside-color=0d0e15
+inside-clear-color=0d0e15
+inside-caps-lock-color=0d0e15
+inside-ver-color=0d0e15
+inside-wrong-color=0d0e15
+
+ring-color=333852
+ring-clear-color=38bdf8
+ring-caps-lock-color=fbbf24
+ring-ver-color=fbbf24
+ring-wrong-color=f87171
+
+key-hl-color=fbbf24
+bs-hl-color=f87171
+text-color=f8fafc
+text-clear-color=38bdf8
+text-caps-lock-color=fbbf24
+text-ver-color=fbbf24
+text-wrong-color=f87171
+line-color=00000000

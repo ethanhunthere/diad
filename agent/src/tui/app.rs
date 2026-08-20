@@ -511,7 +511,8 @@ impl App {
         // Handle /gui — launch GUI
         if input == "/gui" {
             self.open_gui_requested = true;
-            self.messages.push("[system] Launching DIAD AGENT GUI...".into());
+            self.messages
+                .push("[system] Launching DIAD AGENT GUI...".into());
             let _ = std::process::Command::new("brave")
                 .arg("--app=http://127.0.0.1:7860")
                 .spawn();
@@ -521,7 +522,11 @@ impl App {
         }
 
         // Handle /tuicolor [theme] or /theme [theme] — TUI color personalization
-        if input == "/tuicolor" || input == "/theme" || input.starts_with("/tuicolor ") || input.starts_with("/theme ") {
+        if input == "/tuicolor"
+            || input == "/theme"
+            || input.starts_with("/tuicolor ")
+            || input.starts_with("/theme ")
+        {
             let rest = if let Some(r) = input.strip_prefix("/tuicolor ") {
                 r.trim()
             } else if let Some(r) = input.strip_prefix("/theme ") {
@@ -531,9 +536,11 @@ impl App {
             };
             if !rest.is_empty() {
                 self.config.theme = rest.to_string();
-                self.messages.push(format!("[system] TUI theme set to: {rest}"));
+                self.messages
+                    .push(format!("[system] TUI theme set to: {rest}"));
             } else {
-                self.messages.push(format!("[system] Current TUI theme: {}", self.config.theme));
+                self.messages
+                    .push(format!("[system] Current TUI theme: {}", self.config.theme));
                 self.messages.push("[system] Available TUI themes: monochrome, slate, tokyo_night, catppuccin, nord, gruvbox, matrix".to_string());
                 self.messages.push("[system] Usage: /tuicolor <theme> or open GUI Settings -> Personalize for the live side-by-side studio.".to_string());
             }
@@ -1001,6 +1008,9 @@ mod tests {
         app.input_buffer = "/tuicolor monochrome".into();
         app.submit_input();
         assert_eq!(app.config.theme, "monochrome");
-        assert!(app.messages.iter().any(|m| m.contains("TUI theme set to: monochrome")));
+        assert!(app
+            .messages
+            .iter()
+            .any(|m| m.contains("TUI theme set to: monochrome")));
     }
 }
