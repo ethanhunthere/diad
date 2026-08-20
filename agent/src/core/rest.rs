@@ -3629,7 +3629,7 @@ mod tests {
         );
         let text = String::from_utf8_lossy(&body).to_string();
         assert!(
-            text.contains("One tap to open the browser"),
+            text.contains("WORKSPACE 2 · BROWSER"),
             "/apps must contain the browser launcher tagline, got: {text}"
         );
         assert!(
@@ -3739,7 +3739,7 @@ mod tests {
         );
         let text = String::from_utf8_lossy(&body).to_string();
         assert!(
-            text.contains("One tap to open the browser"),
+            text.contains("WORKSPACE 2 · BROWSER"),
             "/apps.html must serve the standalone page, got: {text}"
         );
     }

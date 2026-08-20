@@ -74,7 +74,7 @@ function MessageBubble({ m }: { m: ChatMessage }) {
 
   const isUser = m.role === "user";
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"} animate-fade-in my-3 group`}>
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} animate-spring-in my-3 group`}>
       {previewImage && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
@@ -364,7 +364,7 @@ export function ChatPanel() {
                       if (p.action) p.action();
                       else if (p.cmd) send(p.cmd);
                     }}
-                    className="flex items-center justify-between rounded-xl border border-[#202623] bg-[#161918] p-3 text-left hover:border-[#B32032] hover:bg-[#1E2321] transition-all group"
+                    className="flex items-center justify-between rounded-xl border border-[#202623] bg-[#161918] p-3 text-left hover:border-[#B32032] hover:bg-[#1E2321] hover-elevate transition-all group"
                   >
                     <div className="flex items-center gap-2.5">
                       <Icon size={16} className="text-[#B32032]" />

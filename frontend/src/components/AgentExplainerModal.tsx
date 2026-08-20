@@ -113,8 +113,8 @@ export function AgentExplainerModal({
   const Icon = slide.icon;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-fade-in select-none">
-      <div className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-[#202623] bg-[#161918] p-6 sm:p-8 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-xl animate-fade-in select-none">
+      <div className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-[#202623] bg-[#161918] p-6 sm:p-8 shadow-2xl animate-modal-in">
         {/* Top Header */}
         <div className="flex items-center justify-between border-b border-[#202623] pb-4">
           <div className="flex items-center gap-2.5">
@@ -149,7 +149,7 @@ export function AgentExplainerModal({
             {slide.points.map((pt, i) => (
               <div
                 key={i}
-                className="rounded-xl border border-[#202623] bg-[#0F1110] p-3.5 transition-all hover:border-[#B32032]/40"
+                className="rounded-xl border border-[#202623] bg-[#0F1110] p-3.5 hover-elevate transition-all hover:border-[#B32032]/50"
               >
                 <div className="text-[13.5px] font-semibold text-[#E5EAE6] flex items-center gap-2">
                   <span className="text-[#B32032] font-bold text-[12px]">✦</span>

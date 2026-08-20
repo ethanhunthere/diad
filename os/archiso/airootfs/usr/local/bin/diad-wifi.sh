@@ -2,7 +2,7 @@
 # =============================================================================
 # DIAD — Universal Industrial Basalt & Crimson Wi-Fi Manager
 # =============================================================================
-set -euo pipefail
+set -uo pipefail
 
 WOFI_STYLE="/etc/wofi/style.css"
 WOFI_BASE="--dmenu --insensitive --style $WOFI_STYLE"
@@ -13,6 +13,9 @@ rfkill unblock all 2>/dev/null || true
 
 # 2. Discover primary Wi-Fi interface
 WIFI_DEV=$(nmcli -t -f DEVICE,TYPE dev 2>/dev/null | grep ':wifi' | cut -d: -f1 | head -n 1 || echo "")
+if [ -z "$WIFI_DEV" ] && command -v iw >/dev/null 2>&1; then
+    WIFI_DEV=$(iw dev 2>/dev/null | grep Interface | awk '{print $2}' | head -n 1 || echo "")
+fi
 
 if [ -n "$WIFI_DEV" ]; then
     ip link set "$WIFI_DEV" up 2>/dev/null || true
@@ -22,8 +25,8 @@ fi
 # 3. Check Wi-Fi radio status
 wifi_status=$(nmcli -fields WIFI g 2>/dev/null | tail -n 1 | tr -d ' ' || echo "enabled")
 if [ "$wifi_status" = "disabled" ]; then
-    choice=$(printf "⏼ Turn On Wi-Fi\n✕ Close" | wofi $WOFI_BASE --width 380 --height 180 --prompt "Wi-Fi is Powered Off" 2>/dev/null || true)
-    if [ "$choice" = "⏼ Turn On Wi-Fi" ]; then
+    choice=$(printf "[S] ⏼ Turn On Wi-Fi\n[X] ✕ Close Menu" | wofi $WOFI_BASE --width 480 --height 180 --prompt "Wi-Fi is Powered Off" 2>/dev/null || true)
+    if [[ "$choice" =~ "Turn On" ]]; then
         nmcli radio wifi on
         notify-send "DIAD Network" "Wi-Fi radio turned ON" -i network-wireless
         sleep 1.5
@@ -32,26 +35,23 @@ if [ "$wifi_status" = "disabled" ]; then
     fi
 fi
 
-# 4. Scan available wireless networks
+# 4. Notify scan start and scan available wireless networks
+notify-send "DIAD Network" "Scanning Wi-Fi networks..." -t 2000 -i network-wireless 2>/dev/null || true
+nmcli dev wifi rescan 2>/dev/null || true
+sleep 1.2
+
 raw_list=$(nmcli --terse --fields "IN-USE,SSID,SIGNAL,SECURITY,BARS" dev wifi list 2>/dev/null || true)
 
 if [ -z "$raw_list" ]; then
-    notify-send "DIAD Network" "Scanning wireless frequencies..." -t 2000 -i network-wireless 2>/dev/null || true
-    nmcli dev wifi rescan 2>/dev/null || true
-    for _ in 1 2 3; do
-        sleep 1
-        raw_list=$(nmcli --terse --fields "IN-USE,SSID,SIGNAL,SECURITY,BARS" dev wifi list 2>/dev/null || true)
-        [ -n "$raw_list" ] && break
-    done
+    sleep 1.0
+    raw_list=$(nmcli --terse --fields "IN-USE,SSID,SIGNAL,SECURITY,BARS" dev wifi list 2>/dev/null || true)
 fi
 
 if [ -z "$raw_list" ]; then
-    choice=$(printf "⟳ Scan Again\n+ Connect to Hidden Network\n⏻ Turn Off Wi-Fi\n✕ Close" | wofi $WOFI_BASE --width 420 --height 240 --prompt "No Wi-Fi Found Nearby" 2>/dev/null || true)
-    if [ "$choice" = "⟳ Scan Again" ]; then
-        nmcli dev wifi rescan 2>/dev/null || true
-        sleep 1.5
+    choice=$(printf "[S] ⟳ Rescan Networks\n[X] ✕ Close Menu\n[C] + Connect to Hidden Network\n⏻ Turn Off Wi-Fi" | wofi $WOFI_BASE --width 480 --height 240 --prompt "No Networks Found Nearby" 2>/dev/null || true)
+    if [[ "$choice" =~ "Rescan" ]] || [ "$choice" = "s" ] || [ "$choice" = "S" ]; then
         exec "$0"
-    elif [ "$choice" = "⏻ Turn Off Wi-Fi" ]; then
+    elif [[ "$choice" =~ "Turn Off" ]]; then
         nmcli radio wifi off
         notify-send "DIAD Network" "Wi-Fi disabled" -i network-wireless-offline
         exit 0
@@ -59,132 +59,111 @@ if [ -z "$raw_list" ]; then
     exit 0
 fi
 
-# 5. Format networks into high-clarity basalt menu
+# 5. Format top networks into compact, clean, non-scrollable basalt menu
 entries=""
+seen_ssids="|"
+count=0
+
 while IFS=':' read -r in_use ssid signal security bars; do
     [ -z "$ssid" ] && continue
+    # De-duplicate identical SSIDs (keep strongest)
+    if echo "$seen_ssids" | grep -q "|$ssid|"; then
+        continue
+    fi
+    seen_ssids="${seen_ssids}${ssid}|"
+    count=$((count + 1))
+    [ $count -gt 10 ] && break
+
     mark="  "
-    [ "$in_use" = "*" ] && mark="● "
+    status_suffix=""
+    if [ "$in_use" = "*" ]; then
+        mark="● "
+        status_suffix=" [Connected]"
+    fi
     sec_label="Open"
     [ -n "$security" ] && [ "$security" != "--" ] && sec_label="$security"
     [ -z "$bars" ] && bars="${signal}%"
-    line=$(printf "%s%-22s  [%s]  %s" "$mark" "$ssid" "$bars" "$sec_label")
+    
+    line=$(printf "%s%-20s   [%s]  %s%s" "$mark" "$ssid" "$bars" "$sec_label" "$status_suffix")
     entries="${entries}${line}\n"
 done <<< "$raw_list"
 
-menu_content=$(printf "✕ Close Menu\n⟳ Rescan Networks\n+ Connect to Hidden Network\n⏻ Turn Off Wi-Fi\n──────────────────────────────\n%b" "$entries")
+menu_header=$(printf "[S] ⟳ Rescan Networks\n[C] ➔ Connect to Selected Network\n[X] ✕ Close Menu\n──────────────────────────────────────────────\n")
+full_menu=$(printf "%b%b" "$menu_header" "$entries")
 
-selected=$(printf "%b" "$menu_content" | wofi $WOFI_BASE --width 480 --height 480 --prompt "✦ Select Wi-Fi Network" 2>/dev/null || true)
+selected=$(printf "%b" "$full_menu" | wofi $WOFI_BASE --width 560 --height 540 --prompt "✦ Wi-Fi Networks [S:Scan / C:Connect / X:Close]" 2>/dev/null || true)
 [ -z "$selected" ] && exit 0
 
-if [ "$selected" = "✕ Close Menu" ] || [ "$selected" = "✕ Close" ]; then
+# 6. Handle shortcut and menu actions
+if [[ "$selected" =~ "Close Menu" ]] || [ "$selected" = "x" ] || [ "$selected" = "X" ]; then
     exit 0
-elif [ "$selected" = "⟳ Rescan Networks" ]; then
-    notify-send "DIAD Network" "Rescanning channels..." -t 1500 -i network-wireless 2>/dev/null || true
-    nmcli dev wifi rescan 2>/dev/null || true
-    sleep 1.5
+elif [[ "$selected" =~ "Rescan" ]] || [ "$selected" = "s" ] || [ "$selected" = "S" ]; then
     exec "$0"
-elif [ "$selected" = "⏻ Turn Off Wi-Fi" ]; then
-    nmcli radio wifi off
-    notify-send "DIAD Network" "Wi-Fi disabled" -i network-wireless-offline
-    exit 0
-elif [ "$selected" = "+ Connect to Hidden Network" ]; then
-    hidden_ssid=$(wofi $WOFI_BASE --width 460 --height 130 --prompt "Hidden SSID ➔ [Press Enter]" 2>/dev/null || true)
-    [ -z "$hidden_ssid" ] && exit 0
-    
-    hidden_pass=$(wofi $WOFI_BASE --password --width 460 --height 130 --prompt "Password for $hidden_ssid ➔ [Press Enter]" 2>/dev/null || true)
-
-    notify-send "DIAD Network" "Connecting to hidden network '$hidden_ssid'..." -i network-wireless
-    nmcli connection delete id "$hidden_ssid" 2>/dev/null || true
-    if [ -n "$hidden_pass" ]; then
-        nmcli dev wifi connect "$hidden_ssid" password "$hidden_pass" hidden yes ${WIFI_DEV:+ifname "$WIFI_DEV"} --wait 25 && notify-send "DIAD Network" "✓ Connected to $hidden_ssid" -i network-wireless || notify-send "DIAD Network" "Connection failed for $hidden_ssid" -u critical
-    else
-        nmcli dev wifi connect "$hidden_ssid" hidden yes ${WIFI_DEV:+ifname "$WIFI_DEV"} --wait 25 && notify-send "DIAD Network" "✓ Connected to $hidden_ssid" -i network-wireless || notify-send "DIAD Network" "Connection failed" -u critical
-    fi
-    exit 0
 elif echo "$selected" | grep -q '───────'; then
     exit 0
 fi
 
-# Extract SSID name
+# If user clicked "[C] Connect to Selected Network", prompt for SSID or reconnect
+if [[ "$selected" =~ "Connect to Selected Network" ]] || [ "$selected" = "c" ] || [ "$selected" = "C" ]; then
+    # Filter list for just networks
+    net_only=$(printf "%b" "$entries" | wofi $WOFI_BASE --width 560 --height 420 --prompt "Select Network to Connect:" 2>/dev/null || true)
+    [ -z "$net_only" ] && exit 0
+    selected="$net_only"
+fi
+
+# 7. Parse selected network
 is_active=false
-if echo "$selected" | grep -q '^● '; then
+if echo "$selected" | grep -q '● ' || echo "$selected" | grep -q '\[Connected\]'; then
     is_active=true
 fi
-clean_ssid=$(echo "$selected" | sed 's/^[● ]*//' | sed 's/  \[.*$//' | xargs)
+
+clean_ssid=$(echo "$selected" | sed 's/^[● ]*//' | sed 's/   \[.*$//' | sed 's/  \[.*$//' | sed 's/ \[.*$//' | xargs)
 [ -z "$clean_ssid" ] && exit 0
 
-# If already connected, offer Disconnect or Reconnect
+# 8. If already connected, display notification back immediately
 if [ "$is_active" = true ]; then
-    ip_addr=$(ip -4 -o addr show | grep -v '127.0.0.1' | awk '{print $4}' | head -n 1 || echo "Acquiring IP...")
-    action=$(printf "✕ Close\n✓ Currently Connected (IP: %s)\n⏼ Disconnect from %s\n⟳ Reconnect" "$ip_addr" "$clean_ssid" | wofi $WOFI_BASE --width 440 --height 240 --prompt "$clean_ssid Status" 2>/dev/null || true)
-    if [ "$action" = "✕ Close" ] || [ -z "$action" ]; then
-        exit 0
-    elif echo "$action" | grep -q "Disconnect"; then
-        nmcli con down id "$clean_ssid" 2>/dev/null || ( [ -n "$WIFI_DEV" ] && nmcli dev disconnect "$WIFI_DEV" )
-        notify-send "DIAD Network" "Disconnected from $clean_ssid" -i network-wireless-offline
-    elif echo "$action" | grep -q "Reconnect"; then
-        nmcli con up id "$clean_ssid" && notify-send "DIAD Network" "✓ Reconnected to $clean_ssid" -i network-wireless
-    fi
+    ip_addr=$(ip -4 -o addr show | grep -v '127.0.0.1' | awk '{print $4}' | head -n 1 || echo "Active")
+    notify-send "DIAD Network" "✓ Connected to '$clean_ssid' (IP: $ip_addr)" -i network-wireless
     exit 0
 fi
 
-# Check if connection profile is already saved
-if nmcli -g NAME connection show 2>/dev/null | grep -Fxq "$clean_ssid"; then
-    notify-send "DIAD Network" "Connecting to saved network '$clean_ssid'..." -i network-wireless
-    if nmcli connection up "$clean_ssid" --wait 20; then
-        notify-send "DIAD Network" "✓ Connected to $clean_ssid" -i network-wireless
-        exit 0
-    else
-        notify-send "DIAD Network" "Saved connection failed for '$clean_ssid' — prompting password..." -u normal
-        nmcli connection delete id "$clean_ssid" 2>/dev/null || true
-    fi
+# 9. Prompt for password if not connected
+prompt_text="User's Password for \"$clean_ssid\"                                                     ↑"
+raw_pass=$(printf " " | wofi --dmenu --password --insensitive --style "$WOFI_STYLE" --width 560 --height 120 --prompt "$prompt_text" 2>/dev/null || true)
+
+pass=$(echo -n "$raw_pass" | tr -d '\r\n')
+# If user pressed Escape / cancelled
+if [ -z "$pass" ] || [ "$pass" = " " ]; then
+    exit 0
 fi
 
-# Check if network is open or password protected
-sec_type=$(echo "$selected" | grep -o '\]  .*' | sed 's/\]  //' || echo "")
-if [ "$sec_type" = "Open" ] || [ -z "$sec_type" ]; then
-    notify-send "DIAD Network" "Connecting to open network '$clean_ssid'..." -i network-wireless
-    if nmcli dev wifi connect "$clean_ssid" ${WIFI_DEV:+ifname "$WIFI_DEV"} --wait 20; then
+notify-send "DIAD Network" "Authenticating with '$clean_ssid'..." -i network-wireless
+
+# 10. Clean any broken stale profiles
+nmcli connection delete id "$clean_ssid" 2>/dev/null || true
+nmcli connection delete "$clean_ssid" 2>/dev/null || true
+
+# 11. Connect attempt 1: Direct dev wifi connect
+connect_out=$(nmcli dev wifi connect "$clean_ssid" password "$pass" ${WIFI_DEV:+ifname "$WIFI_DEV"} --wait 30 2>&1 || true)
+
+if echo "$connect_out" | grep -iq "successfully activated\|connected"; then
+    notify-send "DIAD Network" "✓ Connected to $clean_ssid" -i network-wireless
+else
+    # Connect attempt 2: Explicit WPA-PSK profile creation fallback
+    nmcli connection delete id "$clean_ssid" 2>/dev/null || true
+    if [ -n "$WIFI_DEV" ]; then
+        nmcli connection add type wifi ifname "$WIFI_DEV" con-name "$clean_ssid" ssid "$clean_ssid" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$pass" 2>/dev/null || true
+    else
+        nmcli connection add type wifi con-name "$clean_ssid" ssid "$clean_ssid" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$pass" 2>/dev/null || true
+    fi
+    nmcli connection modify "$clean_ssid" connection.autoconnect yes 2>/dev/null || true
+    
+    fallback_out=$(nmcli connection up "$clean_ssid" --wait 30 2>&1 || true)
+    if echo "$fallback_out" | grep -iq "successfully activated\|connected"; then
         notify-send "DIAD Network" "✓ Connected to $clean_ssid" -i network-wireless
     else
-        notify-send "DIAD Network" "Connection failed for $clean_ssid" -u critical
-    fi
-else
-    # Prompt password: clean dedicated input without dummy dmenu entries
-    prompt_text="🔑 Password for $clean_ssid ➔ [Press Enter to Connect]"
-    pass=$(wofi --dmenu --password --insensitive --style "$WOFI_STYLE" --width 480 --height 130 --prompt "$prompt_text" 2>/dev/null || true)
-    
-    # Exit if user cancelled (ESC / empty)
-    [ -z "$pass" ] && exit 0
-    
-    notify-send "DIAD Network" "Authenticating with '$clean_ssid'..." -i network-wireless
-    
-    # 1. Clean any broken stale profile first
-    nmcli connection delete id "$clean_ssid" 2>/dev/null || true
-    nmcli connection delete "$clean_ssid" 2>/dev/null || true
-
-    # 2. Attempt direct connection with interface binding
-    connect_out=$(nmcli dev wifi connect "$clean_ssid" password "$pass" ${WIFI_DEV:+ifname "$WIFI_DEV"} --wait 25 2>&1 || true)
-    
-    if echo "$connect_out" | grep -iq "successfully activated\|connected"; then
-        notify-send "DIAD Network" "✓ Successfully connected to $clean_ssid" -i network-wireless
-    else
-        # 3. Fallback: create explicit WPA-PSK profile and bring up
-        nmcli connection delete id "$clean_ssid" 2>/dev/null || true
-        if [ -n "$WIFI_DEV" ]; then
-            nmcli connection add type wifi ifname "$WIFI_DEV" con-name "$clean_ssid" ssid "$clean_ssid" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$pass" 2>/dev/null || true
-        else
-            nmcli connection add type wifi con-name "$clean_ssid" ssid "$clean_ssid" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$pass" 2>/dev/null || true
-        fi
-        
-        fallback_out=$(nmcli connection up "$clean_ssid" --wait 25 2>&1 || true)
-        if echo "$fallback_out" | grep -iq "successfully activated\|connected"; then
-            notify-send "DIAD Network" "✓ Successfully connected to $clean_ssid" -i network-wireless
-        else
-            notify-send "DIAD Network" "Authentication failed for '$clean_ssid'. Please verify password." -u critical -i network-wireless-offline
-            # Open nmtui in foot terminal as emergency fallback
-            foot --app-id=foot --title "Wi-Fi Configuration" -e nmtui >/dev/null 2>&1 &
-        fi
+        notify-send "DIAD Network" "Authentication failed for '$clean_ssid'. Please verify password." -u critical -i network-wireless-offline
+        # Open nmtui terminal fallback
+        foot --app-id=foot --title "Wi-Fi Configuration" -e nmtui >/dev/null 2>&1 &
     fi
 fi
