@@ -125,21 +125,18 @@ pub const OPENAI_COMPAT_PRESETS: &[ProviderPreset] = &[
 // ---------------------------------------------------------------------------
 
 const ANTHROPIC_MODELS: &[&str] = &[
-    "claude-sonnet-4-20250514",
     "claude-3-7-sonnet-20250219",
-    "claude-opus-4-20250514",
+    "claude-3-5-sonnet-20241022",
     "claude-3-5-haiku-20241022",
-    "claude-haiku-4-20250514",
+    "claude-3-opus-20240229",
+    "claude-sonnet-4-20250514",
 ];
 const OPENAI_MODELS: &[&str] = &[
-    "gpt-5",
-    "gpt-5-codex",
-    "codex-mini-latest",
-    "o4-mini",
     "gpt-4o",
     "gpt-4o-mini",
     "o1",
     "o3-mini",
+    "gpt-4.5-preview",
 ];
 const GEMINI_MODELS: &[&str] = &[
     "gemini-2.5-flash",

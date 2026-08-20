@@ -38,8 +38,8 @@
     "format-wifi": "",
     "format-ethernet": "",
     "format-disconnected": "",
-    "tooltip-format-wifi": "{essid} ({signalStrength}%)",
-    "tooltip-format-disconnected": "Wi-Fi Disconnected",
+    "tooltip-format-wifi": "  {essid} ({signalStrength}%)\nIP: {ipaddr}\nFrequency: {frequency} MHz\n\nClick to open Wi-Fi Manager",
+    "tooltip-format-disconnected": "  Wi-Fi Disconnected\n\nClick to scan & connect",
     "on-click": "/usr/local/bin/diad-wifi.sh",
     "interval": 2
   },

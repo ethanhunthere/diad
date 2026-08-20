@@ -16,6 +16,7 @@
     --text-primary: #E5EAE6;
     --text-secondary: #8A968E;
     --text-dim: #525D56;
+    --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; width: 100%; background-color: var(--bg-base); }
@@ -32,6 +33,17 @@
     overflow-y: auto;
   }
 
+  @keyframes pageSpring {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
   .container {
     width: 100%;
     max-width: 680px;
@@ -40,6 +52,7 @@
     align-items: center;
     text-align: center;
     gap: 32px;
+    animation: pageSpring 360ms var(--ease-spring) forwards;
   }
 
   /* Official DIAD Logo Image */
@@ -201,13 +214,18 @@
     font-size: 12.5px;
     font-weight: 600;
     letter-spacing: 0.02em;
-    transition: all 140ms ease;
+    transition: transform 180ms var(--ease-spring), border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+    will-change: transform;
   }
   .shortcut-card:hover {
     background: var(--bg-card-hover);
     border-color: var(--border-hover);
     color: #ffffff;
     transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.65);
+  }
+  .shortcut-card:active {
+    transform: scale(0.98);
   }
   .shortcut-icon {
     width: 18px;

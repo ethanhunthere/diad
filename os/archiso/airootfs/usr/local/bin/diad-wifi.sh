@@ -72,7 +72,7 @@ while IFS=':' read -r in_use ssid signal security bars; do
     fi
     seen_ssids="${seen_ssids}${ssid}|"
     count=$((count + 1))
-    [ $count -gt 10 ] && break
+    [ $count -gt 8 ] && break
 
     mark="  "
     status_suffix=""
@@ -91,7 +91,7 @@ done <<< "$raw_list"
 menu_header=$(printf "[S] ⟳ Rescan Networks\n[C] ➔ Connect to Selected Network\n[X] ✕ Close Menu\n──────────────────────────────────────────────\n")
 full_menu=$(printf "%b%b" "$menu_header" "$entries")
 
-selected=$(printf "%b" "$full_menu" | wofi $WOFI_BASE --width 560 --height 540 --prompt "✦ Wi-Fi Networks [S:Scan / C:Connect / X:Close]" 2>/dev/null || true)
+selected=$(printf "%b" "$full_menu" | wofi $WOFI_BASE --width 580 --height 560 --prompt "✦ Wi-Fi Networks [S:Scan / C:Connect / X:Close]" 2>/dev/null || true)
 [ -z "$selected" ] && exit 0
 
 # 6. Handle shortcut and menu actions

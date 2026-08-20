@@ -4,12 +4,11 @@ import { useStore, sendMsg } from "../stores/useStore";
 import { nextId } from "../lib/format";
 
 const THEMES = [
-  { id: "monochrome", label: "Titanium Mono", swatch: "#E4E4E7" },
+  { id: "monochrome", label: "Industrial Basalt", swatch: "#B32032" },
   { id: "slate", label: "Minimal Slate", swatch: "#94A3B8" },
   { id: "obsidian", label: "OLED Black", swatch: "#FFFFFF" },
-  { id: "light", label: "Studio Light", swatch: "#F4F4F5" },
-  { id: "cyber", label: "Cyber Platinum", swatch: "#38BDF8" },
-  { id: "copper", label: "Heritage Bronze", swatch: "#C87F4A" },
+  { id: "cyber", label: "Cyber Cobalt", swatch: "#38BDF8" },
+  { id: "emerald", label: "Emerald Matrix", swatch: "#38A169" },
 ];
 
 /**
@@ -39,13 +38,13 @@ export function SettingsPanel() {
 
   const changeAccent = (id: string) => {
     setSettings({ theme: id });
-    document.documentElement.style.setProperty("--accent", THEMES.find((t) => t.id === id)?.swatch ?? "#C87F4A");
+    document.documentElement.style.setProperty("--accent", THEMES.find((t) => t.id === id)?.swatch ?? "#B32032");
     persist("theme", id, "theme");
   };
 
   // Load stored accent on mount.
   useEffect(() => {
-    const t = THEMES.find((x) => x.id === settings.theme)?.swatch ?? "#C87F4A";
+    const t = THEMES.find((x) => x.id === settings.theme)?.swatch ?? "#B32032";
     document.documentElement.style.setProperty("--accent", t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -488,14 +487,16 @@ export function SettingsPanel() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {[
-              { id: "anthropic", label: "Anthropic", models: "Claude 3.7 Sonnet, 3.5 Haiku, Opus", placeholder: "sk-ant-api..." },
-              { id: "openai", label: "OpenAI", models: "GPT-4.5, GPT-4o, o3-mini, o1", placeholder: "sk-proj-..." },
-              { id: "gemini", label: "Google Gemini", models: "Gemini 2.0 Flash, 2.0 Pro, 1.5 Pro", placeholder: "AIzaSy..." },
-              { id: "deepseek", label: "DeepSeek", models: "DeepSeek-R1, DeepSeek-V3", placeholder: "sk-..." },
-              { id: "groq", label: "Groq (Fast)", models: "Llama 3.3 70B, Mixtral 8x7B", placeholder: "gsk_..." },
-              { id: "ollama", label: "Ollama / Local LLM", models: "Local offline models", placeholder: "http://localhost:11434" },
-              { id: "openrouter", label: "OpenRouter", models: "Unified multi-model router", placeholder: "sk-or-v1-..." },
-              { id: "mistral", label: "Mistral AI", models: "Mistral Large, Codestral", placeholder: "..." },
+              { id: "anthropic", label: "Anthropic", models: "Claude 3.7 Sonnet, 3.5 Sonnet, 3.5 Haiku, Opus", placeholder: "sk-ant-api..." },
+              { id: "openai", label: "OpenAI", models: "GPT-4.5, GPT-4o, GPT-4o-mini, o1, o3-mini", placeholder: "sk-proj-..." },
+              { id: "gemini", label: "Google Gemini", models: "Gemini 2.5 Pro, 2.5 Flash, 2.0 Flash, 1.5 Pro", placeholder: "AIzaSy..." },
+              { id: "qwen", label: "Qwen / Alibaba", models: "Qwen 2.5 Max, Plus, Coder 32B, 72B", placeholder: "sk-..." },
+              { id: "kimi", label: "Moonshot / Kimi", models: "Kimi K2, Moonshot v1 8k/32k/128k", placeholder: "sk-..." },
+              { id: "deepseek", label: "DeepSeek", models: "DeepSeek V3, DeepSeek R1", placeholder: "sk-..." },
+              { id: "groq", label: "Groq (Fast)", models: "Llama 3.3 70B, DeepSeek R1 Llama, Mixtral", placeholder: "gsk_..." },
+              { id: "mistral", label: "Mistral AI", models: "Mistral Large 2, Small, Codestral, Pixtral", placeholder: "..." },
+              { id: "openrouter", label: "OpenRouter", models: "Unified multi-model router (Claude, GPT, R1)", placeholder: "sk-or-v1-..." },
+              { id: "ollama", label: "Ollama / Local LLM", models: "Qwen 2.5, DeepSeek R1, Llama 3.3 (Local)", placeholder: "http://localhost:11434" },
               { id: "together", label: "Together AI", models: "Open weights & fine-tunes", placeholder: "..." },
               { id: "xai", label: "xAI (Grok)", models: "Grok-2, Grok-Beta", placeholder: "xai-..." },
               { id: "perplexity", label: "Perplexity", models: "Sonar Pro, Sonar Reasoning", placeholder: "pplx-..." },

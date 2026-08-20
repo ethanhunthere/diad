@@ -44,7 +44,7 @@ const centerCardStyle: CSSProperties = {
   width: 380,
   maxWidth: "90vw",
   boxSizing: "border-box",
-  transition: "transform 180ms ease, opacity 180ms ease",
+  transition: "transform 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease",
 };
 
 const logoContainerStyle: CSSProperties = {
