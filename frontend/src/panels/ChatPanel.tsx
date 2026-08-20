@@ -65,8 +65,8 @@ function MessageBubble({ m }: { m: ChatMessage }) {
 
   if (m.role === "system") {
     return (
-      <div className="flex items-start gap-2.5 px-3.5 py-2 text-[13px] text-[#8A968E] animate-fade-in font-mono bg-[#161918] rounded-xl border border-[#202623] my-2 max-w-2xl mx-auto">
-        <span className="mt-0.5 text-[#B32032] font-bold">◈</span>
+      <div className="flex items-center gap-2.5 px-4 py-2.5 text-[12.5px] text-[#8A968E] animate-fade-in font-mono bg-[#161918]/80 backdrop-blur-md rounded-xl border border-[#202623] my-2 max-w-2xl mx-auto shadow-sm">
+        <span className="text-[#B32032] font-bold">◈</span>
         <span className="break-words leading-relaxed">{m.content}</span>
       </div>
     );
@@ -74,52 +74,54 @@ function MessageBubble({ m }: { m: ChatMessage }) {
 
   const isUser = m.role === "user";
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"} animate-spring-in my-3 group`}>
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} animate-spring-in my-4 group`}>
       {previewImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-lg"
           onClick={() => setPreviewImage(null)}
         >
           <img
             src={previewImage}
             alt="Preview"
-            className="max-h-[90vh] max-w-[90vw] rounded-xl border border-[#202623] object-contain shadow-2xl"
+            className="max-h-[90vh] max-w-[90vw] rounded-2xl border border-[#202623] object-contain shadow-2xl"
           />
         </div>
       )}
 
       <div
-        className={`max-w-[94%] sm:max-w-[85%] rounded-2xl border px-5 py-4 transition-all ${
+        className={`max-w-[96%] sm:max-w-[88%] rounded-2xl transition-all ${
           isUser
-            ? "border-[#202623] bg-[#161918] text-[#E5EAE6] shadow-lg hover:border-[#B32032]/50"
-            : "border-transparent bg-transparent text-[#E5EAE6] px-2 sm:px-4"
+            ? "border border-[#202623] bg-gradient-to-b from-[#161918] to-[#141716] px-5 py-3.5 text-[#E5EAE6] shadow-md hover:border-[#B32032]/40"
+            : "border border-transparent bg-transparent text-[#E5EAE6] px-2 sm:px-4 py-2"
         }`}
       >
         {/* Message Header */}
-        <div className="mb-2.5 flex items-center justify-between gap-3 text-[12px] font-semibold">
+        <div className="mb-2 flex items-center justify-between gap-3 text-[12px] font-semibold">
           <div className="flex items-center gap-2">
             {isUser ? (
-              <span className="text-[11.5px] font-bold text-[#E5EAE6] font-mono flex items-center gap-1.5">
-                <span className="text-[#B32032]">◈</span> You
+              <span className="text-[12px] font-bold text-[#E5EAE6] font-mono flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-[#B32032] shadow-[0_0_8px_rgba(179,32,50,0.6)]" /> You
               </span>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="text-[12px] font-bold text-[#E5EAE6] font-mono flex items-center gap-1.5">
-                  <span className="text-[#B32032]">✦</span> DIAD Agent
+                <span className="text-[12.5px] font-bold text-[#E5EAE6] font-mono flex items-center gap-1.5">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#B32032]/20 border border-[#B32032]/40 text-[#B32032] text-[10px]">✦</span>
+                  DIAD Agent
                 </span>
                 {m.streaming && (
-                  <span className="text-[11px] text-[#8A968E] font-mono font-normal">
-                    executing…
+                  <span className="flex items-center gap-1.5 text-[11px] text-[#8A968E] font-mono font-normal">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#38A169] animate-pulse" />
+                    reasoning…
                   </span>
                 )}
               </div>
             )}
           </div>
 
-          {!isUser && (
+          {!isUser && m.content && (
             <button
               onClick={copyContent}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] text-[#8A968E] hover:text-[#E5EAE6] flex items-center gap-1 px-2 py-0.5 rounded bg-[#161918] border border-[#202623]"
+              className="opacity-0 group-hover:opacity-100 transition-all text-[11px] text-[#8A968E] hover:text-[#E5EAE6] flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#161918] border border-[#202623] shadow-sm hover:border-[#B32032]"
               title="Copy message"
             >
               {copied ? (

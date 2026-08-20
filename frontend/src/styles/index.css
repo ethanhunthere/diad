@@ -363,7 +363,7 @@
 /* ------------------------------------------------------------------ */
 
 .markdown {
-  @apply text-[13.5px] leading-relaxed text-ink;
+  @apply text-[15px] sm:text-[15.5px] leading-[1.8] text-[#E5EAE6];
 }
 .markdown > *:first-child {
   margin-top: 0;
@@ -372,95 +372,95 @@
   margin-bottom: 0;
 }
 .markdown p {
-  @apply my-1.5;
+  @apply my-2.5;
 }
 .markdown h1,
 .markdown h2,
 .markdown h3,
 .markdown h4 {
-  @apply font-semibold text-ink mt-4 mb-1.5;
+  @apply font-semibold text-[#E5EAE6] mt-5 mb-2 tracking-tight;
 }
 .markdown h1 {
-  @apply text-lg;
+  @apply text-xl border-b border-[#202623] pb-1.5;
 }
 .markdown h2 {
-  @apply text-base;
+  @apply text-lg border-b border-[#202623]/80 pb-1;
 }
 .markdown h3 {
-  @apply text-[15px];
+  @apply text-base;
 }
 .markdown ul {
-  @apply list-disc pl-5 my-1.5 space-y-0.5;
+  @apply list-disc pl-5 my-2.5 space-y-1;
 }
 .markdown ol {
-  @apply list-decimal pl-5 my-1.5 space-y-0.5;
+  @apply list-decimal pl-5 my-2.5 space-y-1;
 }
 .markdown li > ul,
 .markdown li > ol {
-  @apply my-0.5;
+  @apply my-1;
 }
 .markdown code {
-  @apply rounded bg-surface-2 border border-border-subtle px-1.5 py-0.5
-    font-mono text-[12px] text-copper-hover;
+  @apply rounded bg-[#1E2321] border border-[#202623] px-1.5 py-0.5
+    font-mono text-[13px] text-[#E5EAE6];
 }
 .markdown pre {
-  @apply my-2 rounded-panel border border-border-subtle bg-[#0D0A08] p-3 overflow-x-auto;
+  @apply my-3.5 rounded-xl border border-[#202623] bg-[#090A0A] p-4 overflow-x-auto;
 }
 .markdown pre code {
-  @apply bg-transparent border-0 p-0 text-[12.5px] text-ink leading-relaxed;
+  @apply bg-transparent border-0 p-0 text-[13.5px] text-[#E5EAE6] leading-relaxed;
 }
 .markdown blockquote {
-  @apply border-l-2 border-copper/50 pl-3 my-2 text-dim italic;
+  @apply border-l-2 border-[#B32032] bg-[#161918]/60 pl-4 py-2 my-3 text-[#8A968E] rounded-r-lg;
 }
 .markdown a {
-  @apply text-copper-hover underline underline-offset-2 hover:text-copper;
+  @apply text-[#B32032] hover:text-[#D32F2F] underline underline-offset-2 transition-colors;
 }
 .markdown table {
-  @apply my-2 w-full border-collapse text-[12.5px];
+  @apply my-3.5 w-full border-collapse text-[13.5px];
 }
 .markdown th,
 .markdown td {
-  @apply border border-border-subtle px-2.5 py-1 text-left;
+  @apply border border-[#202623] px-3.5 py-2 text-left;
 }
 .markdown th {
-  @apply bg-surface-2 text-dim font-medium;
+  @apply bg-[#161918] text-[#E5EAE6] font-semibold;
 }
 .markdown hr {
-  @apply my-3 border-border-subtle;
+  @apply my-4 border-[#202623];
 }
 
-/* highlight.js — obsidian-tinted token colors */
+/* highlight.js — Industrial Basalt & Crimson theme */
 .hljs-comment,
 .hljs-quote {
-  color: #5c534a;
+  color: #525D56;
+  font-style: italic;
 }
 .hljs-keyword,
 .hljs-selector-tag,
 .hljs-built_in,
 .hljs-name {
-  color: #e0955c;
+  color: #B32032;
+  font-weight: 600;
 }
 .hljs-string,
 .hljs-attr,
 .hljs-template-tag,
 .hljs-template-variable {
-  color: #6fbf8b;
+  color: #38A169;
 }
 .hljs-number,
 .hljs-literal,
-.hljs-symbol,
-.hljs-bullet {
-  color: #e0b060;
+.hljs-variable {
+  color: #38BDF8;
 }
 .hljs-title,
 .hljs-section,
-.hljs-function .hljs-title {
-  color: #c87f4a;
+.hljs-function {
+  color: #FBBF24;
 }
 .hljs-type,
-.hljs-class .hljs-title,
-.hljs-meta {
-  color: #b9a48f;
+.hljs-class .hljs-title {
+  color: #A78BFA;
 }
 .hljs-variable,
 .hljs-params {

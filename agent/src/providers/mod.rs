@@ -219,15 +219,14 @@ const XAI_MODELS: &[&str] = &[
 ];
 const GROQ_MODELS: &[&str] = &[
     "llama-3.3-70b-versatile",
-    "llama-3.3-70b-specdec",
     "llama-3.1-8b-instant",
     "llama-3.1-70b-versatile",
     "deepseek-r1-distill-llama-70b",
     "deepseek-r1-distill-qwen-32b",
     "mixtral-8x7b-32768",
     "gemma2-9b-it",
-    "qwen-2.5-32b",
-    "qwen-2.5-coder-32b",
+    "llama3-70b-8192",
+    "llama3-8b-8192",
 ];
 const MISTRAL_MODELS: &[&str] = &[
     "mistral-large-latest",

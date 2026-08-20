@@ -29,6 +29,8 @@ pub struct ChatRequest {
     pub temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_completion_tokens: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -106,6 +108,23 @@ pub struct ChatFunctionDelta {
     pub arguments: Option<String>,
 }
 
+/// Check whether a model supports tool calling / function calling.
+/// Reasoning models (DeepSeek R1, Groq R1 distill, o1-mini, etc.) return 400
+/// if tools are passed in the request body.
+pub fn model_supports_tools(model: &str) -> bool {
+    let m = model.to_lowercase();
+    if m.contains("distill") || m.contains("deepseek-r1") || m.contains("deepseek-reasoner") || m.contains("o1-mini") || m.contains("gemma2") {
+        return false;
+    }
+    true
+}
+
+/// Check whether a model rejects custom temperature parameters (e.g. OpenAI o1/o3 reasoning models).
+pub fn is_reasoning_model(model: &str) -> bool {
+    let m = model.to_lowercase();
+    m.starts_with("o1") || m.starts_with("o3") || m.contains("reasoner") || m.contains("r1")
+}
+
 /// Build a serializable chat completion request from the DIAD message model.
 ///
 /// `tools` are omitted entirely when empty (some OpenAI-compatible endpoints
@@ -127,7 +146,7 @@ pub fn build_chat_request(
         })
         .collect();
 
-    let chat_tools: Option<Vec<ChatTool>> = if tools.is_empty() {
+    let chat_tools: Option<Vec<ChatTool>> = if tools.is_empty() || !model_supports_tools(model) {
         None
     } else {
         Some(
@@ -145,14 +164,21 @@ pub fn build_chat_request(
         )
     };
 
+    let (temp, max_tok, max_comp_tok) = if is_reasoning_model(model) {
+        (None, None, Some(max_tokens))
+    } else {
+        (Some(0.7), Some(max_tokens), None)
+    };
+
     ChatRequest {
         model: model.to_string(),
         stream,
         messages: chat_messages,
         tools: chat_tools,
         tool_choice: None,
-        temperature: Some(0.7),
-        max_tokens: Some(max_tokens),
+        temperature: temp,
+        max_tokens: max_tok,
+        max_completion_tokens: max_comp_tok,
     }
 }
 

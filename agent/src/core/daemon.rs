@@ -874,10 +874,17 @@ pub(crate) async fn handle_chat_send(state: &DaemonState, conn: &Conn, id: Strin
                     }
                 }
                 None | Some(Err(_)) => {
-                    let err = last_error.unwrap_or_else(|| "No provider available".to_string());
+                    let raw_err = last_error.unwrap_or_else(|| {
+                        format!("No API key configured for '{used_provider}'. Add your API key in Settings (F5) or press F6 to switch providers.")
+                    });
+                    let friendly_err = if raw_err.contains("localhost:11434") {
+                        format!("Ollama is not running locally (http://localhost:11434). Start Ollama (`ollama serve`) or press F6 to select a cloud provider (Groq, Anthropic, OpenAI, Gemini, DeepSeek).")
+                    } else {
+                        raw_err
+                    };
                     let _ = tx.try_send(ServerMsg::Error {
                         id: Some(req_id.clone()),
-                        message: format!("Agent loop error: {err}"),
+                        message: friendly_err,
                     });
                     let _ = tx.try_send(ServerMsg::StreamDone { id: req_id.clone() });
                     if let Ok(usage) = state.usage.lock() {
