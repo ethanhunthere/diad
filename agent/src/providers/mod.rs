@@ -49,13 +49,13 @@ pub const OPENAI_COMPAT_PRESETS: &[ProviderPreset] = &[
     ProviderPreset {
         name: "kimi",
         base_url: "https://api.moonshot.ai/v1",
-        model: "kimi-k2-0905",
+        model: "kimi-k3",
         needs_key: true,
     },
     ProviderPreset {
         name: "deepseek",
         base_url: "https://api.deepseek.com",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         needs_key: true,
     },
     ProviderPreset {
@@ -72,50 +72,50 @@ pub const OPENAI_COMPAT_PRESETS: &[ProviderPreset] = &[
     },
     ProviderPreset {
         name: "openrouter",
-        base_url: "https://openrouter.ai/api/v1",
-        model: "anthropic/claude-sonnet-4",
+        base_url: "https://api.openrouter.ai/v1",
+        model: "anthropic/claude-sonnet-5",
         needs_key: true,
     },
     ProviderPreset {
         name: "xai",
         base_url: "https://api.x.ai/v1",
-        model: "grok-2-latest",
+        model: "grok-4.6",
         needs_key: true,
     },
     ProviderPreset {
         name: "together",
-        base_url: "https://api.together.xyz/v1",
+        base_url: "https://api.together.ai/v1",
         model: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
         needs_key: true,
     },
     ProviderPreset {
         name: "fireworks",
         base_url: "https://api.fireworks.ai/inference/v1",
-        model: "accounts/fireworks/models/llama-v3p3-70b-instruct",
+        model: "accounts/fireworks/models/deepseek-v3p1",
         needs_key: true,
     },
     ProviderPreset {
         name: "cohere",
-        base_url: "https://api.cohere.com/v1",
-        model: "command-r-plus-08-2024",
+        base_url: "https://api.cohere.ai/compatibility/v1",
+        model: "command-a-plus-05-2026",
         needs_key: true,
     },
     ProviderPreset {
         name: "perplexity",
-        base_url: "https://api.perplexity.ai",
+        base_url: "https://api.perplexity.ai/router/v1",
         model: "sonar-pro",
         needs_key: true,
     },
     ProviderPreset {
         name: "cerebras",
         base_url: "https://api.cerebras.ai/v1",
-        model: "llama-3.3-70b",
+        model: "gpt-oss-120b",
         needs_key: true,
     },
     ProviderPreset {
         name: "ollama",
         base_url: "http://localhost:11434/v1",
-        model: "qwen2.5:7b",
+        model: "qwen3:8b",
         needs_key: false,
     },
 ];
@@ -125,18 +125,21 @@ pub const OPENAI_COMPAT_PRESETS: &[ProviderPreset] = &[
 // ---------------------------------------------------------------------------
 
 const ANTHROPIC_MODELS: &[&str] = &[
+    "claude-fable-5",
+    "claude-opus-5",
+    "claude-sonnet-5",
+    "claude-haiku-5",
+    "claude-opus-4.8",
+    "claude-sonnet-4.6",
+    "claude-haiku-4-5",
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-4-20250514",
+    "claude-opus-4-20250514",
+    "claude-haiku-4-20250514",
     "claude-3-7-sonnet-20250219",
     "claude-3-5-sonnet-20241022",
     "claude-3-5-haiku-20241022",
     "claude-3-opus-20240229",
-    "claude-sonnet-4-20250514",
-    "claude-opus-4-20250514",
-    "claude-haiku-4-20250514",
-    "claude-opus-4-8",
-    "claude-opus-5",
-    "claude-sonnet-5",
-    "claude-haiku-5",
-    "claude-fable-5",
     "claude-3-sonnet-20240229",
     "claude-3-haiku-20240307",
     "claude-2.1",
@@ -147,77 +150,138 @@ const OPENAI_MODELS: &[&str] = &[
     "gpt-5-codex",
     "codex-mini-latest",
     "o4-mini",
-    "gpt-4o",
-    "gpt-4o-mini",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+    "gpt-5.6-cyber",
+    "daybreak-red",
+    "daybreak-blue",
+    "gpt-5.5",
+    "gpt-5.5-pro",
+    "gpt-5.4",
+    "gpt-5.4-pro",
+    "gpt-5.4-mini",
+    "gpt-5.4-nano",
+    "gpt-5.3-codex",
+    "gpt-5.2",
+    "gpt-5.2-pro",
+    "gpt-5.1",
+    "gpt-5.1-pro",
+    "gpt-5-mini",
+    "gpt-5-nano",
+    "gpt-5-pro",
+    "o3-pro",
+    "o3",
+    "o3-mini",
     "o1",
     "o1-mini",
-    "o3-mini",
-    "o3",
-    "gpt-4.5-preview",
-    "gpt-5-pro",
-    "gpt-4-turbo",
-    "gpt-4",
-    "gpt-3.5-turbo",
+    "gpt-4.1",
+    "gpt-4.1-mini",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "gpt-oss-120b",
+    "gpt-oss-20b",
 ];
 const GEMINI_MODELS: &[&str] = &[
-    "gemini-2.5-pro",
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-3.1-flash-image",
+    "gemini-3.1-flash-lite-image",
+    "gemini-3-pro-image",
+    "gemini-3.1-pro-preview",
+    "gemini-3-flash-preview",
+    "gemini-3.5-live-translate-preview",
+    "gemini-3.1-flash-live-preview",
+    "gemini-3.1-flash-tts-preview",
+    "gemini-omni-flash",
     "gemini-2.5-flash",
+    "gemini-2.5-flash-image",
     "gemini-2.5-flash-lite",
+    "gemini-2.5-pro",
+    "gemini-2.5-computer-use-preview-10-2025",
+    "deep-research-preview-04-2026",
+    "deep-research-max-preview-04-2026",
+    "antigravity-preview-05-2026",
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
-    "gemini-2.0-pro-exp",
-    "gemini-2.0-flash-thinking-exp",
     "gemini-1.5-pro",
     "gemini-1.5-flash",
-    "gemini-1.5-flash-8b",
-    "gemini-3.0-pro",
-    "gemini-3.0-flash",
 ];
 const QWEN_MODELS: &[&str] = &[
+    "qwen3-max",
+    "qwen3-max-preview",
+    "qwen3-max-2025-09-23",
+    "qwen3.5-plus",
+    "qwen3.5-plus-2026-02-15",
+    "qwen3.5-flash",
+    "qwen3.5-flash-2026-02-23",
+    "qwen3-coder-plus",
+    "qwen3-coder-plus-2025-07-22",
+    "qwen3-coder-flash",
+    "qwen3-coder-flash-2025-07-28",
     "qwen-max",
+    "qwen-max-latest",
     "qwen-plus",
+    "qwen-plus-latest",
+    "qwen-flash",
     "qwen-turbo",
-    "qwen-2.5-max",
-    "qwen-2.5-72b-instruct",
-    "qwen-2.5-32b-instruct",
-    "qwen-2.5-14b-instruct",
-    "qwen-2.5-7b-instruct",
-    "qwen-2.5-coder-32b-instruct",
-    "qwen-2.5-coder-14b-instruct",
-    "qwen-2.5-coder-7b-instruct",
-    "qwen-2.5-math-72b-instruct",
-    "qwq-32b-preview",
-    "qvq-72b-preview",
-    "qwen-3-max",
-    "qwen-3-coder",
+    "qwen-turbo-latest",
+    "qwen-coder-plus",
+    "qwen-coder-plus-latest",
+    "qwen-coder-turbo",
+    "qwen-long",
+    "qwq-plus",
+    "qwen-math-plus",
+    "qwen-math-turbo",
+    "qwen3.5-397b-a17b",
+    "qwen3.5-120b-a10b",
+    "qwen3.5-27b",
 ];
 const DEEPSEEK_MODELS: &[&str] = &[
+    "deepseek-v4-flash",
+    "deepseek-v4-pro",
     "deepseek-chat",
     "deepseek-reasoner",
     "deepseek-coder",
-    "deepseek-r1-zero",
-    "deepseek-v4",
-    "deepseek-r2",
+    "deepseek-v3",
+    "deepseek-r1",
 ];
 const KIMI_MODELS: &[&str] = &[
+    "kimi-k3",
+    "kimi-k2.7-code",
+    "kimi-k2.7-code-highspeed",
+    "kimi-k2.6",
+    "kimi-k2.5",
     "kimi-k2-0905",
     "kimi-k1.5",
     "kimi-latest",
     "moonshot-v1-8k",
     "moonshot-v1-32k",
     "moonshot-v1-128k",
-    "moonshot-v1-auto",
+    "moonshot-v1-8k-vision-preview",
+    "moonshot-v1-32k-vision-preview",
+    "moonshot-v1-128k-vision-preview",
 ];
 const XAI_MODELS: &[&str] = &[
+    "grok-4.6",
+    "grok-4.5",
+    "grok-3",
+    "grok-3-mini",
     "grok-2-latest",
     "grok-2-1212",
     "grok-2-vision-1212",
     "grok-beta",
     "grok-vision-beta",
-    "grok-3",
-    "grok-3-mini",
 ];
 const GROQ_MODELS: &[&str] = &[
+    "groq/compound",
+    "groq/compound-mini",
+    "gpt-oss-120b",
+    "gpt-oss-20b",
+    "qwen/qwen3.6-27b",
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
     "llama-3.1-70b-versatile",
@@ -225,16 +289,14 @@ const GROQ_MODELS: &[&str] = &[
     "deepseek-r1-distill-qwen-32b",
     "mixtral-8x7b-32768",
     "gemma2-9b-it",
-    "llama3-70b-8192",
-    "llama3-8b-8192",
+    "whisper-large-v3",
+    "whisper-large-v3-turbo",
 ];
 const MISTRAL_MODELS: &[&str] = &[
     "mistral-large-latest",
-    "mistral-large-2411",
+    "mistral-medium-latest",
     "mistral-small-latest",
-    "mistral-small-2409",
     "codestral-latest",
-    "codestral-2501",
     "pixtral-large-latest",
     "pixtral-12b",
     "ministral-8b-latest",
@@ -242,79 +304,93 @@ const MISTRAL_MODELS: &[&str] = &[
     "open-mistral-nemo",
 ];
 const OPENROUTER_MODELS: &[&str] = &[
-    "openrouter/auto",
-    "anthropic/claude-3.7-sonnet",
-    "anthropic/claude-3.7-sonnet:thinking",
-    "anthropic/claude-3.5-sonnet",
-    "anthropic/claude-3.5-haiku",
-    "anthropic/claude-3-opus",
-    "anthropic/claude-sonnet-4",
+    "anthropic/claude-sonnet-5",
     "anthropic/claude-opus-5",
     "anthropic/claude-fable-5",
+    "anthropic/claude-3.7-sonnet",
+    "anthropic/claude-3.5-sonnet",
+    "openai/gpt-5.6-sol",
+    "openai/gpt-5",
+    "openai/o3",
     "openai/o3-mini",
-    "openai/o1",
     "openai/gpt-4o",
-    "openai/gpt-4.5-preview",
+    "google/gemini-3.7-flash",
+    "google/gemini-2.5-pro",
+    "deepseek/deepseek-v4-pro",
     "deepseek/deepseek-r1",
     "deepseek/deepseek-chat",
+    "qwen/qwen3-max",
     "meta-llama/llama-3.3-70b-instruct",
-    "google/gemini-2.0-flash-001",
-    "google/gemini-2.5-pro",
-    "qwen/qwen-2.5-coder-32b-instruct",
-    "mistralai/mistral-large-2411",
+    "cohere/command-a-plus-05-2026",
+    "openrouter/auto",
 ];
 const TOGETHER_MODELS: &[&str] = &[
+    "Qwen/Qwen3.5-9B",
+    "Qwen/Qwen3.5-14B",
+    "DeepSeek/deepseek-v4-flash-0731",
+    "DeepSeek/deepseek-v4-pro-0813",
+    "GLM/GLM-5.2",
+    "MiniMax/MiniMax-m3",
+    "Kimi/kimi-k3",
+    "Kimi/kimi-k2.7-code",
+    "Cohere/command-a-plus-05-2026",
     "meta-llama/Llama-3.3-70B-Instruct-Turbo",
     "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
-    "deepseek-ai/DeepSeek-R1",
-    "deepseek-ai/DeepSeek-V3",
-    "Qwen/Qwen2.5-Coder-32B-Instruct",
-    "Qwen/Qwen2.5-72B-Instruct-Turbo",
-    "mistralai/Mixtral-8x22B-Instruct-v0.1",
 ];
 const FIREWORKS_MODELS: &[&str] = &[
-    "accounts/fireworks/models/deepseek-r1",
-    "accounts/fireworks/models/deepseek-v3",
+    "accounts/fireworks/models/deepseek-v3p1",
+    "accounts/fireworks/models/qwen3-235b-a22b",
+    "accounts/fireworks/models/qwen3-0p6b",
+    "accounts/fireworks/models/qwen3-4b",
+    "accounts/fireworks/models/qwen3-8b",
     "accounts/fireworks/models/llama-v3p3-70b-instruct",
-    "accounts/fireworks/models/qwen2p5-coder-32b-instruct",
+    "accounts/fireworks/models/deepseek-r1",
 ];
 const COHERE_MODELS: &[&str] = &[
+    "command-a-plus-05-2026",
+    "command-a",
+    "command-a-reasoning",
+    "command-a-vision",
     "command-r-plus-08-2024",
-    "command-r-08-2024",
     "command-r-plus",
+    "command-r-7b",
     "command-r",
-    "command-light",
 ];
 const PERPLEXITY_MODELS: &[&str] = &[
     "sonar-pro",
     "sonar",
     "sonar-reasoning",
     "sonar-reasoning-pro",
-    "r1-1776",
+    "perplexity/deepseek-v4-flash-0731",
+    "perplexity/kimi-k3",
+    "perplexity/glm-5.2",
+    "perplexity/nemotron-3.5-lightning-30b-a3b",
+    "perplexity/nemotron-3-ultra-550b-a55b",
 ];
 const CEREBRAS_MODELS: &[&str] = &[
+    "gpt-oss-120b",
+    "gemma-4-31b",
     "llama-3.3-70b",
     "llama3.1-70b",
     "llama3.1-8b",
 ];
 const OLLAMA_MODELS: &[&str] = &[
-    "qwen2.5-coder:32b",
-    "qwen2.5-coder:14b",
-    "qwen2.5-coder:7b",
-    "qwen2.5:72b",
+    "gpt-oss:20b",
+    "qwen3:8b",
+    "qwen3-vl:8b",
     "qwen2.5:32b",
     "qwen2.5:14b",
     "qwen2.5:7b",
+    "qwen2.5-coder:32b",
+    "qwen2.5-coder:14b",
+    "qwen2.5-coder:7b",
     "deepseek-r1:70b",
     "deepseek-r1:32b",
     "deepseek-r1:14b",
     "deepseek-r1:8b",
-    "deepseek-r1:1.5b",
     "llama3.3:70b",
     "llama3.1:8b",
-    "mistral-nemo:12b",
-    "codestral:22b",
-    "phi4:14b",
+    "mistral:7b",
     "gemma2:27b",
     "gemma2:9b",
 ];
@@ -625,7 +701,7 @@ mod tests {
             .find(|p| p.name == "kimi")
             .unwrap();
         assert_eq!(kimi.base_url, "https://api.moonshot.ai/v1");
-        assert_eq!(kimi.model, "kimi-k2-0905");
+        assert_eq!(kimi.model, "kimi-k3");
         assert!(kimi.needs_key);
 
         let deepseek = OPENAI_COMPAT_PRESETS
@@ -633,7 +709,7 @@ mod tests {
             .find(|p| p.name == "deepseek")
             .unwrap();
         assert_eq!(deepseek.base_url, "https://api.deepseek.com");
-        assert_eq!(deepseek.model, "deepseek-chat");
+        assert_eq!(deepseek.model, "deepseek-v4-flash");
         assert!(deepseek.needs_key);
 
         let groq = OPENAI_COMPAT_PRESETS
@@ -654,15 +730,15 @@ mod tests {
             .iter()
             .find(|p| p.name == "openrouter")
             .unwrap();
-        assert_eq!(openrouter.base_url, "https://openrouter.ai/api/v1");
-        assert_eq!(openrouter.model, "anthropic/claude-sonnet-4");
+        assert_eq!(openrouter.base_url, "https://api.openrouter.ai/v1");
+        assert_eq!(openrouter.model, "anthropic/claude-sonnet-5");
 
         let xai = OPENAI_COMPAT_PRESETS
             .iter()
             .find(|p| p.name == "xai")
             .unwrap();
         assert_eq!(xai.base_url, "https://api.x.ai/v1");
-        assert_eq!(xai.model, "grok-2-latest");
+        assert_eq!(xai.model, "grok-4.6");
         assert!(xai.needs_key);
 
         let ollama = OPENAI_COMPAT_PRESETS
@@ -670,7 +746,7 @@ mod tests {
             .find(|p| p.name == "ollama")
             .unwrap();
         assert_eq!(ollama.base_url, "http://localhost:11434/v1");
-        assert_eq!(ollama.model, "qwen2.5:7b");
+        assert_eq!(ollama.model, "qwen3:8b");
         assert!(!ollama.needs_key);
     }
 
