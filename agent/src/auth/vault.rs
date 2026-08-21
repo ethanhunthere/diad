@@ -45,6 +45,14 @@ impl Vault {
         Self::new_with_service("diad-agent")
     }
 
+    /// Create an isolated, in-memory-only Vault (useful for tests and ephemeral sessions).
+    pub fn in_memory() -> Self {
+        Self {
+            service: "diad-agent-memory".into(),
+            backend: VaultBackend::Memory(Mutex::new(HashMap::new())),
+        }
+    }
+
     /// Create a new Vault instance with a custom service name namespace.
     pub fn new_with_service(service: impl Into<String>) -> anyhow::Result<Self> {
         let service = service.into();

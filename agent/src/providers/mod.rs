@@ -682,7 +682,7 @@ mod tests {
     use super::*;
 
     fn test_factory() -> ProviderFactory {
-        let vault = Arc::new(Vault::new().expect("vault construction never fails"));
+        let vault = Arc::new(Vault::in_memory());
         let config = Arc::new(DiadConfig::default());
         ProviderFactory::new(vault, config)
     }

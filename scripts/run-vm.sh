@@ -35,12 +35,20 @@ else
 fi
 
 UEFI_OPTS=()
-if [[ -f /usr/share/edk2/x64/OVMF_CODE.4m.fd ]]; then
-    UEFI_OPTS=(-drive "if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd")
-    echo "⚡ UEFI (OVMF) Boot: ENABLED"
-elif [[ -f /usr/share/ovmf/x64/OVMF_CODE.4m.fd ]]; then
-    UEFI_OPTS=(-drive "if=pflash,format=raw,readonly=on,file=/usr/share/ovmf/x64/OVMF_CODE.4m.fd")
-    echo "⚡ UEFI (OVMF) Boot: ENABLED"
+if [[ -f /usr/share/edk2/x64/OVMF_CODE.4m.fd && -f /usr/share/edk2/x64/OVMF_VARS.4m.fd ]]; then
+    cp -f /usr/share/edk2/x64/OVMF_VARS.4m.fd /tmp/diad_vars.fd
+    UEFI_OPTS=(
+        -drive "if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd"
+        -drive "if=pflash,format=raw,file=/tmp/diad_vars.fd"
+    )
+    echo "⚡ UEFI (OVMF CODE+VARS) Boot: ENABLED"
+elif [[ -f /usr/share/ovmf/x64/OVMF_CODE.4m.fd && -f /usr/share/ovmf/x64/OVMF_VARS.4m.fd ]]; then
+    cp -f /usr/share/ovmf/x64/OVMF_VARS.4m.fd /tmp/diad_vars.fd
+    UEFI_OPTS=(
+        -drive "if=pflash,format=raw,readonly=on,file=/usr/share/ovmf/x64/OVMF_CODE.4m.fd"
+        -drive "if=pflash,format=raw,file=/tmp/diad_vars.fd"
+    )
+    echo "⚡ UEFI (OVMF CODE+VARS) Boot: ENABLED"
 fi
 
 # Clean up any stale QMP socket
@@ -57,6 +65,10 @@ DISPLAY_OPTS=("-display" "gtk,grab-on-hover=off,zoom-to-fit=on")
 if [[ -z "${DISPLAY:-}" && -z "${WAYLAND_DISPLAY:-}" ]]; then
     DISPLAY_OPTS=("-display" "none" "-vnc" ":1")
     echo "🖥️ Headless mode: VNC available at :1 (port 5901)"
+fi
+
+if command -v run_archiso >/dev/null 2>&1; then
+    exec run_archiso -u -i "${ISO_PATH}"
 fi
 
 exec qemu-system-x86_64 \
