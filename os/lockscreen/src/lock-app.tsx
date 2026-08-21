@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { createRoot } from "react-dom/client";
-import CharacterCursor from "./components/originkit/ui/character-cursor-custom-style";
+import CursorRingField from "./components/originkit/ui/cursor-ring-field";
 import logoWhite from "../../../assets/diad-logo-white.png";
 
 const BG = "#090A0A";
@@ -142,16 +142,16 @@ function LockApp() {
 
   return (
     <div style={pageStyle} onClick={unlock}>
-      {/* Originkit Character Cursor Interactive Animation */}
+      {/* Originkit Cursor Ring Field Interactive WebGL Animation */}
       <div style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none" }}>
-        <CharacterCursor
-          label={false}
-          boxColor="#38A169"
-          textColor="#E5EAE6"
-          cellSize={12}
-          radius={55}
-          density={10}
-          hold={18}
+        <CursorRingField
+          background={BG}
+          colors={["#38A169", "#48BB78", "#E5EAE6"]}
+          density={320}
+          dotSize={110}
+          speed={6}
+          cameraDistance={155}
+          ring={{ push: 40, width: 12, radius: 20, turbulence: 40 }}
         />
       </div>
 
