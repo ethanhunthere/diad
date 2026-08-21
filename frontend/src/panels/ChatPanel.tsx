@@ -10,6 +10,7 @@ import { ToolCallCard } from "../components/ToolCallCard";
 import { EditDiffCard } from "../components/EditDiffCard";
 import { ChatInput } from "../components/ChatInput";
 import { AgentExplainerModal } from "../components/AgentExplainerModal";
+import { ThinkingOrb } from "thinking-orbs";
 
 function CodeBlock({ children, className }: { children: React.ReactNode; className?: string }) {
   const [copied, setCopied] = useState(false);
@@ -156,6 +157,20 @@ function MessageBubble({ m }: { m: ChatMessage }) {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Thinking Orb animation while agent is answering */}
+        {!isUser && m.streaming && (
+          <div className="mb-4 flex items-center gap-4 p-3 rounded-2xl bg-[#161918]/90 border border-[#202623] shadow-lg animate-fade-in w-fit">
+            <div className="flex items-center gap-2">
+              <ThinkingOrb state="breathing" size={64} speed={2.25} theme="dark" />
+              <ThinkingOrb state="listening" size={64} theme="dark" />
+            </div>
+            <div className="flex flex-col font-mono text-[12px]">
+              <span className="font-semibold text-[#E5EAE6]">DIAD Agent thinking…</span>
+              <span className="text-[#8A968E] text-[11px]">Streaming response</span>
+            </div>
           </div>
         )}
 
@@ -383,9 +398,16 @@ export function ChatPanel() {
           <MessageBubble key={m.id} m={m} />
         ))}
 
-        {streaming && messages.length > 0 && (
-          <div className="px-4 py-1 text-[12.5px] text-[#8A968E] font-mono flex items-center gap-2">
-            <span>DIAD Agent executing…</span>
+        {streaming && messages.length > 0 && !messages[messages.length - 1]?.streaming && (
+          <div className="flex items-center gap-4 px-4 py-3 rounded-2xl bg-[#161918]/90 border border-[#202623] shadow-lg animate-fade-in w-fit my-2">
+            <div className="flex items-center gap-2">
+              <ThinkingOrb state="breathing" size={64} speed={2.25} theme="dark" />
+              <ThinkingOrb state="listening" size={64} theme="dark" />
+            </div>
+            <div className="flex flex-col font-mono text-[12px]">
+              <span className="font-semibold text-[#E5EAE6]">Thinking & preparing answer…</span>
+              <span className="text-[#8A968E] text-[11px]">Connecting to model stream</span>
+            </div>
           </div>
         )}
       </div>
