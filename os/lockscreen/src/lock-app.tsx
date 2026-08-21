@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { createRoot } from "react-dom/client";
 import CursorRingField from "./components/originkit/ui/cursor-ring-field";
+import MetallicCube from "./components/originkit/ui/metal-rubics";
 import logoWhite from "../../../assets/diad-logo-white.png";
 
 const BG = "#090A0A";
@@ -34,16 +35,16 @@ const centerCardStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: 18,
-  padding: "48px 56px",
+  gap: 16,
+  padding: "40px 48px",
   background: "rgba(22, 25, 24, 0.96)",
   backdropFilter: "blur(24px)",
   WebkitBackdropFilter: "blur(24px)",
   border: "1px solid #202623",
   borderRadius: 24,
   boxShadow: "0 24px 64px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.03)",
-  width: 380,
-  maxWidth: "90vw",
+  width: 390,
+  maxWidth: "92vw",
   boxSizing: "border-box",
   transition: "transform 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease",
 };
@@ -76,7 +77,7 @@ const unlockPromptStyle: CSSProperties = {
   fontSize: 13.5,
   fontWeight: 500,
   letterSpacing: "0.03em",
-  marginTop: 6,
+  marginTop: 4,
   transition: "all 140ms ease",
 };
 
@@ -162,13 +163,34 @@ function LockApp() {
           opacity: unlocked ? 0.8 : 1,
         }}
       >
+        {/* Originkit 3D Metallic Rubik's Cube inside the card */}
+        <div
+          style={{
+            width: 160,
+            height: 160,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "-4px 0 2px 0",
+          }}
+        >
+          <MetallicCube
+            colorMode="metallic"
+            tint="#52C41A"
+            cubeGrid={3}
+            gap={1}
+            sizePercent={94}
+            dragSensitivity={3}
+          />
+        </div>
+
         {/* Official DIAD Logo Image Asset */}
         <div style={logoContainerStyle}>
           <img
             src={logoWhite}
             alt="DIAD"
             style={{
-              height: 56,
+              height: 46,
               width: "auto",
               objectFit: "contain",
               filter: "drop-shadow(0 4px 14px rgba(0, 0, 0, 0.5))",
