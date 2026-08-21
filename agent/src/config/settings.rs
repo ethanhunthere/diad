@@ -7,9 +7,13 @@ use std::path::PathBuf;
 /// Main DIAD Agent configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiadConfig {
-    /// Default LLM provider (anthropic, gemini, openai, qwen)
+    /// Default LLM provider (anthropic, gemini, openai, qwen, groq, etc.)
     #[serde(default = "default_provider")]
     pub default_provider: String,
+
+    /// Default LLM model override (optional)
+    #[serde(default)]
+    pub default_model: Option<String>,
 
     /// Paths that tools are allowed to access
     #[serde(default = "default_allowed_paths")]
@@ -137,6 +141,7 @@ impl Default for DiadConfig {
     fn default() -> Self {
         Self {
             default_provider: default_provider(),
+            default_model: None,
             allowed_paths: default_allowed_paths(),
             log_level: default_log_level(),
             theme: default_theme(),

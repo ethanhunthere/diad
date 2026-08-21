@@ -102,7 +102,7 @@ pub const OPENAI_COMPAT_PRESETS: &[ProviderPreset] = &[
     },
     ProviderPreset {
         name: "perplexity",
-        base_url: "https://api.perplexity.ai/router/v1",
+        base_url: "https://api.perplexity.ai",
         model: "sonar-pro",
         needs_key: true,
     },
@@ -672,7 +672,14 @@ impl ProviderFactory {
     pub fn available_providers(&self) -> Vec<String> {
         self.all_provider_names()
             .into_iter()
-            .filter(|name| self.has_key(name))
+            .filter(|name| {
+                if self.needs_key(name) {
+                    self.has_key(name)
+                } else {
+                    // Keyless providers (e.g. local Ollama) only enter the failover chain if configured
+                    self.vault.get_token(name).is_some() || self.config.default_provider == *name
+                }
+            })
             .collect()
     }
 }

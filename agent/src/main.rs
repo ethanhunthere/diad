@@ -440,6 +440,11 @@ async fn run_tui_event_loop(
                     }
                 }
 
+                // ---- Model picker: Enter on a model ----
+                if let Some(model) = app.model_selected.take() {
+                    client.model_switch(model);
+                }
+
                 // ---- Provider needs a key → masked SecurePrompt → connect ----
                 if let Some(name) = app.pending_connect_provider.take() {
                     let (reply_tx, mut reply_rx) = tokio::sync::mpsc::unbounded_channel::<String>();

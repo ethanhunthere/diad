@@ -471,6 +471,7 @@ pub fn api_router() -> Router<Arc<DaemonState>> {
         // Providers
         .route("/providers", get(api_providers))
         .route("/provider/switch", post(api_provider_switch))
+        .route("/model/switch", post(api_model_switch))
         .route("/providers/models", get(api_models))
         // Files
         .route("/files/list", get(api_file_list))
@@ -1070,14 +1071,35 @@ async fn api_provider_switch(
     state
         .connected
         .store(has_key, std::sync::atomic::Ordering::SeqCst);
+    let default_model = state.factory.default_model(&name);
+    *state.model.write().unwrap() = default_model.clone();
     state.broadcast_status();
     let models = state.factory.models_for(&name);
-    let current = state.model.read().unwrap().clone();
     Json(json!({
         "provider": name,
         "connected": has_key,
-        "model": current,
+        "model": default_model,
         "models": models,
+    }))
+    .into_response()
+}
+
+#[derive(Deserialize)]
+struct ModelSwitchRequest {
+    model: String,
+}
+
+async fn api_model_switch(
+    State(state): State<Arc<DaemonState>>,
+    Json(req): Json<ModelSwitchRequest>,
+) -> Response {
+    let model = req.model;
+    *state.model.write().unwrap() = model.clone();
+    state.broadcast_status();
+    let provider = state.provider.read().unwrap().clone();
+    Json(json!({
+        "provider": provider,
+        "model": model,
     }))
     .into_response()
 }

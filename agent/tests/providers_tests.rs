@@ -93,3 +93,26 @@ fn test_reasoning_and_tool_rules_for_models() {
     assert!(model_supports_tools("gemini-3.7-flash"));
     assert!(model_supports_tools("qwen3-max"));
 }
+
+#[test]
+fn test_groq_and_model_switching() {
+    let vault = Arc::new(Vault::in_memory());
+    vault.store_token("groq", "gsk-mock-key").unwrap();
+
+    let mut cfg = DiadConfig::default();
+    cfg.default_provider = "groq".into();
+    cfg.default_model = Some("gpt-oss-120b".into());
+    let config = Arc::new(cfg);
+
+    let factory = ProviderFactory::new(vault, config);
+    assert!(factory.has_key("groq"));
+
+    let groq_models = factory.models_for("groq");
+    assert!(groq_models.contains(&"gpt-oss-120b".to_string()));
+    assert!(groq_models.contains(&"llama-3.3-70b-versatile".to_string()));
+
+    let groq_instance = factory.create_with_model("groq", Some("gpt-oss-120b"));
+    assert!(groq_instance.is_some());
+    let inst = groq_instance.unwrap();
+    assert!(inst.provider_name().contains("gpt-oss-120b"));
+}

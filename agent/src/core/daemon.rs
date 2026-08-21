@@ -1029,9 +1029,9 @@ pub(crate) async fn handle_chat_send(state: &DaemonState, conn: &Conn, id: Strin
                 | Some(OfflineIntent::Version) => {}
                 None => {
                     let _ = tx.try_send(ServerMsg::System {
-                        message: "[system] Offline — no API key configured. Connect a provider \
-                                   (F6 / /model) or use /connect <name> to add a key."
-                            .into(),
+                        message: format!(
+                            "[system] Provider '{provider_name}' has no API key configured. Enter your API key in Settings (⚙) or use /connect {provider_name} <key> to start chatting."
+                        ),
                     });
                 }
             }
@@ -1196,23 +1196,33 @@ pub(crate) async fn handle_client_msg(state: &DaemonState, conn: &Conn, msg: Cli
             let key_present = state.factory.has_key(&name);
             *state.provider.write().unwrap() = name.clone();
             state.connected.store(key_present, Ordering::SeqCst);
+            let default_model = state.factory.default_model(&name);
+            *state.model.write().unwrap() = default_model.clone();
             state.broadcast_status();
             // Offer the model list for the new provider.
             let models = state.factory.models_for(&name);
-            let current = state.model.read().unwrap().clone();
             let _ = conn.tx.try_send(ServerMsg::Models {
                 id: "model".into(),
-                provider: name,
+                provider: name.clone(),
                 models,
-                current,
+                current: default_model,
             });
-            let _ = conn.tx.try_send(ServerMsg::System {
-                message: "[system] Provider switched — pick a model.".to_string(),
-            });
+            if key_present {
+                let _ = conn.tx.try_send(ServerMsg::System {
+                    message: format!("[system] Provider switched to {name}."),
+                });
+            } else {
+                let _ = conn.tx.try_send(ServerMsg::System {
+                    message: format!("[system] Provider switched to {name} — no API key configured. Enter your key in Settings (⚙) or connect using /connect {name} <key>."),
+                });
+            }
         }
         ClientMsg::ModelSwitch { model } => {
-            *state.model.write().unwrap() = model;
+            *state.model.write().unwrap() = model.clone();
             state.broadcast_status();
+            let _ = conn.tx.try_send(ServerMsg::System {
+                message: format!("[system] Model switched to {model}."),
+            });
         }
         ClientMsg::ProviderConnect { id, name, key } => {
             let factory = Arc::clone(&state.factory);
@@ -1556,9 +1566,20 @@ pub(crate) fn config_snapshot(config: &crate::config::settings::DiadConfig) -> s
 fn apply_config_set(state: &DaemonState, key: &str, value: serde_json::Value) {
     let mut config = state.config.read().unwrap().clone();
     match key {
-        "default_provider" => {
+        "default_provider" | "provider" => {
             if let Some(v) = value.as_str() {
                 config.default_provider = v.into();
+                *state.provider.write().unwrap() = v.into();
+                let has_k = state.factory.has_key(v);
+                state.connected.store(has_k, Ordering::SeqCst);
+                let default_m = state.factory.default_model(v);
+                *state.model.write().unwrap() = default_m.clone();
+            }
+        }
+        "default_model" | "model" => {
+            if let Some(v) = value.as_str() {
+                config.default_model = Some(v.into());
+                *state.model.write().unwrap() = v.into();
             }
         }
         "theme" => {

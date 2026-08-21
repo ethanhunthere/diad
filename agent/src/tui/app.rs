@@ -125,6 +125,8 @@ pub struct App {
     /// Set when the user pressed Enter on a provider in the picker; the event
     /// loop resolves it (connect if a key is needed, else switch directly).
     pub provider_selected: Option<String>,
+    /// Set when the user pressed Enter on a model in the model picker.
+    pub model_selected: Option<String>,
     /// Set when the selected provider needs a key; the event loop shows a
     /// SecurePrompt, stores the key in the vault slot, then switches.
     pub pending_connect_provider: Option<String>,
@@ -199,6 +201,7 @@ impl App {
             model_list: Vec::new(),
             model_index: 0,
             provider_selected: None,
+            model_selected: None,
             pending_connect_provider: None,
             picker_requested: false,
             connect_target,
@@ -398,6 +401,7 @@ impl App {
             KeyCode::Enter => {
                 if let Some(model) = self.model_list.get(self.model_index) {
                     self.model = model.clone();
+                    self.model_selected = Some(model.clone());
                     self.messages.push(format!(
                         "[system] Active model: {} · {}",
                         self.provider, self.model
