@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { createRoot } from "react-dom/client";
-import CursorRingField from "./components/originkit/ui/cursor-ring-field";
+import ScrollWaveField from "./components/originkit/ui/scroll-wave-field";
 import MetallicCube from "./components/originkit/ui/metal-rubics";
 import logoWhite from "../../../assets/diad-logo-white.png";
 
@@ -143,16 +143,18 @@ function LockApp() {
 
   return (
     <div style={pageStyle} onClick={unlock}>
-      {/* Originkit Cursor Ring Field Interactive WebGL Animation */}
+      {/* Originkit Scroll Wave Field 3D Particle Animation */}
       <div style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none" }}>
-        <CursorRingField
+        <ScrollWaveField
           background={BG}
-          colors={["#38A169", "#48BB78", "#E5EAE6"]}
-          density={320}
-          dotSize={110}
-          speed={6}
-          cameraDistance={155}
-          ring={{ push: 40, width: 12, radius: 20, turbulence: 40 }}
+          colors={["#38A169", "#48BB78", "#A0AEC0"]}
+          density={160}
+          dotSize={2.2}
+          scatter={100}
+          cameraHeight={45}
+          wave={{ waveSpeed: 220, waveHeight: 190, waveLength: 2100 }}
+          cursor={{ cursorLift: 50, cursorRadius: 30 }}
+          style={{ minWidth: "100%", minHeight: "100%", width: "100%", height: "100%" }}
         />
       </div>
 
