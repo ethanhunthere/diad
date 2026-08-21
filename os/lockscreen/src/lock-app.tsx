@@ -143,17 +143,19 @@ function LockApp() {
 
   return (
     <div style={pageStyle} onClick={unlock}>
-      {/* Originkit Scroll Wave Field 3D Particle Animation */}
+      {/* Originkit Scroll Wave Field 3D Particle Animation with exact user design */}
       <div style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none" }}>
         <ScrollWaveField
-          background={BG}
-          colors={["#38A169", "#48BB78", "#A0AEC0"]}
-          density={160}
-          dotSize={2.2}
-          scatter={100}
-          cameraHeight={45}
-          wave={{ waveSpeed: 220, waveHeight: 190, waveLength: 2100 }}
-          cursor={{ cursorLift: 50, cursorRadius: 30 }}
+          background="#080512"
+          colors={["#B32032", "#FFC200"]}
+          density={169}
+          dotSize={2}
+          scatter={108}
+          cameraHeight={50}
+          wave={{ waveSpeed: 250, waveHeight: 200, waveLength: 2070 }}
+          tilt={{ rollStart: 0, tiltStart: 45 }}
+          cursor={{ cursorRadius: 25, cursorLift: 45 }}
+          transition={{ type: "spring", stiffness: 800, damping: 60, mass: 1 }}
           style={{ minWidth: "100%", minHeight: "100%", width: "100%", height: "100%" }}
         />
       </div>

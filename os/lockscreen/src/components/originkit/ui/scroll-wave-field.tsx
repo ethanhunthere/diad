@@ -363,15 +363,15 @@ interface CursorGroup {
 }
 
 interface Props {
-    background: string
-    colors: string[]
+    background?: string
+    colors?: string[]
     /** Legacy — the old `palette` group. Still read so live instances keep it. */
     palette?: Partial<ColorGroup>
-    density: number
-    dotSize: number
-    scatter: number
+    density?: number
+    dotSize?: number
+    scatter?: number
     /** Percent, 0–100, of the component's own area (see CAM_Y_FULL). */
-    cameraHeight: number
+    cameraHeight?: number
     wave?: Partial<WaveGroup>
     tilt?: Partial<TiltGroup>
     cursor?: Partial<CursorGroup>
