@@ -25,7 +25,7 @@ const pageStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  cursor: "pointer",
+  cursor: "default",
   userSelect: "none",
 };
 
@@ -126,23 +126,16 @@ function LockApp() {
     const handleKeyDown = () => {
       unlock();
     };
-    const handleClick = () => {
-      unlock();
-    };
 
     window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("click", handleClick);
-    window.addEventListener("pointerdown", handleClick);
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("click", handleClick);
-      window.removeEventListener("pointerdown", handleClick);
     };
   }, [unlock]);
 
   return (
-    <div style={pageStyle} onClick={unlock}>
+    <div style={pageStyle}>
       {/* Originkit Scroll Wave Field 3D Particle Animation with exact user design */}
       <div style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none" }}>
         <ScrollWaveField
@@ -219,7 +212,7 @@ function LockApp() {
           </div>
         ) : (
           <div style={unlockPromptStyle}>
-            <span>Press any key or click to unlock</span>
+            <span>Press any key to unlock</span>
           </div>
         )}
       </div>
