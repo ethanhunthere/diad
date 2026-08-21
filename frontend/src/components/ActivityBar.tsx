@@ -27,9 +27,9 @@ export function ActivityBar({ collapsed }: { collapsed: boolean }) {
 
   if (collapsed) {
     return (
-      <nav className="activity-bar flex w-0 shrink-0 flex-col items-center border-r border-[#202623] bg-[#0F1110] py-3 transition-all duration-150 ease-out">
+      <nav className="activity-bar flex w-0 shrink-0 flex-col items-center border-r border-border-subtle bg-surface py-3 transition-all duration-150 ease-out">
         <button
-          className="icon-btn h-9 w-9 text-[#8A968E] hover:text-[#E5EAE6]"
+          className="icon-btn h-9 w-9 text-dim hover:text-ink"
           onClick={toggleActivityBar}
           title="Expand sidebar"
           aria-label="Expand sidebar"
@@ -41,7 +41,7 @@ export function ActivityBar({ collapsed }: { collapsed: boolean }) {
   }
 
   return (
-    <nav className="activity-bar flex w-14 shrink-0 flex-col items-center border-r border-[#202623] bg-[#0F1110] py-3 transition-all duration-150 ease-out select-none">
+    <nav className="activity-bar flex w-14 shrink-0 flex-col items-center border-r border-border-subtle bg-surface py-3 transition-all duration-150 ease-out select-none">
       <div className="flex flex-col gap-2.5">
         {PRIMARY_VIEWS.map(({ id, label, icon: Icon }) => {
           const active = view === id;
@@ -54,13 +54,13 @@ export function ActivityBar({ collapsed }: { collapsed: boolean }) {
               aria-label={label}
               className={`relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-150 ${
                 active
-                  ? "bg-[#B32032]/20 text-[#E5EAE6] shadow-sm ring-1 ring-[#B32032]/60"
-                  : "text-[#8A968E] hover:bg-[#161918] hover:text-[#E5EAE6]"
+                  ? "bg-copper/25 text-ink shadow-md ring-1 ring-copper"
+                  : "text-dim hover:bg-surface-2 hover:text-ink"
               }`}
             >
               <Icon size={20} />
               {active && (
-                <span className="absolute -left-1 h-5 w-1 rounded-r-full bg-[#B32032]" />
+                <span className="absolute -left-1 h-5 w-1 rounded-r-full bg-copper shadow-[0_0_8px_rgba(255,46,77,0.8)]" />
               )}
             </button>
           );
@@ -70,7 +70,7 @@ export function ActivityBar({ collapsed }: { collapsed: boolean }) {
       <div className="flex-1" />
 
       <button
-        className="flex h-9 w-9 items-center justify-center rounded-lg text-[#525D56] hover:bg-[#161918] hover:text-[#8A968E] transition-colors"
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-faint hover:bg-surface-2 hover:text-dim transition-colors"
         onClick={toggleActivityBar}
         title="Collapse sidebar"
         aria-label="Collapse sidebar"

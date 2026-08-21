@@ -4,11 +4,13 @@ import { useStore, sendMsg } from "../stores/useStore";
 import { nextId } from "../lib/format";
 
 const THEMES = [
-  { id: "monochrome", label: "Industrial Basalt", swatch: "#B32032" },
-  { id: "slate", label: "Minimal Slate", swatch: "#94A3B8" },
-  { id: "obsidian", label: "OLED Black", swatch: "#FFFFFF" },
-  { id: "cyber", label: "Cyber Cobalt", swatch: "#38BDF8" },
-  { id: "emerald", label: "Emerald Matrix", swatch: "#38A169" },
+  { id: "monochrome", label: "DIAD Crimson Studio", swatch: "#FF2E4D" },
+  { id: "sunlight", label: "Sunlight (High Contrast)", swatch: "#FF1744" },
+  { id: "slate", label: "Minimal Slate", swatch: "#38BDF8" },
+  { id: "obsidian", label: "OLED Pitch Black", swatch: "#FFFFFF" },
+  { id: "cyber", label: "Cyber Cobalt (Neon)", swatch: "#00E5FF" },
+  { id: "copper", label: "Warm Copper", swatch: "#F97316" },
+  { id: "light", label: "Daylight White", swatch: "#E11D48" },
 ];
 
 /**
@@ -38,16 +40,19 @@ export function SettingsPanel() {
 
   const changeAccent = (id: string) => {
     setSettings({ theme: id });
-    document.documentElement.style.setProperty("--accent", THEMES.find((t) => t.id === id)?.swatch ?? "#B32032");
+    document.documentElement.setAttribute("data-theme", id);
+    const swatch = THEMES.find((t) => t.id === id)?.swatch ?? "#FF2E4D";
+    document.documentElement.style.setProperty("--accent", swatch);
     persist("theme", id, "theme");
   };
 
   // Load stored accent on mount.
   useEffect(() => {
-    const t = THEMES.find((x) => x.id === settings.theme)?.swatch ?? "#B32032";
+    const id = settings.theme || "monochrome";
+    document.documentElement.setAttribute("data-theme", id);
+    const t = THEMES.find((x) => x.id === id)?.swatch ?? "#FF2E4D";
     document.documentElement.style.setProperty("--accent", t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [settings.theme]);
 
   // GUI Personalization State
   const [fontFamily, setFontFamily] = useState<string>(() => localStorage.getItem("diad.font_family") || "Inter");

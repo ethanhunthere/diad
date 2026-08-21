@@ -157,8 +157,8 @@ export function ChatInput({
 
   return (
     <div
-      className={`relative border-t border-[#202623] bg-[#0F1110] px-3.5 sm:px-6 py-3 sm:py-4 transition-colors ${
-        isDragging ? "bg-[#1E2321] border-[#B32032]" : ""
+      className={`relative border-t border-border-subtle bg-surface px-3.5 sm:px-6 py-3 sm:py-4 transition-colors ${
+        isDragging ? "bg-surface-3 border-copper" : ""
       }`}
       onDragOver={(e) => {
         e.preventDefault();
@@ -181,8 +181,8 @@ export function ChatInput({
 
       {/* "/" command menu */}
       {menuOpen && (
-        <div className="glass absolute bottom-full left-3.5 sm:left-6 mb-2.5 w-76 sm:w-84 overflow-hidden rounded-xl border border-[#202623] bg-[#161918] shadow-2xl animate-fade-in">
-          <div className="border-b border-[#202623] bg-[#1E2321] px-4 py-2.5 text-[11.5px] font-bold uppercase tracking-wider text-[#B32032] font-mono">
+        <div className="glass absolute bottom-full left-3.5 sm:left-6 mb-2.5 w-76 sm:w-84 overflow-hidden rounded-xl border border-border-subtle bg-surface-2 shadow-2xl animate-fade-in">
+          <div className="border-b border-border-subtle bg-surface-3 px-4 py-2.5 text-[11.5px] font-bold uppercase tracking-wider text-copper font-mono">
             Quick Actions
           </div>
           <div className="p-1.5">
@@ -190,13 +190,13 @@ export function ChatInput({
               <button
                 key={c.cmd}
                 className={`flex w-full items-center gap-3 rounded-lg px-3.5 py-2 text-left text-[13.5px] transition-colors ${
-                  i === menuIdx ? "bg-[#B32032]/20 text-[#E5EAE6] font-medium" : "text-[#8A968E] hover:text-[#E5EAE6] hover:bg-[#1E2321]"
+                  i === menuIdx ? "bg-copper/25 text-ink font-medium" : "text-dim hover:text-ink hover:bg-surface-3"
                 }`}
                 onMouseEnter={() => setMenuIdx(i)}
                 onClick={() => pick(c.cmd)}
               >
-                <span className="font-mono text-[#B32032] font-semibold">{c.cmd}</span>
-                <span className="flex-1 text-right text-[12px] text-[#8A968E]">{c.desc}</span>
+                <span className="font-mono text-copper font-semibold">{c.cmd}</span>
+                <span className="flex-1 text-right text-[12px] text-faint">{c.desc}</span>
               </button>
             ))}
           </div>
@@ -209,24 +209,24 @@ export function ChatInput({
           {images.map((img) => (
             <div
               key={img.id}
-              className="group relative flex items-center gap-2 rounded-xl border border-[#202623] bg-[#161918] p-1.5 pr-2.5 shadow-md hover:border-[#B32032]/60 transition-all"
+              className="group relative flex items-center gap-2 rounded-xl border border-border-subtle bg-surface-2 p-1.5 pr-2.5 shadow-md hover:border-copper/60 transition-all"
             >
               <img
                 src={img.dataUrl}
                 alt={img.name}
-                className="h-12 w-12 rounded-lg object-cover border border-[#202623]"
+                className="h-12 w-12 rounded-lg object-cover border border-border-subtle"
               />
               <div className="flex flex-col">
-                <span className="max-w-[120px] truncate text-[12px] font-medium text-[#E5EAE6]">
+                <span className="max-w-[120px] truncate text-[12px] font-medium text-ink">
                   {img.name}
                 </span>
-                <span className="text-[10.5px] text-[#8A968E]">
+                <span className="text-[10.5px] text-faint">
                   {(img.size / 1024).toFixed(0)} KB
                 </span>
               </div>
               <button
                 onClick={() => removeImage(img.id)}
-                className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#1E2321] text-[#8A968E] hover:bg-[#B32032] hover:text-white transition-colors"
+                className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-surface-3 text-dim hover:bg-copper hover:text-white transition-colors"
                 title="Remove image"
               >
                 <X size={12} />
@@ -242,7 +242,7 @@ export function ChatInput({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled}
-          className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-xl border border-[#202623] bg-[#161918] text-[#8A968E] hover:border-[#B32032] hover:text-[#E5EAE6] hover:bg-[#1E2321] disabled:opacity-40 transition-all shadow-sm"
+          className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-xl border border-border-subtle bg-surface-2 text-dim hover:border-copper hover:text-ink hover:bg-surface-3 disabled:opacity-40 transition-all shadow-sm"
           title="Upload images for multimodal analysis"
           aria-label="Upload images"
         >
@@ -265,14 +265,14 @@ export function ChatInput({
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
           onPaste={handlePaste}
-          className="min-h-[48px] flex-1 resize-none rounded-xl border border-[#202623] bg-[#090A0A] px-4 py-3 text-[15px] leading-relaxed text-[#E5EAE6] placeholder:text-[#525D56] focus:border-[#B32032] focus:outline-none focus:ring-2 focus:ring-[#B32032]/30 disabled:opacity-60 font-sans shadow-inner"
+          className="min-h-[48px] flex-1 resize-none rounded-xl border border-border-subtle bg-obsidian px-4 py-3 text-[15px] leading-relaxed text-ink placeholder:text-faint focus:border-copper focus:outline-none focus:ring-2 focus:ring-copper/30 disabled:opacity-60 font-sans shadow-inner"
         />
 
         {/* Send Button */}
         <button
           onClick={submit}
           disabled={disabled || (!input.trim() && images.length === 0)}
-          className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-xl bg-[#B32032] text-white font-bold hover:bg-[#D32F2F] active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all shadow-lg shadow-[#B32032]/25"
+          className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-xl bg-copper text-white font-bold hover:bg-copper-hover active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all shadow-lg shadow-copper/30"
           title="Send intent (Enter)"
           aria-label="Send message"
         >
@@ -280,9 +280,9 @@ export function ChatInput({
         </button>
       </div>
 
-      <div className="mt-2 flex items-center justify-between text-[11.5px] text-[#525D56] font-mono">
+      <div className="mt-2 flex items-center justify-between text-[11.5px] text-faint font-mono">
         <span className="flex items-center gap-1.5">
-          <CornerDownLeft size={12} className="text-[#B32032]" /> Enter to send · Shift+Enter new line
+          <CornerDownLeft size={12} className="text-copper" /> Enter to send · Shift+Enter new line
         </span>
         <span className="truncate">Drag / paste images · / for tools · F5 TUI</span>
       </div>

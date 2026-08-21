@@ -10,16 +10,16 @@ export function StatusBar() {
   const streaming = useStore((s) => s.streaming);
 
   return (
-    <footer className="z-30 flex h-7 shrink-0 items-center justify-between border-t border-[#202623] bg-[#0F1110] px-4 text-[12px] text-[#8A968E] select-none font-sans">
+    <footer className="z-30 flex h-7 shrink-0 items-center justify-between border-t border-border-subtle bg-surface px-4 text-[12px] text-dim select-none font-sans">
       <div className="flex items-center gap-2">
-        <span className={`h-2 w-2 rounded-full ${connected ? "bg-[#38A169]" : "bg-[#D97706]"}`} />
-        <span className="font-semibold text-[#E5EAE6]">{provider || "DIAD"}</span>
-        <span className="text-[#525D56]">/</span>
-        <span className="text-[#8A968E]">{model || "Agent"}</span>
-        {streaming && <span className="text-[#B32032] font-medium">· executing…</span>}
+        <span className={`h-2 w-2 rounded-full ${connected ? "bg-success shadow-[0_0_6px_rgba(34,197,94,0.8)]" : "bg-warn"}`} />
+        <span className="font-semibold text-ink">{provider || "DIAD"}</span>
+        <span className="text-faint">/</span>
+        <span className="text-dim font-medium">{model || "Agent"}</span>
+        {streaming && <span className="text-copper font-medium">· executing…</span>}
       </div>
 
-      <div className="flex items-center gap-3 text-[#525D56] text-[11.5px] font-mono">
+      <div className="flex items-center gap-3 text-faint text-[11.5px] font-mono">
         <span>DIAD OS · Protocol v1</span>
       </div>
     </footer>
