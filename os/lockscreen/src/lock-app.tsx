@@ -170,8 +170,8 @@ function LockApp() {
         {/* Originkit 3D Metallic Rubik's Cube inside the card */}
         <div
           style={{
-            width: 160,
-            height: 160,
+            width: 170,
+            height: 170,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -180,11 +180,18 @@ function LockApp() {
         >
           <MetallicCube
             colorMode="metallic"
-            tint="#52C41A"
-            cubeGrid={3}
-            gap={1}
-            sizePercent={94}
-            dragSensitivity={3}
+            tint="#B32032"
+            cubeGrid={4}
+            gap={20}
+            dragSensitivity={1}
+            rotation={{ x: 12, y: 11, z: 12 }}
+            transition={{
+              type: "spring",
+              stiffness: 200,
+              damping: 20,
+              mass: 1,
+            }}
+            sizePercent={40}
           />
         </div>
 

@@ -705,8 +705,6 @@ export default function MetallicCube(props: MetallicCubeProps) {
                 position: "relative",
                 width: "100%",
                 height: "100%",
-                minWidth: 200,
-                minHeight: 200,
                 overflow: "hidden",
                 ...style,
             }}
