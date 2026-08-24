@@ -88,7 +88,7 @@ def entry_args(entry):
 def build_qemu(entry):
     args = entry_args(entry)
     cmd = [
-        "qemu-system-x86_64", "-enable-kvm", "-m", str(MEM), "-smp", "2",
+        "qemu-system-x86_64", "-enable-kvm", "-cpu", "host", "-m", str(MEM), "-smp", "2",
         "-machine", "q35",
         "-kernel", KERNEL,
         "-initrd", INITRD,
@@ -356,7 +356,7 @@ def walk(n):
     for c in n.get('nodes',[])+n.get('floating_nodes',[]): walk(c)
 for c in t.get('nodes',[]): walk(c)
 "
-echo VFY_DONE
+echo VFY_DONE_$((0))
 VFY
 bash /tmp/vfy.sh"""
 
@@ -384,7 +384,7 @@ mount LABEL=DIAD-DATA /home/diad/data 2>/dev/null
 cat /home/diad/data/persist-test.txt 2>/dev/null || echo "  MARKER_LOST"
 echo "== [P4] fstab wiring for boot-time mount =="
 grep -r DIAD-DATA /etc/fstab /etc/fstab.d 2>/dev/null || echo "  (no fstab entry for DIAD-DATA — boot mount relies on storage-setup only)"
-echo PERSIST_DONE
+echo PERSIST_DONE_$((0))
 PST
 bash /tmp/persist.sh"""
 
@@ -406,7 +406,7 @@ echo "== [D4] journal errors this boot =="
 journalctl -b -p err --no-pager -q 2>/dev/null | head -20
 echo "== [D5] power-setup sudo usage =="
 grep -n "sudo" /usr/local/bin/diad-power-setup.sh | head -8
-echo DIAG_DONE
+echo DIAG_DONE_$((0))
 DGS
 bash /tmp/diag.sh"""
 
@@ -418,6 +418,11 @@ def build_inject():
     style.css) so the matrix verifies fixes end-to-end without a rebuild."""
     cmds = [
         "echo INJ_START",
+        # Pre-seed first-boot wizards' completion markers so the harness VM
+        # boots straight into the session (mirrors any second+ real boot).
+        "mkdir -p /new_root/var/lib/diad && touch /new_root/var/lib/diad/identity-setup",
+        "mkdir -p /new_root/home/diad/.diad && touch /new_root/home/diad/.diad/.first-run-complete",
+        "chown -R 1000:1000 /new_root/home/diad/.diad",
         "mkdir -p /new_root/etc/systemd/system/getty@tty1.service.d",
         "printf '%s\\n' '[Service]' 'ExecStart=' "
         "'ExecStart=-/usr/bin/agetty --autologin diad --noclear tty1 38400 linux' "
@@ -494,7 +499,7 @@ def steps_session():
     return [
         ("sleep", 90),
         ("send", VFY_SCRIPT),
-        ("expect", "VFY_DONE", 300),
+        ("expect", "VFY_DONE_0", 300),
     ]
 
 
@@ -530,8 +535,8 @@ def run_keys(sess, logf):
         time.sleep(settle)
 
     def q(cmd, mark, to=60):
-        sess.send(f"{cmd}; echo {mark}")
-        sess.expect(mark, to)
+        sess.send(f"{cmd}; echo {mark}$((0))")
+        sess.expect(f"{mark}0", to)
 
     SW = "SWAYSOCK=$(ls -t /run/user/1000/sway-ipc.*.sock | head -1)"
     WSF = (f"runuser -u diad -- env XDG_RUNTIME_DIR=/run/user/1000 {SW} "
@@ -559,6 +564,13 @@ def run_keys(sess, logf):
     key("meta_l-l", 2)
     q("pgrep -c -x swaylock || echo 0", "MK_LOCK")
     q("pkill -x swaylock; echo unlocked", "MK_UNLOCK")
+    # Post-fix verification: launchpad has been polling for ~20s by now.
+    time.sleep(8)
+    q("grep -c 'rejected request without valid API token' "
+      "/home/diad/.diad/daemon.log || echo 0", "MK_WARNCOUNT")
+    q("ls /etc/systemd/system | grep -cE 'debug-serial|serial-getty' || echo 0",
+      "MK_UNITS")
+    q("pgrep -cx sway && pgrep -cx waybar && pgrep -cx diad-agent", "MK_DESKTOP")
     mon.close()
 
 
@@ -618,10 +630,10 @@ def run():
 
         if ENTRY == "q4-persist":
             sess.send(PERSIST_SCRIPT)
-            sess.expect("PERSIST_DONE", 240)
+            sess.expect("PERSIST_DONE_0", 240)
         if ENTRY == "q6-verbose":
             sess.send(DIAG_SCRIPT)
-            sess.expect("DIAG_DONE", 240)
+            sess.expect("DIAG_DONE_0", 240)
         if ENTRY == "q5-keys":
             run_keys(sess, logf)
 

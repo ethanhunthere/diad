@@ -411,6 +411,21 @@ async fn static_handler(
 // Router + serve
 // ---------------------------------------------------------------------------
 
+/// Bootstrap endpoint for the embedded GUI: returns the API token so the
+/// browser client can authenticate REST + WS calls. Only same-origin GUI
+/// contexts can read the response (origin/host validated below; no CORS
+/// headers are ever emitted, so cross-origin JS cannot read it).
+async fn gui_token(headers: axum::http::HeaderMap) -> Response {
+    if !origin_allowed(&headers) || !host_allowed(&headers) {
+        tracing::warn!("rejected /gui-token request from disallowed origin/host");
+        return axum::http::StatusCode::FORBIDDEN.into_response();
+    }
+    match API_TOKEN.get() {
+        Some(t) => axum::Json(serde_json::json!({ "token": t })).into_response(),
+        None => axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    }
+}
+
 /// Build the axum router.
 pub fn router(state: Arc<DaemonState>) -> Router {
     // Protected plane: API + WebSocket (token-authenticated).
@@ -419,10 +434,16 @@ pub fn router(state: Arc<DaemonState>) -> Router {
         .nest("/api/v1", super::rest::api_router())
         .layer(axum::middleware::from_fn(auth_middleware));
 
-    // Public plane: embedded GUI + health probe.
+    // Public plane: embedded GUI + health probe + GUI token bootstrap.
+    // /gui-token hands the embedded GUI its bearer token. It is guarded by
+    // origin_allowed + host_allowed (same checks as the WS upgrade): a page
+    // served from any other origin is refused outright, and cross-origin
+    // reads are blocked because no CORS headers are ever emitted. Local
+    // non-browser processes can just read the 0600 token file instead.
     Router::new()
         .route("/", get(index_html))
         .route("/health", get(|| async { "ok" }))
+        .route("/gui-token", get(gui_token))
         .route("/{*path}", get(static_handler))
         .merge(protected)
         .with_state(state)

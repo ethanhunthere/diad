@@ -6,6 +6,12 @@ Before=getty@tty1.service
 ConditionPathExists=!/var/lib/diad/identity-setup
 
 [Service]
+# F-31: TTYVHangup=yes was REMOVED — it vhangups tty1 after exec, which
+# silently breaks bash's `read` mid-wizard (prompts render, then input is
+# echoed by the line discipline but never consumed: first-boot hangs forever
+# and getty never starts). StandardInput=tty + TTYPath already give the
+# script exclusive access to tty1; TTYReset=yes restores sane termios on
+# exit. NoHangup is what makes `read -s` actually receive keystrokes.
 Type=oneshot
 ExecStart=/usr/local/bin/diad-identity-setup.sh
 StandardInput=tty
@@ -13,7 +19,6 @@ StandardOutput=tty
 StandardError=tty
 TTYPath=/dev/tty1
 TTYReset=yes
-TTYVHangup=yes
 RemainAfterExit=no
 
 [Install]

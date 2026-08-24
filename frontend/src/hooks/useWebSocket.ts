@@ -24,6 +24,23 @@ function defaultWsUrl(): string {
   return "ws://127.0.0.1:7860/ws";
 }
 
+/**
+ * Build the connect URL with the API token as a query param so the daemon
+ * pre-authenticates the upgrade (server.rs ws_handler). Falls back to the
+ * bare URL until the token bootstrap resolves.
+ */
+async function authedWsUrl(): Promise<string> {
+  const base = defaultWsUrl();
+  try {
+    const { apiToken } = await import("../services/api");
+    const token = await apiToken();
+    if (token) return `${base}?token=${encodeURIComponent(token)}`;
+  } catch {
+    // fall through to unauthenticated URL; server will close and we retry
+  }
+  return base;
+}
+
 export function useWebSocket(url = defaultWsUrl()): void {
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -224,45 +241,49 @@ export function useWebSocket(url = defaultWsUrl()): void {
 
     const connect = () => {
       if (disposed) return;
-      try {
-        ws = new WebSocket(url);
-      } catch {
-        scheduleReconnect();
-        return;
-      }
-      socketRef.current = ws;
-
-      ws.onopen = () => {
-        attempts = 0;
-        // Flush frames queued while disconnected (oldest first).
-        const sock = socketRef.current;
-        while (sock && outboundQueue.length > 0) {
-          const frame = outboundQueue.shift()!;
+      authedWsUrl()
+        .catch(() => defaultWsUrl())
+        .then((connectUrl) => {
           try {
-            sock.send(frame);
+            ws = new WebSocket(connectUrl);
           } catch {
-            break; // socket died again — remaining frames stay queued
+            scheduleReconnect();
+            return;
           }
-        }
-      };
+          socketRef.current = ws;
 
-      ws.onmessage = (ev) => {
-        try {
-          dispatch(JSON.parse(ev.data as string));
-        } catch (err) {
-          console.warn("[diad] bad frame", err);
-        }
-      };
+          ws.onopen = () => {
+            attempts = 0;
+            // Flush frames queued while disconnected (oldest first).
+            const sock = socketRef.current;
+            while (sock && outboundQueue.length > 0) {
+              const frame = outboundQueue.shift()!;
+              try {
+                sock.send(frame);
+              } catch {
+                break; // socket died again — remaining frames stay queued
+              }
+            }
+          };
 
-      ws.onclose = () => {
-        if (socketRef.current === ws) socketRef.current = null;
-        if (!closedRef.current) useStore.getState().setWsConnected(false);
-        scheduleReconnect();
-      };
+          ws.onmessage = (ev) => {
+            try {
+              dispatch(JSON.parse(ev.data as string));
+            } catch (err) {
+              console.warn("[diad] bad frame", err);
+            }
+          };
 
-      ws.onerror = () => {
-        ws?.close();
-      };
+          ws.onclose = () => {
+            if (socketRef.current === ws) socketRef.current = null;
+            if (!closedRef.current) useStore.getState().setWsConnected(false);
+            scheduleReconnect();
+          };
+
+          ws.onerror = () => {
+            ws?.close();
+          };
+        });
     };
 
     const scheduleReconnect = () => {

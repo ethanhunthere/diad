@@ -36,10 +36,6 @@ file_permissions=(
     ["/home/diad/.bash_profile"]="1000:1000:644"
     ["/home/diad/.config/foot/foot.ini"]="1000:1000:644"
     ["/home/diad/.config/sway/config"]="1000:1000:644"
-    ["/home/diad/.ssh"]="1000:1000:700"
-    ["/home/diad/.ssh/authorized_keys"]="1000:1000:600"
-    ["/root/.ssh"]="0:0:700"
-    ["/root/.ssh/authorized_keys"]="0:0:600"
     ["/etc/skel/.bash_profile"]="0:0:644"
     ["/etc/skel/.config/foot/foot.ini"]="0:0:644"
     ["/etc/xdg/foot/foot.ini"]="0:0:644"
@@ -62,7 +58,6 @@ file_permissions=(
     ["/etc/nftables.conf"]="0:0:600"
     ["/etc/NetworkManager/conf.d/diad.conf"]="0:0:600"
     ["/etc/polkit-1/rules.d/00-diad-admin.rules"]="0:0:644"
-    ["/usr/share/polkit-1/rules.d/00-diad-admin.rules"]="0:0:644"
 
     # --- display session ---
     ["/etc/mako/config"]="0:0:644"
@@ -72,12 +67,9 @@ file_permissions=(
     ["/etc/waybar/config.compact"]="0:0:644"
     ["/etc/waybar/config.full"]="0:0:644"
     ["/etc/waybar/style.css"]="0:0:644"
-    ["/etc/xdg/waybar/config"]="0:0:644"
-    ["/etc/xdg/waybar/style.css"]="0:0:644"
     ["/etc/diad/sway-overrides.conf"]="0:0:644"
 
     # --- systemd units / drop-ins ---
-    ["/etc/systemd/system/getty@.service.d/autologin.conf"]="0:0:644"
     ["/etc/systemd/system/getty@tty1.service.d/autologin.conf"]="0:0:644"
     ["/etc/systemd/system/diad-firewall.service"]="0:0:644"
     ["/etc/systemd/system/diad-identity-setup.service"]="0:0:644"
@@ -93,8 +85,6 @@ file_permissions=(
     ["/etc/modprobe.d/diad-blacklist.conf"]="0:0:644"
     ["/etc/tmpfiles.d/diad-power.conf"]="0:0:644"
     ["/etc/systemd/system-preset/00-diad.preset"]="0:0:644"
-    ["/usr/lib/systemd/system-preset/00-diad.preset"]="0:0:644"
-    ["/usr/share/systemd/diad.preset"]="0:0:644"
     ["/usr/share/glib-2.0/schemas/99_diad_dark.gschema.override"]="0:0:644"
     ["/usr/share/backgrounds/diad/wallpaper.png"]="0:0:644"
     ["/usr/share/backgrounds/diad/wallpaper.svg"]="0:0:644"
@@ -146,7 +136,6 @@ file_permissions=(
     ["/usr/local/bin/diad-workspace.sh"]="0:0:755"
     ["/usr/local/bin/diad-workspace-jump.sh"]="0:0:755"
     ["/usr/local/bin/diad-waybar"]="0:0:755"
-    ["/usr/local/bin/swaynag"]="0:0:755"
     ["/usr/local/bin/diad-rfkill"]="0:0:755"
     ["/usr/local/bin/diad-screenshot"]="0:0:755"
     # Web lockscreen: kiosk orchestrator (sway lock mode) + PAM auth helper

@@ -31,6 +31,11 @@ fi
 
 mkdir -p /var/lib/diad
 
+# Record completion on EVERY exit path (including Ctrl+C / crash) so a
+# cancelled wizard never re-runs on the next boot — the user would be stuck
+# in a setup loop with no way to reach the desktop.
+trap 'touch "${MARKER}"' EXIT
+
 cat <<'EOF'
 
    ██████╗ ██╗     █████╗ ██████╗
@@ -49,12 +54,18 @@ EOF
 
 # ---- Username ---------------------------------------------------------------
 NAME_RE='^[a-z_][a-z0-9_-]{0,31}$'
-read -r -p "Username [${DEFAULT_USER}]: " USERNAME
+# F-31: guard against a dead/hung-up tty — if reads keep failing (EOF),
+# bail out and let the boot continue rather than hanging first-boot forever.
+# F-31b: a timed-out or EOF'd read just means empty input — keep defaults and move on so
+# first-boot can never wedge the machine. Users can set credentials later via diad-set-password.
+if ! read -r -t 60 -p "Username [${DEFAULT_USER}]: " USERNAME; then
+    echo "  (no input received — keeping defaults)" >&2
+fi
 USERNAME="${USERNAME:-${DEFAULT_USER}}"
 
 until [[ "${USERNAME}" =~ ${NAME_RE} ]]; do
     echo "  Invalid username (lowercase letters, digits, '-', '_')." >&2
-    read -r -p "Username [${DEFAULT_USER}]: " USERNAME
+    read -r -t 30 -p "Username [${DEFAULT_USER}]: " USERNAME || true
     USERNAME="${USERNAME:-${DEFAULT_USER}}"
 done
 
@@ -65,7 +76,10 @@ fi
 
 # ---- Password ----------------------------------------------------------------
 while true; do
-    read -r -s -p "Password (min 8 chars, blank = keep factory default): " PASS1
+    # -s suppresses echo; -r raw backslashes. If the tty is not a controlling
+    # terminal (systemd StandardInput=tty), echo suppression may fail — force
+    # it off around the read so the password never lands in the scrollback.
+    read -r -s -t 30 -p "Password (min 8 chars, blank = keep factory default): " PASS1 || true
     echo ""
     if [[ -z "${PASS1}" ]]; then
         PASSWORD_SET=0
@@ -75,7 +89,7 @@ while true; do
         echo "  Too short — at least 8 characters." >&2
         continue
     fi
-    read -r -s -p "Confirm password: " PASS2
+    read -r -s -t 30 -p "Confirm password: " PASS2 || true
     echo ""
     if [[ "${PASS1}" == "${PASS2}" ]]; then
         PASSWORD_SET=1
@@ -110,9 +124,16 @@ fi
 
 # ---- Apply: password ----------------------------------------------------------
 if [[ "${PASSWORD_SET:-0}" -eq 1 ]]; then
-    printf '%s:%s\n' "${USERNAME}" "${PASS1}" | chpasswd
-    echo ""
-    echo "  ✔ Password set for '${USERNAME}'."
+    # F-33: chpasswd can fail (e.g. shadow lock held by systemd-homed). Never claim success
+    # without checking — a silently unset password locks the user out of their own machine.
+    if printf '%s:%s\n' "${USERNAME}" "${PASS1}" | chpasswd; then
+        echo ""
+        echo "  ✔ Password set for '${USERNAME}'."
+    else
+        echo "" >&2
+        echo "  ✖ FAILED to set password (account keeps factory/no password)." >&2
+        echo "    Set one later from the desktop: Settings → Password, or 'diad-set-password'." >&2
+    fi
 elif [[ ${renamed} -eq 1 ]]; then
     echo ""
     echo "  ✔ Account renamed to '${USERNAME}' (password unchanged)."

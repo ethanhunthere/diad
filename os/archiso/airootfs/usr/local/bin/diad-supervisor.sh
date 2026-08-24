@@ -66,7 +66,16 @@ rotate_logs() {
 # PROMPT-2 S4.2 — healthy means the API v1 status probe answers (the real
 # agent surface), not just the bare /health ping.
 daemon_healthy() {
-    curl -sf http://127.0.0.1:7860/api/v1/status >/dev/null 2>&1
+    # F-32: the control plane is token-authenticated (only /health is exempt).
+    # Liveness: /health. Real health: authed status probe using the per-boot
+    # API token from the runtime dir — without it this always 401'd and the
+    # supervisor looped on "daemon alive but not healthy".
+    curl -sf http://127.0.0.1:7860/health >/dev/null 2>&1 || return 1
+    local f="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/api-token"
+    [[ -r "$f" ]] || return 1
+    local t
+    t=$(cat "$f")
+    curl -sf -H "Authorization: Bearer $t" http://127.0.0.1:7860/api/v1/status >/dev/null 2>&1
 }
 
 # Number of real browser windows on any workspace, EXCLUDING the DIAD app
@@ -167,7 +176,11 @@ verify_on_workspace() {
 # Uses the daemon's own sway-tree parse (open[]), so this works even before
 # the local sway IPC answers. 0/1 exit for if/then.
 launchpad_should_close() {
-    curl -sf http://127.0.0.1:7860/api/v1/launch/status 2>/dev/null \
+    # F-32: control plane is token-authenticated; read the per-boot token
+    # like daemon_healthy does. Without it every 10 s probe logged a WARN.
+    local f="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/api-token" t=""
+    [[ -r "$f" ]] && t=$(cat "$f")
+    curl -sf -H "Authorization: Bearer $t" http://127.0.0.1:7860/api/v1/launch/status 2>/dev/null \
         | jq -e '(.open | index("telegram")) and (.open | index("slack"))' >/dev/null 2>&1
 }
 
@@ -437,7 +450,13 @@ while true; do
     # agent window exists yet (never a second one), and the ONE allowed
     # error surface (a diagnostics foot, WP-07) appears exactly once.
     if [[ ${FALLBACK} -eq 0 ]] && ! daemon_healthy; then
-        if [[ ${DAEMON_RESTARTS} -lt 2 ]]; then
+        # Only restart when no daemon process exists at all. A running-but-
+        # slow daemon (first boot, brave starting) must NOT be double-spawned:
+        # the second instance dies with "Address already in use" and leaves a
+        # stray error surface on screen.
+        if pgrep -f 'diad-agent --daemon' >/dev/null 2>&1; then
+            log "supervisor: daemon process alive but not healthy yet — waiting"
+        elif [[ ${DAEMON_RESTARTS} -lt 2 ]]; then
             DAEMON_RESTARTS=$((DAEMON_RESTARTS + 1))
             DAEMON_GRACE_UNTIL=$(( $(date +%s) + 30 ))
             log "supervisor: daemon unhealthy — restart ${DAEMON_RESTARTS}/2"

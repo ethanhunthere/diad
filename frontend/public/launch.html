@@ -209,8 +209,23 @@
     const btns = { telegram: document.getElementById("tg-btn"), slack: document.getElementById("sl-btn") };
     const status = document.getElementById("status");
 
+    // Bearer-token bootstrap (same mechanism as the React GUI): /gui-token is
+    // same-origin and origin/host-guarded, so this page may read it.
+    const diadToken = fetch("/gui-token", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => (b && b.token ? b.token : ""))
+      .catch(() => "");
+    function authed(opts) {
+      return diadToken.then((t) => {
+        const o = Object.assign({}, opts);
+        o.headers = Object.assign({ Authorization: "Bearer " + t }, o.headers || {});
+        return o;
+      });
+    }
+
     function poll() {
-      fetch("/api/v1/launch/status", { cache: "no-store" })
+      authed({ cache: "no-store" })
+        .then((o) => fetch("/api/v1/launch/status", o))
         .then((r) => r.json())
         .then((s) => {
           for (const app of ["telegram", "slack"]) {
@@ -239,11 +254,11 @@
       const cap = app.charAt(0).toUpperCase() + app.slice(1);
       status.textContent = "Opening " + cap + " on Workspace 3…";
       try {
-        await fetch("/api/v1/launch", {
+        await fetch("/api/v1/launch", await authed({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ app }),
-        });
+        }));
         status.textContent = cap + " active on Workspace 3";
         setTimeout(poll, 800);
       } catch (e) {

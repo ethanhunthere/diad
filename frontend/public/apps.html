@@ -486,13 +486,25 @@
       window.location.href = target;
     }
 
+    const diadToken = fetch('/gui-token', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => (b && b.token ? b.token : ''))
+      .catch(() => '');
+    function authed(opts) {
+      return diadToken.then((t) => {
+        const o = Object.assign({}, opts);
+        o.headers = Object.assign({ Authorization: 'Bearer ' + t }, o.headers || {});
+        return o;
+      });
+    }
+
     async function windowAction(action) {
       try {
-        await fetch('/api/v1/window', {
+        await fetch('/api/v1/window', await authed({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action })
-        });
+        }));
       } catch (err) {
         console.error('Window action error:', err);
       }

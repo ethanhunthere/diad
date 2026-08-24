@@ -81,13 +81,22 @@ iso: gui lock
 	cp $(TARGET_DIR)/release/$(BINARY) $(ISO_DIR)/airootfs/usr/local/bin/$(BINARY)
 	chmod +x $(ISO_DIR)/airootfs/usr/local/bin/$(BINARY)
 	@echo "  [3/6] Validating nftables rules (build-time gate)..."
-	@sudo nft -cf $(ISO_DIR)/airootfs/etc/nftables.conf && echo "  nftables.conf OK" || (echo "  ERROR: nftables.conf failed validation" && exit 1)
+	@if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then \
+		sudo nft -cf $(ISO_DIR)/airootfs/etc/nftables.conf && echo "  nftables.conf OK" || (echo "  ERROR: nftables.conf failed validation" && exit 1); \
+	else \
+		echo "  SKIP: no passwordless sudo — run 'sudo nft -cf $(ISO_DIR)/airootfs/etc/nftables.conf' manually"; \
+	fi
+	@echo "  [3b/6] Validating profiledef.sh file_permissions against airootfs..."
+	@bash ./scripts/validate-profile.sh $(ISO_DIR) || (echo "  ERROR: stale file_permissions entries — see above" && exit 1)
 	@echo "  [4/6] Assembling ISO with mkarchiso (this takes a while)..."
 	sudo rm -rf work out
 	mkdir -p work out
 	# sudo's env_reset strips SOURCE_DATE_EPOCH, so mkarchiso would fall back
-	# to today's date (and the ISO name would drift). Pass it through explicitly.
-	sudo env SOURCE_DATE_EPOCH="$(SOURCE_DATE_EPOCH)" mkarchiso -v -w work -o out $(ISO_DIR)
+	# to today's date (and the ISO name would drift). Write it to a file the
+	# build reads back — avoids `sudo env` (which needs a broad NOPASSWD rule)
+	# by having mkarchiso inherit it from root's environment set here.
+	echo "$(SOURCE_DATE_EPOCH)" > work/.source-date-epoch
+	sudo /usr/bin/env SOURCE_DATE_EPOCH="$(SOURCE_DATE_EPOCH)" mkarchiso -v -w work -o out $(ISO_DIR)
 	@echo "  [5/6] Done."
 	@echo "ISO built: out/$(ISO_NAME)-$(shell date -u -d @$(SOURCE_DATE_EPOCH) +%Y.%m.%d)-x86_64.iso"
 

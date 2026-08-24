@@ -45,3 +45,9 @@ mask serial-getty@.service
 
 # --- Default: leave everything else at distro defaults --------------------
 enable *
+
+# F-33: homed holds /etc/shadow lock and breaks chpasswd on the live ISO;
+# DIAD accounts are classic /etc/passwd+shadow. Masks MUST come after "enable *".
+mask systemd-homed.service
+mask systemd-userdbd.socket
+mask systemd-homed-activate.service
