@@ -12,7 +12,19 @@ import { useStore } from "../stores/useStore";
  * - daemon → client: BARE ServerMsg frames { "type": "<snake_case>", ... }
  * - client → daemon: FLAT envelopes { "v": 1, "type": "<snake_case>", ... }
  */
-export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
+/**
+ * Default WebSocket endpoint: derive it from the page origin when served
+ * over http(s); fall back to the local daemon for file:// contexts.
+ */
+function defaultWsUrl(): string {
+  if (typeof window !== "undefined" && (location.protocol === "http:" || location.protocol === "https:")) {
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    return `${proto}//${location.host}/ws`;
+  }
+  return "ws://127.0.0.1:7860/ws";
+}
+
+export function useWebSocket(url = defaultWsUrl()): void {
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closedRef = useRef(false);
@@ -131,10 +143,14 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
           store.setAgents(m.agents);
           break;
         case "tool_use": {
-          // Tool calls belong to the most recent assistant message.
+          // Prefer the explicit msgId from the daemon payload when present;
+          // otherwise fall back to attaching to the most recent assistant
+          // message (older daemons don't send msg_id).
           const msgs = useStore.getState().messages;
-          const last = msgs[msgs.length - 1];
-          const msgId = last?.id ?? "msg-fallback";
+          const target = m.msg_id
+            ? msgs.find((msg) => msg.id === m.msg_id)
+            : msgs[msgs.length - 1];
+          const msgId = target?.id ?? "msg-fallback";
           store.addToolCard(msgId, {
             requestId: m.id,
             callId: m.call_id,
@@ -152,9 +168,12 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
           });
           break;
         case "edit_diff": {
+          // Same routing rule as tool_use: explicit msgId first.
           const msgs = useStore.getState().messages;
-          const last = msgs[msgs.length - 1];
-          const msgId = last?.id ?? "msg-fallback";
+          const target = m.msg_id
+            ? msgs.find((msg) => msg.id === m.msg_id)
+            : msgs[msgs.length - 1];
+          const msgId = target?.id ?? "msg-fallback";
           store.addDiffCard(msgId, { requestId: m.id, path: m.path, diff: m.diff });
           break;
         }
@@ -198,6 +217,11 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
     let attempts = 0;
     let ws: WebSocket | null = null;
 
+    // Outbound queue: frames sent while disconnected are buffered (bounded)
+    // and flushed on reconnect instead of being silently dropped.
+    const outboundQueue: string[] = [];
+    const MAX_OUTBOUND_QUEUE = 100;
+
     const connect = () => {
       if (disposed) return;
       try {
@@ -210,6 +234,16 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
 
       ws.onopen = () => {
         attempts = 0;
+        // Flush frames queued while disconnected (oldest first).
+        const sock = socketRef.current;
+        while (sock && outboundQueue.length > 0) {
+          const frame = outboundQueue.shift()!;
+          try {
+            sock.send(frame);
+          } catch {
+            break; // socket died again — remaining frames stay queued
+          }
+        }
       };
 
       ws.onmessage = (ev) => {
@@ -235,17 +269,39 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
       if (disposed || closedRef.current) return;
       if (reconnectRef.current) clearTimeout(reconnectRef.current);
       attempts += 1;
-      const delay = Math.min(500 * 2 ** Math.min(attempts, 5), 8000);
+      // Exponential backoff with jitter to avoid reconnect storms when many
+      // clients retry in lockstep after a daemon restart.
+      const base = Math.min(500 * 2 ** Math.min(attempts, 5), 8000);
+      const delay = Math.round(base / 2 + Math.random() * (base / 2));
       reconnectRef.current = setTimeout(connect, delay);
     };
 
+    // Heartbeat: ping the daemon every 30s so half-open connections
+    // (dropped by NAT/idle timeouts) are detected and reconnected.
+    let heartbeat: ReturnType<typeof setInterval> | null = null;
+
     connect();
+    heartbeat = setInterval(() => {
+      const sock = socketRef.current;
+      if (sock && sock.readyState === WebSocket.OPEN) {
+        try {
+          sock.send(JSON.stringify({ v: 1, type: "ping", id: nextId("ping") }));
+        } catch {
+          // socket died — onclose will schedule the reconnect
+        }
+      }
+    }, 30000);
 
     // Register the send function with the store.
     useStore.getState().setSend((msg) => {
+      const frame = JSON.stringify(msg);
       const sock = socketRef.current;
       if (sock && sock.readyState === WebSocket.OPEN) {
-        sock.send(JSON.stringify(msg));
+        sock.send(frame);
+      } else if (!closedRef.current) {
+        // Reconnecting — queue it. Drop the oldest frame past the cap.
+        if (outboundQueue.length >= MAX_OUTBOUND_QUEUE) outboundQueue.shift();
+        outboundQueue.push(frame);
       }
     });
 
@@ -253,6 +309,7 @@ export function useWebSocket(url = "ws://127.0.0.1:7860/ws"): void {
       disposed = true;
       closedRef.current = true;
       if (reconnectRef.current) clearTimeout(reconnectRef.current);
+      if (heartbeat) clearInterval(heartbeat);
       ws?.close();
     };
   }, [url]);

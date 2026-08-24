@@ -19,25 +19,36 @@
 
 set -u
 
+UID_NUM="$(id -u)"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/${UID_NUM}}"
 export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
-export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+# Auto-detect SWAYSOCK if not already set
+if [ -z "${SWAYSOCK:-}" ]; then
+    for s in "${XDG_RUNTIME_DIR}"/sway-ipc.*.sock; do
+        if [ -S "$s" ]; then
+            export SWAYSOCK="$s"
+            break
+        fi
+    done
+fi
 
 action="${1:-}"
 case "${action}" in
     minimize)
-        swaymsg move scratchpad
+        swaymsg move scratchpad 2>/dev/null || true
         ;;
     maximize)
-        swaymsg fullscreen toggle
+        swaymsg fullscreen toggle 2>/dev/null || true
         ;;
     close)
-        swaymsg kill
+        swaymsg kill 2>/dev/null || true
         ;;
     restore)
-        swaymsg scratchpad show
+        swaymsg scratchpad show 2>/dev/null || true
         ;;
     *)
-        notify-send "diad-windowctl: unknown action '${action}' (minimize|maximize|close|restore)" -u critical
+        notify-send "diad-windowctl: unknown action '${action}'" -u critical 2>/dev/null || true
         exit 1
         ;;
 esac

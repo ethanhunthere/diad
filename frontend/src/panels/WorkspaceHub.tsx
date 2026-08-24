@@ -80,17 +80,71 @@ export function WorkspaceHub() {
     }
   };
 
+  const windowAction = async (action: "minimize" | "maximize" | "close") => {
+    try {
+      await fetch("/api/v1/window", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+    } catch {}
+  };
+
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#0d0e15] text-slate-100 px-4 py-8 overflow-y-auto select-none">
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#080A09] text-white px-4 pt-12 pb-8 overflow-y-auto select-none relative">
+      {/* Window Top Bar */}
+      <header className="fixed top-0 left-0 right-0 h-9 bg-[#0F1311]/95 backdrop-blur-md border-b border-[#202623] flex items-center justify-between px-3 z-50">
+        <div className="flex items-center gap-2 text-[12px] font-semibold text-[#CBD8D2]">
+          <DiadLogo size={14} />
+          <span>DIAD Workspace {ws} · {ws === 1 ? "AGENT" : ws === 2 ? "BROWSER" : "COMMS"}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => windowAction("minimize")}
+            className="flex h-6 w-6 items-center justify-center rounded text-[13px] text-[#96A9A0] hover:bg-[#18201C] hover:text-white transition-colors"
+            title="Minimize"
+          >
+            –
+          </button>
+          <button
+            onClick={() => windowAction("maximize")}
+            className="flex h-6 w-6 items-center justify-center rounded text-[11px] text-[#96A9A0] hover:bg-[#18201C] hover:text-white transition-colors"
+            title="Maximize"
+          >
+            □
+          </button>
+          <button
+            onClick={() => windowAction("close")}
+            className="flex h-6 w-6 items-center justify-center rounded text-[13px] text-[#96A9A0] hover:bg-[#FF2E4D]/25 hover:text-[#FF2E4D] transition-colors"
+            title="Close"
+          >
+            ×
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content Hub */}
+      <div className="flex w-full max-w-2xl flex-col items-center gap-8 z-10 my-auto">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#18201C] border border-[#202623] p-3 shadow-xl">
+            <DiadLogo size={40} />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            {ws === 1 && "DIAD Agent Workspace"}
+            {ws === 2 && "DIAD Web & App Space"}
+            {ws === 3 && "DIAD Communications"}
+          </h1>
+          <p className="text-[13.5px] text-[#96A9A0] max-w-md">
+            {ws === 1 && "Autonomous agent core and intelligent system execution terminal."}
+            {ws === 2 && "High-performance web browsing, cloud tools, and research workspace."}
+            {ws === 3 && "Encrypted messaging, team collaboration, and unified comms channels."}
+          </p>
+        </div>
+      </div>
+
       {/* Workspace 1: DIAD AGENT */}
       {ws === 1 && (
         <div className="flex flex-col items-center max-w-xl w-full text-center animate-fade-in my-auto">
-          <div className="mb-3">
-            <DiadLogo size={36} />
-          </div>
-          <p className="mt-1 text-[13px] text-slate-400 font-sans tracking-wide">
-            Intent-Driven Operating System
-          </p>
 
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
             <button
@@ -267,6 +321,11 @@ export function WorkspaceHub() {
         <span className={ws === 2 ? "text-cyan-400 font-bold" : ""}>F2 / WS2: BROWSER</span>
         <span>•</span>
         <span className={ws === 3 ? "text-sky-400 font-bold" : ""}>F3 / WS3: COMMS</span>
+      </div>
+
+      {/* Bottom right corner resize indicator */}
+      <div className="fixed bottom-2 right-2 text-slate-500 hover:text-amber-400 cursor-se-resize select-none text-[15px] font-bold z-50 p-1" title="Resize Window (Drag corner or Super+Right Click)">
+        ↘
       </div>
     </div>
   );

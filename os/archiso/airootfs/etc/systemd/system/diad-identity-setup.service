@@ -1,0 +1,20 @@
+[Unit]
+Description=DIAD first-boot identity setup (username + password)
+# Blocks the tty1 autologin until the identity wizard finishes, so the
+# desktop session only starts after the account is named and protected.
+Before=getty@tty1.service
+ConditionPathExists=!/var/lib/diad/identity-setup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/diad-identity-setup.sh
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target

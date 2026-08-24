@@ -120,7 +120,7 @@ fn render_top_bar(app: &App, width: u16) -> Paragraph<'static> {
         Color::Rgb(217, 119, 6) // #D97706 Industrial Amber
     };
 
-    let spans = if width < 42 {
+    let mut spans = if width < 42 {
         // Ultra-compact: DIAD | OFFLINE
         vec![
             Span::styled(
@@ -188,6 +188,20 @@ fn render_top_bar(app: &App, width: u16) -> Paragraph<'static> {
             Span::styled(status, Style::default().fg(status_color).bold()),
         ]
     };
+
+    // Right-aligned Window Control buttons matching GUI: [ – ] [ □ ] [ ✕ ]
+    let left_len: usize = spans.iter().map(|s| s.content.chars().count()).sum();
+    let controls_str = if width >= 50 { " [ – ] [ □ ] [ ✕ ] " } else { "" };
+    let controls_len = controls_str.chars().count();
+
+    if controls_len > 0 && (width as usize) > left_len + controls_len {
+        let pad_len = (width as usize) - left_len - controls_len;
+        spans.push(Span::raw(" ".repeat(pad_len)));
+        spans.push(Span::styled(
+            controls_str,
+            Style::default().fg(Color::Rgb(203, 216, 210)).bg(Color::Rgb(22, 25, 24)).bold(),
+        ));
+    }
 
     Paragraph::new(Line::from(spans)).style(Style::default().bg(Color::Rgb(15, 17, 16)))
 }

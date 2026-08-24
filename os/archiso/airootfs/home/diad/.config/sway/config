@@ -38,23 +38,34 @@ input type:touchpad {
 
 # ---- Appearance & Geometry ----
 font pango:Inter 10
-default_border pixel 0
-gaps inner 0
+default_border pixel 2
+default_floating_border pixel 2
+gaps inner 8
 gaps outer 0
-gaps top 0
+gaps top 8
 gaps bottom 0
 gaps left 0
 gaps right 0
 smart_gaps off
-smart_borders on
+smart_borders off
 
-# Industrial Basalt & Crimson Design Tokens (Focused #B32032, Inactive #202623)
-client.focused          #B32032 #161918 #E5EAE6 #B32032 #B32032
-client.unfocused        #202623 #0F1110 #8A968E #202623 #202623
-client.focused_inactive #202623 #0F1110 #8A968E #202623 #202623
-client.urgent           #B32032 #161918 #FFFFFF #B32032 #B32032
+# High-Contrast Industrial Basalt & Luminous Crimson Tokens (Focused #FF2E4D, Inactive #333C37)
+client.focused          #FF2E4D #161918 #FFFFFF #FF2E4D #FF2E4D
+client.unfocused        #333C37 #0F1110 #CBD8D2 #333C37 #333C37
+client.focused_inactive #333C37 #0F1110 #CBD8D2 #333C37 #333C37
+client.urgent           #FF1744 #161918 #FFFFFF #FF1744 #FF1744
 
 focus_follows_mouse no
+max_render_time 3
+
+# Window Dragging & Resizing Everywhere (Borders, Edges, Corners, Mod+Mouse)
+tiling_drag enabled
+tiling_drag_threshold 5
+bindsym --border BTN_RIGHT resize
+bindsym --border BTN_LEFT resize
+bindsym --whole-window $mod+BTN_RIGHT resize
+bindsym --whole-window $mod+BTN_LEFT move
+floating_modifier $mod normal
 
 # ---- Strict Workspace Routing Rules ----
 
@@ -69,7 +80,7 @@ assign [app_id="^org\.gnome\.Epiphany$"] workspace $ws2
 assign [app_id="^chrome-127\.0\.0\.1__apps-Default$"] workspace $ws2
 assign [app_id="^org\.telegram\.desktop$"] workspace $ws3
 assign [app_id="^telegramdesktop$"] workspace $ws3
-assign [app_id="com\.slack\.Slack$"] workspace $ws3
+assign [app_id="^com\.slack\.Slack$"] workspace $ws3
 assign [app_id="^chrome-127\.0\.0\.1__launch-Default$"] workspace $ws3
 
 # Title-based dynamic window routing (Must use for_window)
@@ -94,104 +105,147 @@ exec /usr/local/bin/diad-waybar
 exec mako
 exec diad-supervisor.sh
 
-# ---- Keybindings ----
-bindsym $mod+m move scratchpad
-bindsym $mod+Shift+m scratchpad show
-bindsym $mod+f fullscreen toggle
-bindsym $mod+Shift+q kill
+# ---- Mouse & Desktop Bindings ----
+# Right-click context menu on desktop background / root window
+bindsym --whole-window BTN_RIGHT exec /usr/local/bin/diad-context-menu.sh
+bindsym $mod+BTN_RIGHT exec /usr/local/bin/diad-context-menu.sh
+bindsym $mod+m exec /usr/local/bin/diad-context-menu.sh
+
+# Drag floating windows by holding down $mod and left mouse button
+floating_modifier $mod normal
+
+# =============================================================================
+# DIAD OS — Universal Linux Pro Keyboard Shortcuts (40+ Keybindings)
+# =============================================================================
+
+# ---- Core Window Operations ----
 bindsym $mod+q kill
+bindsym $mod+Shift+q kill
+bindsym $mod+f fullscreen toggle
+bindsym $mod+Shift+space floating toggle
 bindsym $mod+Shift+e exit
+bindsym $mod+Shift+c reload
 
-# Start terminal
+# ---- Launchers & Core Applications ----
 bindsym $mod+Return exec $term
+bindsym $mod+Shift+Return exec foot --app-id=floating-terminal
+bindsym $mod+d exec wofi --show drun $WOFI_BASE
+bindsym $mod+space exec wofi --show drun $WOFI_BASE
+bindsym $mod+v exec /usr/local/bin/diad-clipboard.sh
+bindsym $mod+n exec /usr/local/bin/diad-wifi.sh
+bindsym $mod+p exec /usr/local/bin/diad-power.sh
+bindsym $mod+k exec /usr/local/bin/diad-shortcuts.sh
 
-# Workspace Navigation (Direct Sway IPC — 0 latency, 0 flashing)
-bindsym $mod+1 workspace $ws1
-bindsym $mod+2 workspace $ws2
-bindsym $mod+3 workspace $ws3
-
+# ---- Direct Workspace Navigation & Fast Switch ----
 bindsym F1 workspace $ws1
 bindsym F2 workspace $ws2
 bindsym F3 workspace $ws3
-bindsym F5 exec /usr/local/bin/brave --app=http://127.0.0.1:7860
+bindsym $mod+1 workspace $ws1
+bindsym $mod+2 workspace $ws2
+bindsym $mod+3 workspace $ws3
+bindsym $mod+4 workspace 4
+bindsym $mod+5 workspace 5
+bindsym $mod+6 workspace 6
+bindsym $mod+7 workspace 7
+bindsym $mod+8 workspace 8
+bindsym $mod+9 workspace 9
 
-# Direct app launch shortcuts
-bindsym $mod+a exec /usr/local/bin/brave --app=http://127.0.0.1:7860
+# Direct app shortcuts matching workspaces
+bindsym $mod+a workspace $ws1
+bindsym $mod+w workspace $ws2
+bindsym $mod+c workspace $ws3
 bindsym $mod+b exec /usr/local/bin/brave
 bindsym $mod+t exec /usr/local/bin/diad-telegram
 bindsym $mod+Shift+s exec /usr/local/bin/diad-slack
-bindsym $mod+Shift+p exec /usr/local/bin/brave --app=http://127.0.0.1:7860/launch
 
-# Layout controls
-bindsym $mod+w layout tabbed
-bindsym $mod+e layout toggle split
-bindsym $mod+s layout stacking
-
-# Move containers
+# ---- Move Containers to Workspaces ----
 bindsym $mod+Shift+1 move container to workspace $ws1
 bindsym $mod+Shift+2 move container to workspace $ws2
 bindsym $mod+Shift+3 move container to workspace $ws3
+bindsym $mod+Shift+4 move container to workspace 4
+bindsym $mod+Shift+5 move container to workspace 5
+bindsym $mod+Shift+6 move container to workspace 6
+bindsym $mod+Shift+7 move container to workspace 7
+bindsym $mod+Shift+8 move container to workspace 8
+bindsym $mod+Shift+9 move container to workspace 9
 
-# Reload config
-bindsym $mod+Shift+c reload
-
-# Focus navigation
+# ---- Focus Navigation (Vim + Arrows) ----
 bindsym $mod+h focus left
 bindsym $mod+j focus down
 bindsym $mod+k focus up
 bindsym $mod+l focus right
-bindsym $mod+Right focus right
 bindsym $mod+Left focus left
-bindsym $mod+Up focus up
 bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
 
-# Move focused window
+# ---- Move Focused Window (Vim + Arrows) ----
 bindsym $mod+Shift+h move left
 bindsym $mod+Shift+j move down
 bindsym $mod+Shift+k move up
 bindsym $mod+Shift+l move right
-bindsym $mod+Shift+Right move right
 bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
 
-# Split layout
-bindsym $mod+v split vertical
-bindsym $mod+Shift+v split horizontal
+# ---- Layout & Tiling Controls ----
+bindsym $mod+e layout toggle split
+bindsym $mod+s layout stacking
+bindsym $mod+Tab layout tabbed
+bindsym $mod+backslash split vertical
+bindsym $mod+minus split horizontal
 
-# Floating toggle
-bindsym $mod+Shift+space floating toggle
+# ---- Scratchpad Controls ----
+bindsym $mod+Shift+minus move scratchpad
+bindsym $mod+grave scratchpad show
+bindsym $mod+Shift+grave scratchpad show
 
-# Screenshot
+# ---- Screenshots (Grim + Slurp) ----
+bindsym Print exec grim -g "$(slurp)" - | wl-copy && notify-send "DIAD Screenshot" "Selected area copied to clipboard" -i camera-photo
+bindsym Shift+Print exec mkdir -p ~/Pictures/Screenshots && ts=$(date +%Y-%m-%d_%H-%M-%S) && grim ~/Pictures/Screenshots/screenshot_${ts}.png && wl-copy < ~/Pictures/Screenshots/screenshot_${ts}.png && notify-send "DIAD Screenshot" "Saved to Pictures/Screenshots" -i camera-photo
 bindsym $mod+Print exec /usr/local/bin/diad-screenshot
 
-# Lock screen
+# ---- Lock Screen & Power Management ----
+bindsym $mod+Shift+p exec /usr/local/bin/diad-lock
 bindsym $mod+Escape exec /usr/local/bin/diad-lock
+bindsym XF86ScreenSaver exec /usr/local/bin/diad-lock
+bindsym Control+Mod1+l exec /usr/local/bin/diad-lock
 
-# Screen brightness
+# ---- Hardware Control (Audio, Brightness, RFKill) ----
 bindsym XF86MonBrightnessUp exec brightnessctl set +5%
 bindsym XF86MonBrightnessDown exec brightnessctl set 5%-
+bindsym $mod+F6 exec brightnessctl set +5%
+bindsym $mod+F5 exec brightnessctl set 5%-
 
-# Volume
 bindsym XF86AudioRaiseVolume exec wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+
 bindsym XF86AudioLowerVolume exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
 bindsym XF86AudioMute exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
 bindsym XF86AudioMicMute exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+bindsym $mod+F12 exec wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+
+bindsym $mod+F11 exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+bindsym $mod+F10 exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
 
-# Media playback
 bindsym XF86AudioPlay exec playerctl play-pause
 bindsym XF86AudioNext exec playerctl next
 bindsym XF86AudioPrev exec playerctl previous
 bindsym XF86AudioStop exec playerctl stop
-
-# Airplane mode toggle
 bindsym XF86RFKill exec /usr/local/bin/diad-rfkill
 
-# Quick launcher shortcuts
-bindsym $mod+n exec /usr/local/bin/diad-wifi.sh
-bindsym $mod+p exec /usr/local/bin/diad-power.sh
-
-# Lock screen bindings
-bindsym XF86ScreenSaver exec /usr/local/bin/diad-lock
-bindsym Control+Mod1+l exec /usr/local/bin/diad-lock
+# ---- Interactive Resize Mode ----
+mode "resize" {
+    bindsym Left resize shrink width 10px
+    bindsym Right resize grow width 10px
+    bindsym Up resize shrink height 10px
+    bindsym Down resize grow height 10px
+    bindsym h resize shrink width 10px
+    bindsym l resize grow width 10px
+    bindsym k resize shrink height 10px
+    bindsym j resize grow height 10px
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+}
+bindsym $mod+r mode "resize"
 
 # Overrides
 include /etc/diad/sway-overrides.conf

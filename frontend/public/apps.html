@@ -28,9 +28,85 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 32px 24px;
+    padding: 48px 24px 32px 24px;
     user-select: none;
     overflow-y: auto;
+    position: relative;
+  }
+
+  /* Fixed Window Top Bar */
+  .window-top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 38px;
+    background: rgba(15, 17, 16, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    z-index: 1000;
+  }
+  .window-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.04em;
+  }
+  .window-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .win-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid #333C37;
+    background: #161918;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 120ms ease;
+  }
+  .win-btn:hover {
+    background: #202623;
+    color: #FFFFFF;
+    border-color: #525D56;
+  }
+  .win-btn.win-close:hover {
+    background: #FF2E4D;
+    color: #FFFFFF;
+    border-color: #FF2E4D;
+  }
+
+  /* Corner Resize Handle */
+  .corner-resize-handle {
+    position: fixed;
+    bottom: 8px;
+    right: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    color: var(--text-secondary);
+    cursor: se-resize;
+    user-select: none;
+    z-index: 1000;
+    padding: 4px;
+    transition: color 120ms ease;
+  }
+  .corner-resize-handle:hover {
+    color: #FF2E4D;
   }
 
   @keyframes pageSpring {
@@ -236,6 +312,18 @@
 </style>
 </head>
 <body>
+  <div class="window-top-bar">
+    <div class="window-title">
+      <span>🌐</span>
+      <span>DIAD Browser</span>
+    </div>
+    <div class="window-controls">
+      <button class="win-btn" onclick="windowAction('minimize')" title="Minimize">–</button>
+      <button class="win-btn" onclick="windowAction('maximize')" title="Maximize">□</button>
+      <button class="win-btn win-close" onclick="windowAction('close')" title="Close">×</button>
+    </div>
+  </div>
+
   <div class="container">
     <div class="logo-container">
       <img src="/diad-logo-white.png" alt="DIAD" class="diad-official-logo" />
@@ -397,6 +485,19 @@
 
       window.location.href = target;
     }
+
+    async function windowAction(action) {
+      try {
+        await fetch('/api/v1/window', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action })
+        });
+      } catch (err) {
+        console.error('Window action error:', err);
+      }
+    }
   </script>
+  <div class="corner-resize-handle" title="Resize Window (Drag corner or Super+Right Click)">↘</div>
 </body>
 </html>

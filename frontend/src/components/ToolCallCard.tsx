@@ -32,6 +32,7 @@ export function ToolCallCard({ msgId, card }: { msgId: string; card: ToolCard })
           className="flex flex-1 items-center gap-2 text-left"
           onClick={() => toggleToolCard(msgId, card.requestId)}
           title={card.collapsed ? "Expand" : "Collapse"}
+          aria-expanded={!card.collapsed}
         >
           {card.collapsed ? (
             <ChevronRight size={13} className="text-faint" />

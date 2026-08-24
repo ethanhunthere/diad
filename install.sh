@@ -218,8 +218,8 @@ fi
 
 # ---- Install Persistent Storage (fstab.d + setup script) ----
 log_info "Installing persistent storage config..."
-mkdir -p /etc/fstab.d
 if [[ -f "$DIAD_DIR/os/archiso/airootfs/etc/fstab.d/diad-persistent.conf" ]]; then
+    mkdir -p /etc/fstab.d
     cp "$DIAD_DIR/os/archiso/airootfs/etc/fstab.d/diad-persistent.conf" /etc/fstab.d/diad-persistent.conf
     chmod 644 /etc/fstab.d/diad-persistent.conf
 fi
@@ -245,10 +245,12 @@ chown -R "$INSTALL_USER:$INSTALL_USER" "$USER_HOME/.config/diad"
 
 # ---- Enable Services ----
 log_info "Enabling system services..."
-systemctl enable NetworkManager
-systemctl enable gnome-keyring
-systemctl enable diad-firewall.service
-systemctl enable power-profiles-daemon
+systemctl enable NetworkManager || log_warn "failed to enable NetworkManager"
+# gnome-keyring has no unit on some systems (it is D-Bus activated); never
+# abort the install over it.
+systemctl enable gnome-keyring 2>/dev/null || true
+systemctl enable diad-firewall.service || log_warn "failed to enable diad-firewall"
+systemctl enable power-profiles-daemon 2>/dev/null || true
 systemctl disable tlp 2>/dev/null || true
 systemctl mask tlp 2>/dev/null || true
 

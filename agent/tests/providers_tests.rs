@@ -116,3 +116,88 @@ fn test_groq_and_model_switching() {
     let inst = groq_instance.unwrap();
     assert!(inst.provider_name().contains("gpt-oss-120b"));
 }
+
+#[test]
+fn test_openai_common_request_building_and_chunk_parsing() {
+    use diad_agent::providers::openai_common::{build_chat_request, OpenAiSseState};
+    use diad_agent::providers::traits::{Message, ToolDefinition, StreamEvent};
+
+    let messages = vec![
+        Message::system("You are an assistant"),
+        Message::user("List files in directory"),
+    ];
+
+    let tools = vec![
+        ToolDefinition {
+            name: "file_list".into(),
+            description: "List directory files".into(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string"}
+                },
+                "required": ["path"]
+            }),
+        }
+    ];
+
+    let req = build_chat_request("gpt-4o", &messages, &tools, 4096, true);
+    assert_eq!(req.model, "gpt-4o");
+    assert!(req.stream);
+    assert_eq!(req.messages.len(), 2);
+    assert!(req.tools.is_some());
+    assert_eq!(req.tools.unwrap().len(), 1);
+
+    // Test text chunk parsing via OpenAiSseState
+    let mut state = OpenAiSseState::default();
+    let text_sse = b"data: {\"choices\":[{\"delta\":{\"content\":\"Hello world\"},\"finish_reason\":null}]}\n\n";
+    let events = state.feed(text_sse);
+    assert_eq!(events.len(), 1);
+    match &events[0] {
+        Ok(StreamEvent::TextDelta(t)) => assert_eq!(t, "Hello world"),
+        _ => panic!("Expected TextDelta event"),
+    }
+
+    // Test tool call chunk parsing
+    let tool_sse1 = b"data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_123\",\"type\":\"function\",\"function\":{\"name\":\"file_list\",\"arguments\":\"\"}}]},\"finish_reason\":null}]}\n\n";
+    let events1 = state.feed(tool_sse1);
+    assert_eq!(events1.len(), 2);
+    match &events1[0] {
+        Ok(StreamEvent::ToolUseStart { id, name }) => {
+            assert_eq!(id, "call_123");
+            assert_eq!(name, "file_list");
+        }
+        _ => panic!("Expected ToolUseStart event"),
+    }
+    match &events1[1] {
+        Ok(StreamEvent::ToolInputDelta(args)) => {
+            assert_eq!(args, "");
+        }
+        _ => panic!("Expected ToolInputDelta event"),
+    }
+
+    let tool_sse2 = b"data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"{\\\"path\\\":\\\"~\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}]}\n\n";
+    let events2 = state.feed(tool_sse2);
+    assert_eq!(events2.len(), 2);
+    match &events2[0] {
+        Ok(StreamEvent::ToolInputDelta(args)) => {
+            assert_eq!(args, "{\"path\":\"~\"}");
+        }
+        _ => panic!("Expected ToolInputDelta event"),
+    }
+    match &events2[1] {
+        Ok(StreamEvent::ToolUseEnd { id }) => {
+            assert_eq!(id, "call_123");
+        }
+        _ => panic!("Expected ToolUseEnd event"),
+    }
+
+    let done_sse = b"data: [DONE]\n\n";
+    let events_done = state.feed(done_sse);
+    assert_eq!(events_done.len(), 1);
+    match &events_done[0] {
+        Ok(StreamEvent::StreamEnd { .. }) => {}
+        _ => panic!("Expected StreamEnd event"),
+    }
+}
+

@@ -1,16 +1,16 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 24,
+  "height": 38,
   "margin-top": 8,
-  "margin-bottom": 8,
+  "margin-bottom": 4,
   "margin-left": 8,
   "margin-right": 8,
   "exclusive": true,
-  "spacing": 6,
+  "spacing": 8,
   "modules-left": ["clock"],
   "modules-center": ["custom/ws-agent", "custom/ws-browser", "custom/ws-comms"],
-  "modules-right": ["custom/wifi", "custom/lock", "custom/reboot", "custom/power"],
+  "modules-right": ["pulseaudio", "network", "custom/lock", "custom/reboot", "custom/power"],
   "clock": {
     "format": "{:%H:%M}",
     "tooltip": false,
@@ -34,11 +34,26 @@
     "on-click": "/usr/local/bin/diad-workspace.sh 3",
     "interval": "once"
   },
-  "custom/wifi": {
-    "format": "",
-    "tooltip": false,
+  "pulseaudio": {
+    "format": "{icon}  {volume}%",
+    "format-muted": " Muted",
+    "format-icons": {
+      "default": ["", "", ""]
+    },
+    "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "on-scroll-up": "wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+",
+    "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
+    "tooltip": true,
+    "tooltip-format": "Volume: {volume}%\n• Scroll up/down to adjust\n• Click to mute/unmute"
+  },
+  "network": {
+    "format-wifi": "",
+    "format-ethernet": "",
+    "format-disconnected": "",
+    "tooltip-format-wifi": "  {essid} ({signalStrength}%)\nIP: {ipaddr}\nFrequency: {frequency} MHz\n\nClick to open Wi-Fi Manager",
+    "tooltip-format-disconnected": "  Wi-Fi Disconnected\n\nClick to scan & connect",
     "on-click": "/usr/local/bin/diad-wifi.sh",
-    "interval": "once"
+    "interval": 2
   },
   "custom/lock": {
     "format": "",

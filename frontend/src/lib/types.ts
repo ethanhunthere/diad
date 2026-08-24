@@ -72,6 +72,8 @@ export type ServerMsg =
   | {
       type: "tool_use";
       id: string;
+      /** Optional explicit target message id. */
+      msg_id?: string;
       call_id: string;
       name: string;
       args: unknown;
@@ -85,7 +87,7 @@ export type ServerMsg =
       output: string;
       status_line: string;
     }
-  | { type: "edit_diff"; id: string; path: string; diff: string }
+  | { type: "edit_diff"; id: string; /** Optional explicit target message id. */ msg_id?: string; path: string; diff: string }
   | {
       type: "status";
       provider: string;

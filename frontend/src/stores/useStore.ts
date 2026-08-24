@@ -35,7 +35,15 @@ import { nextId } from "../lib/format";
 
 function saveChatToStorage(messages: ChatMessage[]): void {
   try {
-    const trimmed = messages.slice(-200);
+    const trimmed = messages.slice(-200).map((m) => {
+      // Never persist base64 data URLs — a single screenshot can be megabytes
+      // and blow the ~5 MB localStorage quota. The live in-memory message
+      // keeps its images; only the persisted copy is stripped.
+      if (m.images?.some((u) => u.startsWith("data:"))) {
+        return { ...m, images: m.images.filter((u) => !u.startsWith("data:")) };
+      }
+      return m;
+    });
     localStorage.setItem("diad.chat.messages", JSON.stringify(trimmed));
   } catch {
     // quota exceeded or private browsing
@@ -106,6 +114,8 @@ interface StoreState {
 
   // -- terminal ----------------------------------------------------------------
   termBuffer: string;
+  /** Monotonic counter of total PTY bytes appended (see appendTermOutput). */
+  termSeq: number;
   termCols: number;
   termRows: number;
 
@@ -219,6 +229,20 @@ interface StoreActions {
 
 export type Store = StoreState & StoreActions;
 
+// Streaming token buffer: pending text per message id + its scheduled rAF.
+const tokenBuffer = new Map<string, { text: string; raf: number | null }>();
+
+function flushTokenBuffer(id: string): void {
+  const buf = tokenBuffer.get(id);
+  tokenBuffer.delete(id);
+  if (!buf || !buf.text) return;
+  useStore.setState((s) => ({
+    messages: s.messages.map((m) =>
+      m.id === id ? { ...m, content: m.content + buf.text, streaming: true } : m,
+    ),
+  }));
+}
+
 export const useStore = create<Store>((set, get) => ({
   wsConnected: false,
   daemonVersion: "",
@@ -249,6 +273,7 @@ export const useStore = create<Store>((set, get) => ({
   activeFile: null,
 
   termBuffer: "",
+  termSeq: 0,
   termCols: 80,
   termRows: 24,
 
@@ -314,16 +339,47 @@ export const useStore = create<Store>((set, get) => ({
     return id;
   },
 
-  appendToken: (id, text) =>
-    set((s) => {
-      const next = s.messages.map((m) =>
-        m.id === id ? { ...m, content: m.content + text, streaming: true } : m,
-      );
-      return { messages: next };
-    }),
+  // Buffered token appends: tokens accumulate in a per-message buffer and
+  // are flushed to the store at most once per animation frame, so a fast
+  // token stream doesn't remap the whole messages array on every token.
+  appendToken: (id, text) => {
+    const buffers = tokenBuffer;
+    const buf = buffers.get(id) ?? { text: "", raf: null };
+    buf.text += text;
+    if (buf.raf === null && typeof requestAnimationFrame === "function") {
+      buf.raf = requestAnimationFrame(() => {
+        buf.raf = null;
+        flushTokenBuffer(id);
+      });
+    } else if (buf.raf === null) {
+      // No rAF available (SSR/tests): apply synchronously.
+      set((s) => ({
+        messages: s.messages.map((m) =>
+          m.id === id ? { ...m, content: m.content + buf.text } : m,
+        ),
+      }));
+      buffers.delete(id);
+      return;
+    }
+    buffers.set(id, buf);
+  },
 
-  finishStream: (id) =>
-    set((s) => {
+  finishStream: (id) => {
+    // Flush any still-buffered tokens so the final content is complete
+    // before the streaming flag is cleared.
+    const pending = tokenBuffer.get(id);
+    if (pending?.text) {
+      if (pending.raf !== null && typeof cancelAnimationFrame === "function") {
+        cancelAnimationFrame(pending.raf);
+      }
+      tokenBuffer.delete(id);
+      set((s) => ({
+        messages: s.messages.map((m) =>
+          m.id === id ? { ...m, content: m.content + pending.text } : m,
+        ),
+      }));
+    }
+    return set((s) => {
       const next = s.messages.map((m) =>
         m.id === id ? { ...m, streaming: false } : m,
       );
@@ -332,7 +388,8 @@ export const useStore = create<Store>((set, get) => ({
         streaming: s.streaming && s.messages.some((m) => m.id === id),
         messages: next,
       };
-    }),
+    });
+  },
 
   setInput: (v) => set({ input: v }),
 
@@ -470,6 +527,10 @@ export const useStore = create<Store>((set, get) => ({
   appendTermOutput: (data) =>
     set((s) => ({
       termBuffer: (s.termBuffer + data).slice(-(64 * 1024)),
+      // Monotonic byte counter: lets TerminalPanel compute the exact new
+      // delta even after the ring buffer truncated old bytes (fixes the
+      // "terminal freezes at 64 KB" bug where length stayed pinned).
+      termSeq: s.termSeq + data.length,
     })),
 
   setTermSize: (cols, rows) => set({ termCols: cols, termRows: rows }),

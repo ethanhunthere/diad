@@ -10,16 +10,31 @@
 #
 set -u
 
-SRC_RE='^/home/diad/\.diad/[A-Za-z0-9._-]+$'
-
 fail() {
     echo "diad-install-conf: $*" >&2
     exit 2
 }
 
 [[ $# -eq 2 ]] || fail "usage: diad-install-conf SRC DST"
-[[ "$1" =~ $SRC_RE ]] || fail "source must live in /home/diad/.diad: $1"
-[[ -f "$1" ]] || fail "source does not exist: $1"
+
+# Source must live in the INVOKING user's ~/.diad — derived dynamically so a
+# renamed account (first-boot identity setup) keeps working.
+CALLER="${SUDO_USER:-}"
+if [[ -z "${CALLER}" || "${CALLER}" == "root" ]]; then
+    fail "no invoking user (SUDO_USER)"
+fi
+CALLER_HOME="$(getent passwd "${CALLER}" | cut -d: -f6)"
+if [[ -z "${CALLER_HOME}" ]]; then
+    fail "cannot resolve home for '${CALLER}'"
+fi
+
+[[ "$1" =~ ^[A-Za-z0-9._/-]+$ ]] || fail "invalid source path: $1"
+real_src="$(realpath -m -- "$1" 2>/dev/null)" || fail "cannot resolve source"
+case "${real_src}" in
+    "${CALLER_HOME}/.diad/"*|"/home/diad/.diad/"*) : ;;
+    *) fail "source must live in ${CALLER_HOME}/.diad" ;;
+esac
+[[ -f "${real_src}" ]] || fail "source does not exist: ${real_src}"
 
 case "$2" in
     /etc/systemd/logind.conf.d/diad.conf) : ;;
@@ -32,4 +47,4 @@ case "$2" in
 esac
 
 mkdir -p "$(dirname "$2")"
-exec install -m 644 -o root -g root "$1" "$2"
+exec install -m 644 -o root -g root "${real_src}" "$2"

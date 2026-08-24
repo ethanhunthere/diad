@@ -17,9 +17,13 @@ export function TerminalPanel() {
 
   // Buffered term output from the store.
   const termBuffer = useStore((s) => s.termBuffer);
+  // Monotonic total-bytes counter — stays correct even after the store's
+  // ring buffer truncates old bytes (the old length-diff approach froze
+  // forever once termBuffer saturated at 64 KB).
+  const termSeq = useStore((s) => s.termSeq);
 
-  // Track last written buffer length to avoid re-echoing.
-  const lastLenRef = useRef(0);
+  // Last sequence value written into xterm.
+  const lastSeqRef = useRef(0);
 
   // Create the terminal once.
   useEffect(() => {
@@ -64,6 +68,9 @@ export function TerminalPanel() {
     termRef.current = term;
     fitRef.current = fit;
 
+    // Don't replay history that streamed before this panel mounted.
+    lastSeqRef.current = useStore.getState().termSeq;
+
     // Send term input to the daemon PTY.
     const dataSub = term.onData((data) => {
       const s = useStore.getState();
@@ -97,10 +104,15 @@ export function TerminalPanel() {
   useEffect(() => {
     const term = termRef.current;
     if (!term) return;
-    const incoming = termBuffer.slice(lastLenRef.current);
+    const pending = termSeq - lastSeqRef.current;
+    if (pending <= 0) return;
+    // The appended delta is the LAST `pending` bytes of the buffer (the ring
+    // buffer only ever drops bytes from the front). If a single chunk exceeded
+    // the buffer capacity, clamp to what survived — no freeze, minor overlap.
+    const incoming = termBuffer.slice(Math.max(0, termBuffer.length - pending));
     if (incoming) term.write(incoming);
-    lastLenRef.current = termBuffer.length;
-  }, [termBuffer]);
+    lastSeqRef.current = termSeq;
+  }, [termBuffer, termSeq]);
 
   // Forward store size to daemon when it changes.
   useEffect(() => {

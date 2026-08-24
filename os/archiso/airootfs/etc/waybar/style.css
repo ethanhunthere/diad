@@ -55,6 +55,7 @@ window#waybar {
 }
 
 /* Right Functional Controls */
+#pulseaudio,
 #network,
 #custom-lock,
 #custom-reboot,
@@ -63,11 +64,31 @@ window#waybar {
   border-radius: 8px;
   font-family: "Font Awesome 6 Free", "Font Awesome 5 Free", "Inter", sans-serif;
   font-weight: 900;
-  font-size: 16px;
+  font-size: 14px;
   padding: 6px 14px;
   margin: 0 3px;
   color: #8A968E;
   transition: all 140ms ease;
+}
+
+/* Volume Slider Capsule */
+#pulseaudio {
+  color: #E5EAE6;
+  background-color: #161918;
+  border: 1px solid #202623;
+  border-top: 3px solid #38BDF8;
+}
+
+#pulseaudio.muted {
+  color: #8A968E;
+  background-color: #1A1112;
+  border-top: 3px solid #B32032;
+}
+
+#pulseaudio:hover {
+  background-color: #1E2321;
+  border-color: #38BDF8;
+  color: #FFFFFF;
 }
 
 /* Connected Wi-Fi: Green top line accent & glowing green tone */

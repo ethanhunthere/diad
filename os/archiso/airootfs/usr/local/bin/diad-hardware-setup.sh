@@ -52,6 +52,18 @@ else
     log "diad-hardware-setup: media keys disabled (desktop)."
 fi
 
+# ---- Audio Subsystem Initialization (PipeWire & ALSA) ----
+systemctl --user start pipewire pipewire-pulse wireplumber 2>/dev/null || true
+(
+    sleep 0.5
+    wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 2>/dev/null || true
+    wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.8 2>/dev/null || true
+    amixer -q sset Master unmute 2>/dev/null || true
+    amixer -q sset Master 80% 2>/dev/null || true
+    amixer -q sset Speaker unmute 2>/dev/null || true
+    amixer -q sset Headphone unmute 2>/dev/null || true
+) &
+
 touch "${MARKER}"
 log "diad-hardware-setup: complete."
 exit 0

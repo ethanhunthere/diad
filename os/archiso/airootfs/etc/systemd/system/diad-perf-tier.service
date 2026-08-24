@@ -10,11 +10,10 @@
 
 [Unit]
 Description=DIAD performance tier detection
-After=local-fs.target systemd-udevd.service
-Before=multi-user.target
+After=local-fs.target
 
 [Service]
-Type=oneshot
+Type=simple
 ExecStart=/usr/local/bin/diad-perf-tier.sh
 RemainAfterExit=yes
 

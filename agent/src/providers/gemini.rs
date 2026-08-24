@@ -37,10 +37,7 @@ impl GeminiProvider {
     }
 
     fn api_url(&self) -> String {
-        format!(
-            "{}:streamGenerateContent?alt=sse&key={}",
-            self.model, self.api_key
-        )
+        format!("{}:streamGenerateContent?alt=sse", self.model)
     }
 }
 
@@ -155,6 +152,7 @@ impl LlmProvider for GeminiProvider {
             .client
             .post(&url)
             .header("Content-Type", "application/json")
+            .header("x-goog-api-key", &self.api_key)
             .json(&request)
             .send()
             .await?;

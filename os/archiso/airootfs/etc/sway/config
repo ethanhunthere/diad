@@ -38,7 +38,8 @@ input type:touchpad {
 
 # ---- Appearance & Geometry ----
 font pango:Inter 10
-default_border pixel 1
+default_border pixel 2
+default_floating_border pixel 2
 gaps inner 8
 gaps outer 0
 gaps top 8
@@ -46,15 +47,25 @@ gaps bottom 0
 gaps left 0
 gaps right 0
 smart_gaps off
-smart_borders on
+smart_borders off
 
-# Industrial Basalt & Crimson Design Tokens (Focused #B32032, Inactive #202623)
-client.focused          #B32032 #161918 #E5EAE6 #B32032 #B32032
-client.unfocused        #202623 #0F1110 #8A968E #202623 #202623
-client.focused_inactive #202623 #0F1110 #8A968E #202623 #202623
-client.urgent           #B32032 #161918 #FFFFFF #B32032 #B32032
+# High-Contrast Industrial Basalt & Luminous Crimson Tokens (Focused #FF2E4D, Inactive #333C37)
+client.focused          #FF2E4D #161918 #FFFFFF #FF2E4D #FF2E4D
+client.unfocused        #333C37 #0F1110 #CBD8D2 #333C37 #333C37
+client.focused_inactive #333C37 #0F1110 #CBD8D2 #333C37 #333C37
+client.urgent           #FF1744 #161918 #FFFFFF #FF1744 #FF1744
 
 focus_follows_mouse no
+max_render_time 3
+
+# Window Dragging & Resizing Everywhere (Borders, Edges, Corners, Mod+Mouse)
+tiling_drag enabled
+tiling_drag_threshold 5
+bindsym --border BTN_RIGHT resize
+bindsym --border BTN_LEFT resize
+bindsym --whole-window $mod+BTN_RIGHT resize
+bindsym --whole-window $mod+BTN_LEFT move
+floating_modifier $mod normal
 
 # ---- Strict Workspace Routing Rules ----
 

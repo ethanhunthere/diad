@@ -6,9 +6,7 @@ Wants=network-pre.target
 ConditionPathExists=/usr/sbin/nft
 
 [Service]
-Type=oneshot
-# Leading '-' makes a failure non-fatal — a firewall hiccup must never
-# block or fail the boot of the live ISO.
+Type=simple
 ExecStart=-/usr/sbin/nft -f /etc/nftables.conf
 RemainAfterExit=yes
 

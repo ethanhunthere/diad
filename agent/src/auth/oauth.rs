@@ -25,7 +25,9 @@ pub struct OAuthFlow {
 
 impl OAuthFlow {
     /// Create a new OAuth flow for a specific provider.
-    pub fn new(provider: impl Into<String>, client_id: impl Into<String>) -> Self {
+    ///
+    /// Returns an error for providers with no known OAuth endpoints.
+    pub fn new(provider: impl Into<String>, client_id: impl Into<String>) -> anyhow::Result<Self> {
         let provider = provider.into();
         let (auth_url, token_url) = match provider.as_str() {
             "anthropic" => (
@@ -40,19 +42,21 @@ impl OAuthFlow {
                 "https://platform.openai.com/oauth/authorize".to_string(),
                 "https://api.openai.com/oauth/token".to_string(),
             ),
-            _ => (
-                format!("https://auth.{provider}.com/authorize"),
-                format!("https://auth.{provider}.com/token"),
-            ),
+            // Unknown provider: fail fast instead of guessing a URL.
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "unknown OAuth provider '{provider}': no authorization/token endpoints configured"
+                ));
+            }
         };
 
-        Self {
+        Ok(Self {
             provider,
             client_id: client_id.into(),
             auth_url,
             token_url,
             local_port: 18920,
-        }
+        })
     }
 
     /// Initiate the OAuth flow.
@@ -63,13 +67,7 @@ impl OAuthFlow {
         let redirect_uri = format!("http://localhost:{}/callback", self.local_port);
         let state = uuid::Uuid::new_v4().to_string();
 
-        let auth_request_url = format!(
-            "{}?response_type=code&client_id={}&redirect_uri={}&state={}&scope=openai%20profile",
-            self.auth_url,
-            urlencoding::encode(&self.client_id),
-            urlencoding::encode(&redirect_uri),
-            urlencoding::encode(&state),
-        );
+        let auth_request_url = self.build_auth_url(&redirect_uri, &state);
 
         tracing::info!("Opening browser for OAuth: {}", self.provider);
 
@@ -86,11 +84,25 @@ impl OAuthFlow {
         }
 
         // Start local server to receive the callback
-        self.receive_callback().await
+        self.receive_callback(&state).await
+    }
+
+    /// Build the provider authorization URL with standard OAuth2 query params.
+    fn build_auth_url(&self, redirect_uri: &str, state: &str) -> String {
+        format!(
+            "{}?response_type=code&client_id={}&redirect_uri={}&state={}&scope=openai%20profile",
+            self.auth_url,
+            urlencoding::encode(&self.client_id),
+            urlencoding::encode(redirect_uri),
+            urlencoding::encode(state),
+        )
     }
 
     /// Listen on localhost for the OAuth callback.
-    async fn receive_callback(&self) -> anyhow::Result<String> {
+    ///
+    /// `expected_state` is the CSRF state sent in the authorization request;
+    /// the callback's `state` parameter must match it exactly.
+    async fn receive_callback(&self, expected_state: &str) -> anyhow::Result<String> {
         let addr: SocketAddr = ([127, 0, 0, 1], self.local_port).into();
         let listener = TcpListener::bind(&addr).await?;
 
@@ -117,8 +129,30 @@ impl OAuthFlow {
             }
         }
 
-        // Parse the authorization code from the URL
-        let auth_code = Self::extract_code_from_request(&request_line);
+        // Parse the authorization code and validate the CSRF state.
+        let (auth_code, received_state) = Self::extract_code_from_request(&request_line);
+
+        match received_state.as_deref() {
+            Some(s) if s == expected_state => {}
+            Some(_) => {
+                tracing::warn!("OAuth callback state mismatch — rejecting");
+                let resp = "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html\r\n\r\n\
+                    <html><body><h1>Authentication Failed</h1>\
+                    <p>State parameter mismatch.</p></body></html>";
+                use tokio::io::AsyncWriteExt;
+                stream.write_all(resp.as_bytes()).await?;
+                stream.shutdown().await?;
+                return Err(anyhow::anyhow!(
+                    "OAuth state parameter mismatch: possible CSRF attempt"
+                ));
+            }
+            None => {
+                tracing::warn!("OAuth callback missing state parameter — rejecting");
+                return Err(anyhow::anyhow!(
+                    "OAuth callback is missing the required state parameter"
+                ));
+            }
+        }
 
         // Send success response
         let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n\
@@ -176,22 +210,30 @@ impl OAuthFlow {
         Ok(token)
     }
 
-    /// Extract the `code` parameter from an HTTP request line.
-    fn extract_code_from_request(request_line: &str) -> Option<String> {
+    /// Extract the `code` and `state` parameters from an HTTP request line.
+    fn extract_code_from_request(request_line: &str) -> (Option<String>, Option<String>) {
         // Parse: GET /callback?code=xxx&state=yyy HTTP/1.1
-        let path_and_query = request_line.split_whitespace().nth(1)?;
+        let path_and_query = match request_line.split_whitespace().nth(1) {
+            Some(p) => p,
+            None => return (None, None),
+        };
+
+        let mut code = None;
+        let mut state = None;
 
         if let Some(query_start) = path_and_query.find('?') {
             let query = &path_and_query[query_start + 1..];
             for param in query.split('&') {
                 if let Some((key, value)) = param.split_once('=') {
-                    if key == "code" {
-                        return Some(urlencoding::decode(value).ok()?.to_string());
+                    match key {
+                        "code" => code = urlencoding::decode(value).ok().map(String::from),
+                        "state" => state = urlencoding::decode(value).ok().map(String::from),
+                        _ => {}
                     }
                 }
             }
         }
 
-        None
+        (code, state)
     }
 }

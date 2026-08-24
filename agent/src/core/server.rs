@@ -5,10 +5,11 @@
 //! each client message to the brain in `daemon`. Binds loopback.
 
 use std::sync::atomic::Ordering;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
 use axum::extract::{Path, State};
+use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Router;
@@ -28,8 +29,141 @@ use super::protocol::{Envelope, ServerMsg, PROTOCOL_VERSION};
 pub(crate) struct Assets;
 
 // ---------------------------------------------------------------------------
-// Security: Origin validation for control plane (P0-1 / R-1)
+// Security: localhost bearer-token auth for the control plane
 // ---------------------------------------------------------------------------
+
+/// Process-wide API token (64 hex chars = 32 random bytes).
+static API_TOKEN: OnceLock<String> = OnceLock::new();
+
+/// Generate a 32-byte random token, store it process-wide, and persist it to
+/// a 0600 file in the runtime directory (/run/diad/api-token, falling back to
+/// XDG_RUNTIME_DIR). Local clients read the file to authenticate.
+pub fn init_api_token() -> anyhow::Result<&'static str> {
+    if let Some(existing) = API_TOKEN.get() {
+        return Ok(existing);
+    }
+    // 32 random bytes via two UUIDv4s (uuid crate is already a dependency).
+    let mut bytes = [0u8; 32];
+    bytes[..16].copy_from_slice(uuid::Uuid::new_v4().as_bytes());
+    bytes[16..].copy_from_slice(uuid::Uuid::new_v4().as_bytes());
+    let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+
+    // Prefer the user's runtime dir; fall back to /run/diad (root/systemd).
+    let mut dir = None;
+    if let Some(xdg) = std::env::var_os("XDG_RUNTIME_DIR") {
+        let p = std::path::PathBuf::from(xdg);
+        if std::fs::create_dir_all(&p).is_ok() {
+            dir = Some(p);
+        }
+    }
+    if dir.is_none() {
+        let p = std::path::PathBuf::from("/run/diad");
+        if std::fs::create_dir_all(&p).is_ok() {
+            dir = Some(p);
+        }
+    }
+
+    if let Some(dir) = &dir {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
+        }
+        let path = dir.join("api-token");
+        // Write with 0600 so the token is never briefly world-readable.
+        #[cfg(unix)]
+        {
+            use std::io::Write;
+            use std::os::unix::fs::OpenOptionsExt;
+            let mut f = std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .mode(0o600)
+                .open(&path)?;
+            f.write_all(hex.as_bytes())?;
+        }
+        #[cfg(not(unix))]
+        std::fs::write(&path, &hex)?;
+        tracing::info!("API token written to {}", path.display());
+    } else {
+        tracing::warn!("no runtime dir available — API token kept in memory only");
+    }
+
+    Ok(API_TOKEN.get_or_init(|| hex))
+}
+
+/// Constant-time-ish comparison (length + XOR fold) to avoid trivially
+/// leaking the token via timing.
+fn token_matches(presented: &str, expected: &str) -> bool {
+    if presented.len() != expected.len() {
+        return false;
+    }
+    presented
+        .bytes()
+        .zip(expected.bytes())
+        .fold(0u8, |acc, (a, b)| acc | (a ^ b))
+        == 0
+}
+
+/// Extract the bearer token from an `Authorization: Bearer <t>` header.
+fn bearer_from_headers(headers: &axum::http::HeaderMap) -> Option<String> {
+    let v = headers.get(axum::http::header::AUTHORIZATION)?.to_str().ok()?;
+    let rest = v.strip_prefix("Bearer ")?;
+    Some(rest.trim().to_string())
+}
+
+/// Whether this request path is exempt from token auth. Only /health is.
+fn auth_exempt(path: &str) -> bool {
+    path == "/health"
+}
+
+/// Check the token from header or `?token=` query param. WS clients may also
+/// authenticate with their first message instead.
+fn request_token(headers: &axum::http::HeaderMap, query: Option<&str>) -> Option<String> {
+    if let Some(t) = bearer_from_headers(headers) {
+        return Some(t);
+    }
+    query.and_then(|q| {
+        q.split('&').find_map(|p| {
+            p.split_once('=')
+                .filter(|(k, _)| *k == "token")
+                .map(|(_, v)| v.to_string())
+        })
+    })
+}
+
+/// Axum middleware enforcing bearer-token auth on everything except /health.
+/// Accepts `Authorization: Bearer <token>` or `?token=<token>`.
+async fn auth_middleware(
+    req: axum::extract::Request,
+    next: Next,
+) -> Response {
+    let path = req.uri().path().to_string();
+    if auth_exempt(&path) {
+        return next.run(req).await;
+    }
+
+    let expected = match API_TOKEN.get() {
+        Some(t) => t.as_str(),
+        // Token not initialized: fail closed.
+        None => return axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    };
+
+    let query = req.uri().query();
+    let ok = match request_token(req.headers(), query) {
+        Some(t) => token_matches(&t, expected),
+        None => false,
+    };
+
+    if ok {
+        next.run(req).await
+    } else {
+        tracing::warn!(path = %path, "rejected request without valid API token");
+        axum::http::StatusCode::UNAUTHORIZED.into_response()
+    }
+}
+
 
 /// Validates whether an HTTP Origin header comes from an allowed local source.
 /// Non-browser clients (TUI, foot, supervisor, curl) send no Origin (None) -> allowed.
@@ -47,24 +181,78 @@ pub fn origin_allowed(headers: &axum::http::HeaderMap) -> bool {
     }
 }
 
+/// Validates the Host header against loopback. Browsers ALWAYS send Host —
+/// including DNS-rebinding attacks, where the Host is the attacker's domain.
+/// A missing Host (HTTP/1.0 clients, tests) is allowed; a mismatched one is
+/// rejected. Blocks rebinding for the whole control plane.
+pub fn host_allowed(headers: &axum::http::HeaderMap) -> bool {
+    match headers.get(axum::http::header::HOST) {
+        None => true,
+        Some(v) => matches!(
+            v.to_str().unwrap_or(""),
+            "127.0.0.1:7860" | "localhost:7860"
+        ),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // WebSocket handler
 // ---------------------------------------------------------------------------
 
 async fn ws_handler(
     headers: axum::http::HeaderMap,
+    axum::extract::RawQuery(query): axum::extract::RawQuery,
     ws: WebSocketUpgrade,
     State(state): State<Arc<DaemonState>>,
 ) -> Response {
-    if !origin_allowed(&headers) {
+    if !origin_allowed(&headers) || !host_allowed(&headers) {
         tracing::warn!("rejected cross-origin WebSocket connection attempt");
         return axum::http::StatusCode::FORBIDDEN.into_response();
     }
-    ws.on_upgrade(move |socket| handle_socket(socket, state))
+
+    // WS clients may present the token up-front (Authorization header or
+    // ?token= query param); otherwise they MUST send it as their first
+    // message before any other traffic is processed.
+    let pre_authed = match API_TOKEN.get() {
+        Some(expected) => request_token(&headers, query.as_deref())
+            .map(|t| token_matches(&t, expected))
+            .unwrap_or(false),
+        None => false,
+    };
+
+    let auth_via_message = !pre_authed && API_TOKEN.get().is_some();
+    if API_TOKEN.get().is_none() {
+        // Fail closed: no token initialized.
+        return axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();
+    }
+
+    ws.on_upgrade(move |socket| handle_socket(socket, state, auth_via_message))
 }
 
-async fn handle_socket(socket: WebSocket, state: Arc<DaemonState>) {
+async fn handle_socket(socket: WebSocket, state: Arc<DaemonState>, auth_pending: bool) {
     let (mut sender, mut receiver) = socket.split();
+
+    // If the client did not authenticate during the upgrade, its FIRST
+    // message must be exactly the API token. Anything else closes the
+    // connection.
+    if auth_pending {
+        match tokio::time::timeout(std::time::Duration::from_secs(5), receiver.next()).await {
+            Ok(Some(Ok(WsMessage::Text(text)))) => {
+                let t = text.trim();
+                let presented = t.strip_prefix("token:").unwrap_or(t);
+                let ok = token_matches(presented, API_TOKEN.get().map(|s| s.as_str()).unwrap_or(""));
+                if !ok {
+                    tracing::warn!("ws client failed first-message token auth — closing");
+                    return;
+                }
+                tracing::info!("ws client authenticated via first message");
+            }
+            _ => {
+                tracing::warn!("ws client did not complete token auth — closing");
+                return;
+            }
+        }
+    }
 
     // This task drains ServerMsg → WS text frames. The channel is BOUNDED:
     // a slow or malicious client that stops draining gets frames dropped
@@ -225,17 +413,26 @@ async fn static_handler(
 
 /// Build the axum router.
 pub fn router(state: Arc<DaemonState>) -> Router {
+    // Protected plane: API + WebSocket (token-authenticated).
+    let protected = Router::new()
+        .route("/ws", get(ws_handler))
+        .nest("/api/v1", super::rest::api_router())
+        .layer(axum::middleware::from_fn(auth_middleware));
+
+    // Public plane: embedded GUI + health probe.
     Router::new()
         .route("/", get(index_html))
         .route("/health", get(|| async { "ok" }))
-        .route("/ws", get(ws_handler))
-        .nest("/api/v1", super::rest::api_router())
         .route("/{*path}", get(static_handler))
+        .merge(protected)
         .with_state(state)
 }
 
 /// Bind loopback and serve forever. Returns when the listener stops.
 pub async fn serve(state: Arc<DaemonState>, port: u16) -> anyhow::Result<()> {
+    // Generate + persist the API token before accepting any connections.
+    init_api_token()?;
+
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!("DIAD AGENT daemon listening on http://{addr}");

@@ -185,12 +185,40 @@ impl ToolRegistry {
         let canonical = match std::fs::canonicalize(path) {
             Ok(p) => p,
             Err(_) => {
-                // If the path doesn't exist yet, do a simple prefix check
+                // Path doesn't exist yet: resolve to the nearest existing ancestor and
+                // append pending components (mirrors filesystem.rs::canonicalize_for_sandbox).
                 let expanded = shellexpand::tilde(path).to_string();
-                return self
-                    .allowed_paths
-                    .iter()
-                    .any(|allowed| expanded.starts_with(&shellexpand::tilde(allowed).to_string()));
+                let p = std::path::Path::new(&expanded);
+                if p.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+                    return false; // Reject raw `..` components outright.
+                }
+                let mut pending: Vec<std::ffi::OsString> = Vec::new();
+                let mut current = p;
+                let resolved = loop {
+                    if let Ok(canon) = std::fs::canonicalize(current) {
+                        break pending.iter().rev().fold(canon, |mut acc, comp| {
+                            acc.push(comp);
+                            acc
+                        });
+                    }
+                    match current.parent() {
+                        Some(parent) => {
+                            if let Some(name) = current.file_name() {
+                                pending.push(name.to_os_string());
+                            }
+                            current = parent;
+                        }
+                        None => break p.to_path_buf(),
+                    }
+                };
+                return self.allowed_paths.iter().any(|allowed| {
+                    let allowed_expanded = shellexpand::tilde(allowed).to_string();
+                    let allowed_canon = std::fs::canonicalize(&allowed_expanded)
+                        .unwrap_or_else(|_| std::path::PathBuf::from(&allowed_expanded));
+                    // Path::starts_with compares whole components, so `/tmpfoo`
+                    // does not satisfy an allowed prefix of `/tmp`.
+                    resolved.starts_with(&allowed_canon)
+                });
             }
         };
 

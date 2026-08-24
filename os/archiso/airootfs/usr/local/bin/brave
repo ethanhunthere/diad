@@ -41,13 +41,14 @@ if [ ! -f "${LOCAL_STATE}" ]; then
 fi
 
 # Wayland & GPU acceleration flags for Chromium
-WAYLAND_FLAGS="--ozone-platform-hint=auto --ozone-platform=wayland --enable-features=UseOzonePlatform,WaylandWindowDecorations --enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist --user-data-dir=${DATA_DIR}"
+WAYLAND_FLAGS="--ozone-platform-hint=auto --ozone-platform=wayland --enable-features=VaapiVideoDecoder,CanvasOopRasterization,UseOzonePlatform,WaylandWindowDecorations --enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist --user-data-dir=${DATA_DIR} --disk-cache-dir=/tmp/diad-cache"
 if [ "$(id -u)" = "0" ]; then
-    WAYLAND_FLAGS="${WAYLAND_FLAGS} --no-sandbox"
+    echo "brave: refusing to run as root (Chromium sandbox cannot run as root)." >&2
+    exit 1
 fi
 
-# Ultra-lightweight & Speed flags (cuts renderer memory by ~40% and disables background noise)
-APP_FLAGS="--default-background-color=0xff090a0f --background-color=0xff090a0f --no-first-run --no-default-browser-check --disable-sync --disable-background-networking --disable-component-update --disable-features=Translate,MediaRouter,OptimizationHints,Feed --metrics-recording-only --disable-breakpad --process-per-site --enable-low-end-device-mode --disable-domain-reliability"
+# Ultra-lightweight & Speed flags (cuts renderer startup time and disables background overhead)
+APP_FLAGS="--default-background-color=0xff080a09 --background-color=0xff080a09 --no-first-run --no-default-browser-check --disable-sync --disable-background-networking --disable-component-update --disable-features=Translate,MediaRouter,OptimizationHints,Feed --metrics-recording-only --disable-breakpad --process-per-site --enable-low-end-device-mode --disable-domain-reliability --disable-renderer-backgrounding --disable-backgrounding-occluded-windows --disable-ipc-flooding-protection --no-experiments --disable-default-apps"
 
 # 1. Chromium (built into the ISO)
 if command -v chromium >/dev/null 2>&1; then

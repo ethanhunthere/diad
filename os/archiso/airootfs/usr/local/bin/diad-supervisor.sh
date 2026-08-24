@@ -288,12 +288,12 @@ count_or_unknown() {
 # Wait up to 5 s for sway IPC to answer the window tree. Every spawn /
 # count decision below runs only after this, so window counts are real.
 sway_ready=0
-for _ in $(seq 1 10); do
+for _ in $(seq 1 40); do
     if command -v swaymsg >/dev/null 2>&1 && swaymsg -t get_tree >/dev/null 2>&1; then
         sway_ready=1
         break
     fi
-    sleep 0.5
+    sleep 0.05
 done
 if [[ ${sway_ready} -eq 0 ]]; then
     log "supervisor: sway IPC unavailable after 5 s — assuming windows present (no auto-spawn)"
@@ -356,34 +356,28 @@ launch_agent_gui() {
 if command -v diad-agent >/dev/null 2>&1; then
     nohup diad-agent --daemon >> "${DIAD_HOME}/daemon.log" 2>&1 &
     log "supervisor: DIAD daemon starting (pid $!)"
-    
-    # Fast-poll for daemon readiness (up to 2 seconds, 0.05s steps)
-    healthy=0
-    for _ in $(seq 1 40); do
-        if daemon_healthy; then
-            healthy=1
-            break
-        fi
-        sleep 0.05
-    done
 
-    if [[ ${healthy} -eq 1 ]]; then
-        # Workspace 1: DIAD AGENT Hub (instant boot)
+    # Workspace 1: Launch DIAD AGENT Studio if not already open
+    if [[ $(count_or_unknown agent_window_count) == "0" ]]; then
         brave --app=http://127.0.0.1:7860 >/dev/null 2>&1 &
         log "supervisor: DIAD AGENT Hub spawned on workspace 1"
-
-        # Workspace 2: Live Web Browser
-        brave http://127.0.0.1:7860/apps >/dev/null 2>&1 &
-        log "supervisor: Live Web Browser spawned on workspace 2"
-
-        # Workspace 3: Communications Hub
-        brave --app=http://127.0.0.1:7860/launch >/dev/null 2>&1 &
-        log "supervisor: Communications Hub spawned on workspace 3"
-    else
-        log "supervisor: DIAD daemon failed to respond — engaging TUI fallback"
-        FALLBACK=1
-        launch_agent_tui
     fi
+
+    # Fast-poll for daemon readiness in background
+    (
+        healthy=0
+        for _ in $(seq 1 40); do
+            if daemon_healthy; then
+                healthy=1
+                break
+            fi
+            sleep 0.05
+        done
+        if [[ ${healthy} -eq 0 ]]; then
+            log "supervisor: DIAD daemon failed to respond — engaging TUI fallback"
+            launch_agent_tui
+        fi
+    ) &
 else
     log "supervisor: diad-agent not found — TUI fallback"
     FALLBACK=1

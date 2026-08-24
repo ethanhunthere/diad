@@ -86,14 +86,14 @@ fn run_privileged(args: &[&str]) -> anyhow::Result<ToolResult> {
 pub fn wifi_list() -> anyhow::Result<ToolResult> {
     run(&[
         "nmcli",
-        "--rescan",
-        "yes",
         "-t",
         "-f",
         "SSID,SIGNAL,SECURITY,BARS",
         "dev",
         "wifi",
         "list",
+        "--rescan",
+        "auto",
     ])
 }
 

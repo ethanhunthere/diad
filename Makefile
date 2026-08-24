@@ -75,8 +75,7 @@ lock:
 iso: gui lock
 	@echo "Building DIAD ISO..."
 	@echo "  [0/6] Pinned reproducible timestamp SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH)..."
-	@echo "  [1/6] Building diad-agent (release, GUI embedded)..."
-	cd $(AGENT_DIR) && cargo build --release
+	cd $(AGENT_DIR) && RUSTFLAGS="-C target-cpu=x86-64-v3 -C link-arg=-Wl,--as-needed" cargo build --release
 	@echo "  [2/6] Staging diad-agent into the ISO profile..."
 	mkdir -p $(ISO_DIR)/airootfs/usr/local/bin
 	cp $(TARGET_DIR)/release/$(BINARY) $(ISO_DIR)/airootfs/usr/local/bin/$(BINARY)

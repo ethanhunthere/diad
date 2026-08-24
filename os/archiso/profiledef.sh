@@ -21,7 +21,7 @@ install_dir="diados"
 
 bootmodes=("uefi.grub")
 airootfs_image_type="squashfs"
-airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '19' '-b' '256K')
+airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '1' '-b' '1M')
 
 # === File Permissions ===
 # mkarchiso copies airootfs with --no-preserve=ownership,mode, so EVERY file
@@ -80,6 +80,7 @@ file_permissions=(
     ["/etc/systemd/system/getty@.service.d/autologin.conf"]="0:0:644"
     ["/etc/systemd/system/getty@tty1.service.d/autologin.conf"]="0:0:644"
     ["/etc/systemd/system/diad-firewall.service"]="0:0:644"
+    ["/etc/systemd/system/diad-identity-setup.service"]="0:0:644"
     ["/etc/systemd/system/diad-perf-tier.service"]="0:0:644"
 
     # --- udev rules ---
@@ -117,6 +118,7 @@ file_permissions=(
     ["/usr/local/bin/diad-display-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-first-run.sh"]="0:0:755"
     ["/usr/local/bin/diad-hardware-setup.sh"]="0:0:755"
+    ["/usr/local/bin/diad-identity-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-network-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-power-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-power.sh"]="0:0:755"
@@ -127,7 +129,6 @@ file_permissions=(
     ["/usr/local/bin/diad-open"]="0:0:755"
     ["/usr/local/bin/diad-set-password"]="0:0:755"
     ["/usr/local/bin/diad-sysfs-write"]="0:0:755"
-    ["/usr/local/bin/diad-pacman"]="0:0:755"
     ["/usr/local/bin/diad-pacman"]="0:0:755"
     ["/usr/local/bin/diad-killpid"]="0:0:755"
     ["/usr/local/bin/diad-clone-disk"]="0:0:755"

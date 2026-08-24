@@ -185,11 +185,23 @@ impl Vault {
 
     /// List all providers that have stored tokens.
     pub fn list_connected_providers(&self) -> Vec<String> {
-        let providers = vec!["anthropic", "gemini", "openai", "qwen"];
+        // Native providers + every OpenAI-compatible preset (kimi, deepseek,
+        // groq, …) — derived from the registry so new presets are picked up
+        // automatically instead of a stale hardcoded 4-provider list.
+        let mut providers: Vec<String> = vec![
+            "anthropic".into(),
+            "gemini".into(),
+            "openai".into(),
+            "qwen".into(),
+        ];
+        providers.extend(
+            crate::providers::OPENAI_COMPAT_PRESETS
+                .iter()
+                .map(|p| p.name.to_string()),
+        );
         providers
             .into_iter()
             .filter(|p| self.get_token(p).is_some())
-            .map(|s| s.to_string())
             .collect()
     }
 }

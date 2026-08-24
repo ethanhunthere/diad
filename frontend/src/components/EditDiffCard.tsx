@@ -45,6 +45,7 @@ export function EditDiffCard({ card }: { card: DiffCard }) {
         <button
           className="flex flex-1 items-center gap-2 text-left"
           onClick={() => setShowDiff((v) => !v)}
+          aria-expanded={showDiff}
         >
           <FileDiff size={13} className="text-copper-hover" />
           <span className="font-mono text-[12px] text-ink">{basename(card.path)}</span>

@@ -897,8 +897,8 @@ export default function ScrollWaveField(props: Props) {
                 // Floor BEFORE the style spread: the canvas is absolutely
                 // positioned, so the root has no in-flow content and collapses
                 // to a dot under Framer's Fit Content sizing.
-                minWidth: 1200,
-                minHeight: 800,
+                minWidth: 0,
+                minHeight: 0,
                 width: "100%",
                 height: "100%",
                 position: "relative",

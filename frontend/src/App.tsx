@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Component, lazy, Suspense, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type { ComponentType } from "react";
 import { Menu } from "lucide-react";
 import { useStore } from "./stores/useStore";
@@ -44,6 +45,36 @@ function PanelLoading() {
       Loading…
     </div>
   );
+}
+
+/** Error boundary: a failed lazy-chunk load or panel crash must not blank
+ * the whole IDE — degrade to a recoverable inline message. */
+class PanelErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-3 text-[12px] font-sans">
+          <span className="text-faint">This panel failed to load.</span>
+          <button
+            className="rounded-md border border-border-subtle px-3 py-1.5 text-[11px] text-ink hover:bg-surface"
+            onClick={() => this.setState({ error: null })}
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 /**
@@ -111,7 +142,7 @@ export default function App() {
   // Theme synchronization (2026 clean design system):
   // Updates data-theme attribute on root element live without reloading.
   useEffect(() => {
-    const t = theme || localStorage.getItem("diad.theme") || "monochrome";
+    const t = theme || localStorage.getItem("diad.theme") || "copper";
     document.documentElement.setAttribute("data-theme", t);
     localStorage.setItem("diad.theme", t);
   }, [theme]);
@@ -184,6 +215,7 @@ export default function App() {
             className="icon-btn hamburger"
             onClick={() => setMobileNav(true)}
             title="Menu"
+            aria-label="Open navigation menu"
           >
             <Menu size={16} />
           </button>
@@ -192,20 +224,22 @@ export default function App() {
       <div className="flex min-h-0 flex-1">
         <ActivityBar collapsed={activityBarCollapsed} />
         <main className="min-w-0 flex-1 overflow-hidden">
-          <Suspense fallback={<PanelLoading />}>
-            {view === "chat" && <ChatPanel />}
-            {view === "explorer" && <ExplorerPanel />}
-            {view === "editor" && <EditorPanel />}
-            {view === "terminal" && <TerminalPanel />}
-            {view === "agents" && <AgentsPanel />}
-            {view === "settings" && <SettingsPanel />}
-            {view === "git" && <GitPanel />}
-            {view === "debug" && <DebugPanel />}
-            {view === "preview" && <PreviewPanel />}
-            {view === "projects" && <ProjectsPanel />}
-            {view === "clipboard" && <ClipboardPanel />}
-            {view === "trash" && <TrashPanel />}
-          </Suspense>
+          <PanelErrorBoundary>
+            <Suspense fallback={<PanelLoading />}>
+              {view === "chat" && <ChatPanel />}
+              {view === "explorer" && <ExplorerPanel />}
+              {view === "editor" && <EditorPanel />}
+              {view === "terminal" && <TerminalPanel />}
+              {view === "agents" && <AgentsPanel />}
+              {view === "settings" && <SettingsPanel />}
+              {view === "git" && <GitPanel />}
+              {view === "debug" && <DebugPanel />}
+              {view === "preview" && <PreviewPanel />}
+              {view === "projects" && <ProjectsPanel />}
+              {view === "clipboard" && <ClipboardPanel />}
+              {view === "trash" && <TrashPanel />}
+            </Suspense>
+          </PanelErrorBoundary>
         </main>
       </div>
       <StatusBar />

@@ -4,44 +4,48 @@
 
 window {
     margin: 0px;
-    border: 1px solid #202623;
+    border: 1px solid #333C37;
     background-color: #0F1110;
     border-radius: 14px;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 14px;
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.85);
+    overflow-x: hidden;
 }
 
 #input {
     margin: 14px 14px 10px 14px;
     padding: 12px 16px;
     border-radius: 10px;
-    border: 1px solid #202623;
+    border: 1px solid #333C37;
     background-color: #161918;
-    color: #E5EAE6;
+    color: #FFFFFF;
     font-size: 14.5px;
     font-weight: 600;
 }
 
 #input:focus {
-    border-color: #B32032;
-    box-shadow: 0 0 0 1px #B32032;
+    border-color: #FF2E4D;
+    box-shadow: 0 0 0 1px #FF2E4D;
     outline: none;
 }
 
 #inner-box {
     margin: 4px 14px 14px 14px;
     background-color: transparent;
+    overflow-x: hidden;
 }
 
 #outer-box {
     margin: 0px;
     background-color: transparent;
+    overflow-x: hidden;
 }
 
 #scroll {
     margin: 0px;
     border: none;
+    overflow-x: hidden;
 }
 
 scrollbar {
@@ -56,7 +60,7 @@ scrollbar {
 
 #text {
     margin: 6px 10px;
-    color: #8A968E;
+    color: #CBD8D2;
     font-size: 13.5px;
     font-weight: 500;
 }
@@ -72,7 +76,7 @@ scrollbar {
 
 #entry:selected {
     background-color: #1E2321;
-    border: 1px solid #B32032;
+    border: 1px solid #FF2E4D;
     color: #FFFFFF;
 }
 

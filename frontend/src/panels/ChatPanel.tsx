@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, memo, Suspense, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -9,7 +9,6 @@ import type { ChatMessage } from "../lib/types";
 import { ToolCallCard } from "../components/ToolCallCard";
 import { EditDiffCard } from "../components/EditDiffCard";
 import { ChatInput } from "../components/ChatInput";
-import { AgentExplainerModal } from "../components/AgentExplainerModal";
 import { ThinkingOrb } from "thinking-orbs";
 
 function CodeBlock({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -53,7 +52,13 @@ function CodeBlock({ children, className }: { children: React.ReactNode; classNa
   );
 }
 
-function MessageBubble({ m }: { m: ChatMessage }) {
+const AgentExplainerModal = lazy(() =>
+  import("../components/AgentExplainerModal").then((mod) => ({
+    default: mod.AgentExplainerModal,
+  })),
+);
+
+const MessageBubble = memo(function MessageBubble({ m }: { m: ChatMessage }) {
   const [copied, setCopied] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
@@ -162,14 +167,11 @@ function MessageBubble({ m }: { m: ChatMessage }) {
 
         {/* Thinking Orb animation while agent is answering */}
         {!isUser && m.streaming && (
-          <div className="mb-4 flex items-center gap-4 p-3.5 rounded-2xl bg-surface-2 border border-border-subtle shadow-lg animate-fade-in w-fit">
-            <div className="flex items-center gap-2">
-              <ThinkingOrb state="breathing" size={64} speed={2.25} theme="dark" />
-              <ThinkingOrb state="listening" size={64} theme="dark" />
-            </div>
-            <div className="flex flex-col font-mono text-[12px]">
+          <div className="mb-3 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-surface-2 border border-border-subtle shadow-sm animate-fade-in w-fit">
+            <ThinkingOrb state="breathing" size={20} speed={2.25} theme="dark" style={{ width: 24, height: 24 }} />
+            <div className="flex items-center gap-2 font-mono text-[12px]">
               <span className="font-semibold text-ink">DIAD Agent thinking…</span>
-              <span className="text-dim text-[11px]">Streaming live response</span>
+              <span className="text-copper text-[11px]">● live</span>
             </div>
           </div>
         )}
@@ -250,7 +252,7 @@ function MessageBubble({ m }: { m: ChatMessage }) {
       </div>
     </div>
   );
-}
+});
 
 /**
  * Chat panel — clean, spacious, world-class AI coding & pair-programming workspace.
@@ -318,7 +320,11 @@ export function ChatPanel() {
 
   return (
     <div className="flex h-full flex-col bg-obsidian">
-      {showExplainer && <AgentExplainerModal onClose={() => setShowExplainer(false)} />}
+      {showExplainer && (
+        <Suspense fallback={null}>
+          <AgentExplainerModal onClose={() => setShowExplainer(false)} />
+        </Suspense>
+      )}
 
       {/* Top chat action bar */}
       <div className="flex h-11 items-center justify-between border-b border-border-subtle bg-surface px-4 sm:px-6 text-[12.5px] select-none">
@@ -353,6 +359,9 @@ export function ChatPanel() {
       <div
         ref={scrollRef}
         onScroll={onScroll}
+        role="log"
+        aria-live="polite"
+        aria-label="Chat stream"
         className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 sm:px-8 py-6"
       >
         {messages.length === 0 && (
@@ -399,14 +408,11 @@ export function ChatPanel() {
         ))}
 
         {streaming && messages.length > 0 && !messages[messages.length - 1]?.streaming && (
-          <div className="flex items-center gap-4 px-4 py-3 rounded-2xl bg-surface-2 border border-border-subtle shadow-lg animate-fade-in w-fit my-2">
-            <div className="flex items-center gap-2">
-              <ThinkingOrb state="breathing" size={64} speed={2.25} theme="dark" />
-              <ThinkingOrb state="listening" size={64} theme="dark" />
-            </div>
-            <div className="flex flex-col font-mono text-[12px]">
-              <span className="font-semibold text-ink">Thinking & preparing answer…</span>
-              <span className="text-dim text-[11px]">Connecting to model stream</span>
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-surface-2 border border-border-subtle shadow-sm animate-fade-in w-fit my-2">
+            <ThinkingOrb state="breathing" size={20} speed={2.25} theme="dark" style={{ width: 24, height: 24 }} />
+            <div className="flex items-center gap-2 font-mono text-[12px]">
+              <span className="font-semibold text-ink">DIAD Agent thinking…</span>
+              <span className="text-copper text-[11px]">● preparing stream</span>
             </div>
           </div>
         )}

@@ -6,22 +6,22 @@ set -euo pipefail
 
 action="${1:-}"
 
-if [ -z "$action" ]; then
+if [ -z "$action" ] || [ "$action" = "dialog" ] || [ "$action" = "menu" ]; then
     menu=$(printf "⏻ Power Off\n⟳ Restart System\n⏾ Suspend / Sleep\n🔒 Lock Screen\n🚪 Log Out" | wofi --dmenu --insensitive --style /etc/wofi/style.css --width 340 --height 240 --prompt "System Power" 2>/dev/null || true)
     case "$menu" in
-        "⏻ Power Off")
+        "⏻ Power Off"|*"Power Off"*)
             action="power"
             ;;
-        "⟳ Restart System")
+        "⟳ Restart System"|*"Restart"*)
             action="reboot"
             ;;
-        "⏾ Suspend / Sleep")
+        "⏾ Suspend / Sleep"|*"Suspend"*)
             action="suspend"
             ;;
-        "🔒 Lock Screen")
+        "🔒 Lock Screen"|*"Lock"*)
             action="lock"
             ;;
-        "🚪 Log Out")
+        "🚪 Log Out"|*"Log Out"*)
             action="logout"
             ;;
         *)
@@ -32,13 +32,13 @@ fi
 
 case "${action}" in
     reboot)
-        systemctl reboot 2>/dev/null || sudo systemctl reboot
+        systemctl --no-wall reboot 2>/dev/null || sudo /usr/bin/systemctl --no-wall reboot 2>/dev/null || sudo reboot -f 2>/dev/null || systemctl -i reboot
         ;;
     power|shutdown|poweroff)
-        systemctl poweroff 2>/dev/null || sudo systemctl poweroff
+        systemctl --no-wall poweroff 2>/dev/null || sudo /usr/bin/systemctl --no-wall poweroff 2>/dev/null || sudo poweroff -f 2>/dev/null || systemctl -i poweroff
         ;;
     suspend|sleep)
-        systemctl suspend 2>/dev/null || sudo systemctl suspend
+        systemctl suspend 2>/dev/null || sudo /usr/bin/systemctl suspend 2>/dev/null || systemctl -i suspend
         ;;
     lock)
         /usr/local/bin/diad-lock

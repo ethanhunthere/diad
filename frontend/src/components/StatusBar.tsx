@@ -21,6 +21,7 @@ export function StatusBar() {
 
       <div className="flex items-center gap-3 text-faint text-[11.5px] font-mono">
         <span>DIAD OS · Protocol v1</span>
+        <span className="text-dim hover:text-copper cursor-se-resize select-none text-[13px] font-bold ml-1" title="Resize Window (Drag corner or Super+Right Click)">↘</span>
       </div>
     </footer>
   );

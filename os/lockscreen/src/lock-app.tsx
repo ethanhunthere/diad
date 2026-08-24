@@ -1,9 +1,10 @@
 // diadOS web lockscreen — main entry.
 //
-// Clean, industrial basalt card with official DIAD logo.
-// Pressing any key on the keyboard or clicking anywhere unlocks the screen.
+// Clean, industrial basalt card with official DIAD logo and Originkit
+// animations. Unlocking requires the account password, verified by the
+// daemon's PAM-backed POST /api/v1/auth/verify endpoint.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { CSSProperties } from "react";
 import { createRoot } from "react-dom/client";
 import ScrollWaveField from "./components/originkit/ui/scroll-wave-field";
@@ -113,6 +114,9 @@ const unlockedTextStyle: CSSProperties = {
 
 function LockApp() {
   const [unlocked, setUnlocked] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   const unlock = useCallback(() => {
     if (unlocked) return;
@@ -122,17 +126,35 @@ function LockApp() {
     }, 150);
   }, [unlocked]);
 
-  useEffect(() => {
-    const handleKeyDown = () => {
-      unlock();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [unlock]);
+  // Verify against the daemon's PAM-backed endpoint
+  // (POST /api/v1/auth/verify → sudo diad-lock-auth). On success the daemon
+  // also writes the unlock marker that `diad-lock` waits for.
+  const handleSubmit = useCallback(
+    async (e?: React.FormEvent) => {
+      e?.preventDefault();
+      if (!password || checking || unlocked) return;
+      setChecking(true);
+      setError(false);
+      try {
+        const res = await fetch("http://127.0.0.1:7860/api/v1/auth/verify", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ password }),
+        });
+        if (res.ok) {
+          unlock();
+        } else {
+          setError(true);
+          setPassword("");
+        }
+      } catch {
+        setError(true);
+      } finally {
+        setChecking(false);
+      }
+    },
+    [password, checking, unlocked, unlock],
+  );
 
   return (
     <div style={pageStyle}>
@@ -211,15 +233,67 @@ function LockApp() {
             <div style={unlockedTextStyle}>Unlocked</div>
           </div>
         ) : (
-          <div style={unlockPromptStyle}>
-            <span>Press any key to unlock</span>
-          </div>
+          <form onSubmit={handleSubmit} style={{ display: "contents" }}>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError(false);
+              }}
+              placeholder="Password"
+              autoFocus
+              disabled={checking}
+              aria-label="Lockscreen password"
+              style={{
+                ...unlockPromptStyle,
+                outline: error ? "1px solid #D32F2F" : "none",
+                boxShadow: error ? "0 0 0 3px rgba(211, 47, 47, 0.25)" : "none",
+                width: "100%",
+                boxSizing: "border-box",
+                textAlign: "center",
+              }}
+            />
+            {error && (
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: "0.06em",
+                  color: "#D32F2F",
+                  marginTop: -2,
+                }}
+              >
+                Wrong password — try again
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={!password || checking}
+              style={{
+                padding: "9px 28px",
+                background: checking ? "#1E2321" : "#B32032",
+                border: "1px solid #202623",
+                borderRadius: 12,
+                color: TEXT,
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                cursor: !password || checking ? "default" : "pointer",
+                opacity: !password ? 0.55 : 1,
+                marginTop: 2,
+                transition: "all 140ms ease",
+              }}
+            >
+              {checking ? "Checking…" : "Unlock"}
+            </button>
+          </form>
         )}
       </div>
     </div>
   );
 }
-
 const rootEl = document.getElementById("root");
 if (rootEl) {
   createRoot(rootEl).render(<LockApp />);

@@ -306,8 +306,12 @@ fn verify_lock_password(password: &str) -> Result<bool, String> {
             return Ok(test_mode_password_ok(password));
         }
 
-        // Direct match for default OS password "diad"
-        if password == "diad" || password == "diados" {
+        // The live ISO ships a passwordless `diad` account (PAM `nullok`
+        // accepts the empty string, which the helper refuses by design).
+        // Only while NO usable password is set are the well-known defaults
+        // accepted; once a real password exists (diad-set-password), PAM is
+        // the ONLY path — the default can no longer unlock anything.
+        if !account_has_password() && (password == "diad" || password == "diados") {
             return Ok(true);
         }
 
@@ -343,6 +347,27 @@ fn test_mode_password_ok(password: &str) -> bool {
     password == "diad-test-password"
 }
 
+/// True when the CURRENT user's account has a REAL password set (passwd -S
+/// status "P"). Used to gate the well-known live-ISO default passwords: once
+/// the user sets a password (first-boot wizard / diad-set-password), the
+/// defaults stop working and PAM is the only path. Uses the invoking user —
+/// NOT a hardcoded name — so it keeps working after the first-boot identity
+/// setup renames the account. Fails closed: if the check errors, assume
+/// protected and require PAM.
+#[cfg(not(test))]
+fn account_has_password() -> bool {
+    let user = std::env::var("USER").unwrap_or_else(|_| "diad".to_string());
+    match crate::tools::system::exec::run(&["passwd", "-S", &user]) {
+        Ok(res) if res.success => res
+            .output
+            .split_whitespace()
+            .nth(1)
+            .map(|status| status == "P")
+            .unwrap_or(false),
+        _ => true,
+    }
+}
+
 /// Unlock the session: write the marker `diad-lock` waits for, then close
 /// the kiosk window. Only ever called after a verified password.
 fn unlock_locked_session() {
@@ -356,7 +381,11 @@ fn unlock_locked_session() {
         if std::env::var_os("DIAD_TEST_NO_PRIVILEGED").is_some() {
             return;
         }
-        let _ = std::fs::write("/tmp/diad-unlocked", "ok");
+        // Write the marker into the user's PRIVATE runtime dir (0700) — the
+        // same path `diad-lock` polls. Never /tmp (world-writable).
+        let runtime_dir =
+            std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+        let _ = std::fs::write(format!("{runtime_dir}/diad-unlocked"), "ok");
         let _ = std::process::Command::new("pkill")
             .args(["-f", "lockscreen/dist/index.html"])
             .stdin(std::process::Stdio::null())
@@ -548,7 +577,11 @@ async fn rest_origin_gate(
     } else {
         crate::core::server::origin_allowed(&headers)
     };
-    if !allowed {
+    // Host pinning (DNS-rebinding defense): browsers always send Host, and a
+    // rebinding attack carries the attacker's domain here. Missing Host
+    // (HTTP/1.0 clients, tests) is allowed; mismatched is rejected.
+    let host_ok = crate::core::server::host_allowed(&headers);
+    if !allowed || !host_ok {
         tracing::warn!("rejected cross-origin REST API request");
         return error_response(
             StatusCode::FORBIDDEN,
@@ -812,14 +845,42 @@ async fn api_window_control(Json(req): Json<Value>) -> Response {
     if std::env::var_os("DIAD_WINDOW_DRYRUN").is_some() {
         return Json(json!({ "ok": true, "action": action, "dry_run": true })).into_response();
     }
+
+    let uid = unsafe {
+        extern "C" {
+            fn getuid() -> u32;
+        }
+        getuid()
+    };
+    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
+        let p = format!("/run/user/{uid}");
+        if std::path::Path::new(&p).exists() {
+            p
+        } else {
+            "/run/user/1000".to_string()
+        }
+    });
+    let wayland_disp = std::env::var("WAYLAND_DISPLAY").unwrap_or_else(|_| "wayland-0".to_string());
+
+    // Auto-discover SWAYSOCK if not in environment
+    let swaysock = std::env::var("SWAYSOCK").ok().or_else(|| {
+        let pattern = format!("{runtime_dir}/sway-ipc.*.sock");
+        if let Ok(mut entries) = glob::glob(&pattern) {
+            if let Some(Ok(path)) = entries.next() {
+                return Some(path.to_string_lossy().to_string());
+            }
+        }
+        None
+    });
+
     let mut cmd = std::process::Command::new("diad-windowctl");
     cmd.arg(&action);
-    if let Ok(w) = std::env::var("WAYLAND_DISPLAY") {
-        cmd.env("WAYLAND_DISPLAY", w);
+    cmd.env("WAYLAND_DISPLAY", &wayland_disp);
+    cmd.env("XDG_RUNTIME_DIR", &runtime_dir);
+    if let Some(ref sock) = swaysock {
+        cmd.env("SWAYSOCK", sock);
     }
-    if let Ok(r) = std::env::var("XDG_RUNTIME_DIR") {
-        cmd.env("XDG_RUNTIME_DIR", r);
-    }
+
     match cmd.spawn() {
         Ok(_) => Json(json!({ "ok": true, "action": action })).into_response(),
         Err(_) => {
@@ -833,11 +894,10 @@ async fn api_window_control(Json(req): Json<Value>) -> Response {
             if !sway_cmd.is_empty() {
                 let mut scmd = std::process::Command::new("swaymsg");
                 scmd.arg(sway_cmd);
-                if let Ok(w) = std::env::var("WAYLAND_DISPLAY") {
-                    scmd.env("WAYLAND_DISPLAY", w);
-                }
-                if let Ok(r) = std::env::var("XDG_RUNTIME_DIR") {
-                    scmd.env("XDG_RUNTIME_DIR", r);
+                scmd.env("WAYLAND_DISPLAY", &wayland_disp);
+                scmd.env("XDG_RUNTIME_DIR", &runtime_dir);
+                if let Some(ref sock) = swaysock {
+                    scmd.env("SWAYSOCK", sock);
                 }
                 let _ = scmd.spawn();
                 return Json(json!({ "ok": true, "action": action, "fallback": true }))

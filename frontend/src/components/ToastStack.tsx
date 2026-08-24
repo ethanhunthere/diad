@@ -43,6 +43,7 @@ export function ToastStack() {
             <button
               className="shrink-0 text-faint hover:text-ink"
               onClick={() => dismissToast(t.id)}
+              aria-label="Dismiss notification"
             >
               <X size={13} />
             </button>

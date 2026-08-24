@@ -18,6 +18,7 @@
 # /etc/diad/perf-tier before multi-user.target and finishes in milliseconds,
 # so it adds no boot delay, while the agent/compositor read its output.
 enable diad-firewall.service
+enable diad-identity-setup.service
 enable diad-perf-tier.service
 enable fstrim.timer
 enable NetworkManager.service

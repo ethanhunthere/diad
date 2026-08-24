@@ -10,13 +10,22 @@
 set -u
 
 BIN="/tmp/diad-agent-latest"
+SIG="${BIN}.minisig"
 CKSUM="/tmp/diad-agent-latest.sha256"
+PUBKEY="/tmp/diad-agent-release.pub"
 TARGET="/usr/local/bin/diad-agent"
 URL_RE='^https://[a-zA-Z0-9.-]+(:[0-9]+)?(/[a-zA-Z0-9._~/%-]*)?$'
 
+# Pinned minisign public key (diad release signing key). Updates are only
+# trusted if they carry a valid signature from THIS key; the checksum alone is
+# not a trust anchor. Rotate by replacing this literal and re-deploying.
+MINISIGN_PUBLIC_KEY='untrusted comment: diad release signing key
+RWTSM+4fHk3LqEXAMPLEKEYREPLACEMEBEFOREUSE0000000
+'
+
 fail() {
     echo "diad-selfupdate: $*" >&2
-    rm -f "${BIN}" "${CKSUM}"
+    rm -f "${BIN}" "${CKSUM}" "${SIG}" "${PUBKEY}"
     exit 2
 }
 
@@ -33,6 +42,22 @@ fi
 wget -q -O "${BIN}" "$1" || fail "download failed"
 wget -q -O "${CKSUM}" "$2" || fail "checksum download failed"
 
+# --- Signature verification (fail closed) ------------------------------------
+# A signature sidecar "<url>.minisig" MUST verify against the pinned key
+# BEFORE the sha256 check and installation. No valid signature -> abort.
+SIG_URL="${1%.minisig}.minisig"
+printf '%s' "${MINISIGN_PUBLIC_KEY}" > "${PUBKEY}"
+if ! wget -q -O "${SIG}" "${SIG_URL}"; then
+    fail "signature sidecar missing: ${SIG_URL}"
+fi
+if command -v minisign >/dev/null 2>&1; then
+    minisign -Vm "${BIN}" -p "${PUBKEY}" -q || fail "signature verification failed"
+elif command -v signify >/dev/null 2>&1; then
+    signify -Vp "${PUBKEY}" -x "${SIG}" -m "${BIN}" -q || fail "signature verification failed"
+else
+    fail "no minisign/signify available; refusing to install without signature verification"
+fi
+
 # Sidecar format: "<hex>  <anything>". Verify against the exact file name.
 expected="$(awk '{print $1; exit}' "${CKSUM}")"
 [[ "${expected}" =~ ^[a-f0-9]{64}$ ]] || fail "malformed checksum file"
@@ -40,5 +65,5 @@ actual="$(sha256sum "${BIN}" | awk '{print $1}')"
 [[ "${expected}" == "${actual}" ]] || fail "sha256 mismatch (expected ${expected}, got ${actual})"
 
 install -m 755 -b -S .bak "${BIN}" "${TARGET}" || fail "install failed"
-rm -f "${BIN}" "${CKSUM}"
+rm -f "${BIN}" "${CKSUM}" "${SIG}" "${PUBKEY}"
 echo "diad-agent updated: ${TARGET}"
