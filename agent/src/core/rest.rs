@@ -218,6 +218,38 @@ pub struct AuthVerifyRequest {
     pub password: String,
 }
 
+/// Body of the first-boot Setup wizard's `/setup/apply` endpoint. Every field
+/// is optional (an omitted/empty field leaves the current system default in
+/// place). The root helper `/usr/local/bin/diad-identity-setup.sh --apply`
+/// re-validates each value against its own allowlists — this struct only
+/// deserializes and passes the payload through on stdin (never argv).
+#[derive(Debug, Deserialize)]
+pub struct SetupApplyRequest {
+    #[serde(default)]
+    pub language: String,
+    #[serde(default)]
+    pub keyboard: String,
+    #[serde(default)]
+    pub timezone: String,
+    #[serde(default)]
+    pub username: String,
+    #[serde(default)]
+    pub password: String,
+    #[serde(default)]
+    pub wifi_ssid: String,
+    #[serde(default)]
+    pub wifi_password: String,
+}
+
+/// A single visible Wi-Fi network, as returned by the first-boot wizard's
+/// auto-scan (`GET /setup/wifi/scan`). `security` is empty for open networks.
+#[derive(Debug, Serialize)]
+pub struct WifiNetwork {
+    pub ssid: String,
+    pub signal: i32,
+    pub security: String,
+}
+
 /// The lock page is served from `file://` by a kiosk browser, so its Origin
 /// header is the literal string `"null"` and its fetch triggers a CORS
 /// preflight. This is the ONLY endpoint that accepts that origin — and only
@@ -383,8 +415,7 @@ fn unlock_locked_session() {
         }
         // Write the marker into the user's PRIVATE runtime dir (0700) — the
         // same path `diad-lock` polls. Never /tmp (world-writable).
-        let runtime_dir =
-            std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
         let _ = std::fs::write(format!("{runtime_dir}/diad-unlocked"), "ok");
         let _ = std::process::Command::new("pkill")
             .args(["-f", "lockscreen/dist/index.html"])
@@ -392,6 +423,245 @@ fn unlock_locked_session() {
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status();
+    }
+}
+
+/// Apply the first-boot Setup wizard's selections as root.
+///
+///   * Live keyboard switch via sway (the root helper only writes
+///     /etc/vconsole.conf for persistence — sway needs the runtime call).
+///   * Locale/keyboard/timezone/identity via the root helper, fed the JSON
+///     on stdin (the password never appears on the helper's argv or in any
+///     log line).
+///   * Optional Wi-Fi connect (best effort — a failure never fails setup).
+///
+/// Test short-circuits (unit tests, or integration tests with
+/// `DIAD_TEST_NO_PRIVILEGED`) never touch sudo/sway/nmcli.
+fn apply_setup(req: SetupApplyRequest) -> Result<(), String> {
+    #[cfg(test)]
+    {
+        let _ = req;
+        return Ok(());
+    }
+
+    #[cfg(not(test))]
+    {
+        if std::env::var_os("DIAD_TEST_NO_PRIVILEGED").is_some() {
+            return Ok(());
+        }
+
+        // Live keyboard layout for the running sway session.
+        let kb = req.keyboard.trim().to_string();
+        if !kb.is_empty() {
+            let _ = std::process::Command::new("swaymsg")
+                .args(["-q", "input", "*", "xkb_layout", &kb])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status();
+        }
+
+        // The account password travels to the root helper on stdin only.
+        let payload = json!({
+            "language": req.language,
+            "keyboard": req.keyboard,
+            "timezone": req.timezone,
+            "username": req.username,
+            "password": req.password,
+        });
+
+        let mut child = std::process::Command::new("sudo")
+            .args(["-n", "/usr/local/bin/diad-identity-setup.sh", "--apply"])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .map_err(|e| format!("diad-identity-setup: {e}"))?;
+
+        {
+            use std::io::Write;
+            let mut stdin = child
+                .stdin
+                .take()
+                .ok_or("diad-identity-setup: failed to open stdin")?;
+            let _ = stdin.write_all(payload.to_string().as_bytes());
+        }
+
+        let output = child
+            .wait_with_output()
+            .map_err(|e| format!("diad-identity-setup: {e}"))?;
+        if !output.status.success() {
+            return Err(format!("diad-identity-setup exited {}", output.status));
+        }
+
+        // Optional Wi-Fi — never blocks setup on failure.
+        let ssid = req.wifi_ssid.trim().to_string();
+        if !ssid.is_empty() {
+            let _ = std::process::Command::new("sudo")
+                .args([
+                    "-n",
+                    "nmcli",
+                    "device",
+                    "wifi",
+                    "connect",
+                    &ssid,
+                    "password",
+                    &req.wifi_password,
+                ])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status();
+        }
+
+        Ok(())
+    }
+}
+
+/// POST /api/v1/setup/apply — the first-boot Setup wizard's apply step.
+async fn api_setup_apply(
+    headers: axum::http::HeaderMap,
+    Json(req): Json<SetupApplyRequest>,
+) -> Response {
+    // Same origin rule as the lockscreen: this page is also served from
+    // file:// (Origin: null) by the kiosk browser.
+    if !lock_origin_allowed(&headers) {
+        return with_lock_cors(
+            &headers,
+            error_response(
+                StatusCode::FORBIDDEN,
+                "forbidden: cross-origin access rejected",
+            ),
+        );
+    }
+
+    // Size guards (defense in depth; the root helper re-validates values).
+    if req.password.len() > 4096
+        || req.username.len() > 64
+        || req.wifi_ssid.len() > 64
+        || req.wifi_password.len() > 512
+        || req.language.len() > 64
+        || req.keyboard.len() > 16
+        || req.timezone.len() > 64
+    {
+        return with_lock_cors(
+            &headers,
+            error_response(StatusCode::BAD_REQUEST, "invalid setup payload"),
+        );
+    }
+
+    // One-shot: refuse to re-apply once the machine is already configured,
+    // so a stray (or malicious) re-run can't silently reset the account.
+    #[cfg(not(test))]
+    if std::path::Path::new("/var/lib/diad/setup-complete").exists() {
+        return with_lock_cors(
+            &headers,
+            error_response(StatusCode::CONFLICT, "setup already complete"),
+        );
+    }
+
+    match blocking(move || apply_setup(req)).await {
+        Ok(Ok(())) => with_lock_cors(&headers, Json(json!({ "ok": true })).into_response()),
+        Ok(Err(e)) => {
+            tracing::error!("setup apply failed: {e}");
+            with_lock_cors(
+                &headers,
+                error_response(StatusCode::INTERNAL_SERVER_ERROR, "setup failed"),
+            )
+        }
+        Err(resp) => resp,
+    }
+}
+
+/// Parse `nmcli -t -f SSID,SIGNAL,SECURITY device wifi list` output into a
+/// de-duplicated, signal-sorted list. SSIDs may themselves contain `:`, so we
+/// split from the right (SECURITY, then SIGNAL, then the remaining SSID).
+fn parse_wifi_list(output: &str) -> Vec<WifiNetwork> {
+    let mut nets: Vec<WifiNetwork> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for line in output.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let mut parts = line.rsplitn(3, ':');
+        let security = parts.next().unwrap_or("").trim().to_string();
+        let signal = parts
+            .next()
+            .and_then(|s| s.trim().parse::<i32>().ok())
+            .unwrap_or(0);
+        let ssid = parts.next().unwrap_or("").trim().to_string();
+        // Skip hidden/empty SSIDs (a blank network is not selectable).
+        if ssid.is_empty() || !seen.insert(ssid.clone()) {
+            continue;
+        }
+        nets.push(WifiNetwork {
+            ssid,
+            signal,
+            security,
+        });
+    }
+    // Strongest signal first.
+    nets.sort_by(|a, b| b.signal.cmp(&a.signal));
+    nets
+}
+
+/// List visible Wi-Fi networks via NetworkManager (no root needed for the
+/// cached list). Returns an empty vec on any failure — the wizard degrades
+/// to "no networks found".
+#[cfg(not(test))]
+fn list_wifi_networks() -> Vec<WifiNetwork> {
+    match std::process::Command::new("nmcli")
+        .args(["-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list"])
+        .output()
+    {
+        Ok(o) if o.status.success() => parse_wifi_list(String::from_utf8_lossy(&o.stdout).as_ref()),
+        _ => Vec::new(),
+    }
+}
+
+/// Auto-scan Wi-Fi for the wizard's Network step. Uses the (already
+/// boot-warmed) cached list first; only if empty does it trigger a privileged
+/// rescan (`sudo nmcli dev wifi rescan`, argv-pinned in sudoers) and retry.
+/// Never blocks setup — an empty result is a valid (degraded) answer.
+fn wifi_scan_networks() -> Vec<WifiNetwork> {
+    #[cfg(test)]
+    {
+        Vec::new()
+    }
+
+    #[cfg(not(test))]
+    {
+        let mut nets = list_wifi_networks();
+        if nets.is_empty() {
+            let _ = std::process::Command::new("sudo")
+                .args(["-n", "nmcli", "dev", "wifi", "rescan"])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status();
+            std::thread::sleep(std::time::Duration::from_millis(1500));
+            nets = list_wifi_networks();
+        }
+        nets
+    }
+}
+
+/// GET /api/v1/setup/wifi/scan — the first-boot Setup wizard's auto-scan.
+async fn api_setup_wifi_scan(headers: axum::http::HeaderMap) -> Response {
+    if !lock_origin_allowed(&headers) {
+        return with_lock_cors(
+            &headers,
+            error_response(
+                StatusCode::FORBIDDEN,
+                "forbidden: cross-origin access rejected",
+            ),
+        );
+    }
+
+    match blocking(wifi_scan_networks).await {
+        Ok(networks) => with_lock_cors(
+            &headers,
+            Json(json!({ "networks": networks })).into_response(),
+        ),
+        Err(resp) => resp,
     }
 }
 
@@ -413,7 +683,7 @@ async fn api_auth_verify(
         );
     }
 
-    if req.password.is_empty() || req.password.len() > 4096 {
+    if req.password.len() > 4096 {
         return with_lock_cors(
             &headers,
             error_response(StatusCode::BAD_REQUEST, "invalid password payload"),
@@ -557,6 +827,15 @@ pub fn api_router() -> Router<Arc<DaemonState>> {
             "/auth/verify",
             post(api_auth_verify).options(api_auth_options),
         )
+        // First-boot Setup wizard (also file:// kiosk origin + CORS preflight)
+        .route(
+            "/setup/apply",
+            post(api_setup_apply).options(api_auth_options),
+        )
+        .route(
+            "/setup/wifi/scan",
+            get(api_setup_wifi_scan).options(api_auth_options),
+        )
         // Tool inventory
         .route("/tools", get(api_tools))
         .layer(axum::middleware::from_fn(rest_origin_gate))
@@ -567,12 +846,16 @@ async fn rest_origin_gate(
     request: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> Response {
-    // The web lockscreen runs from file:// (Origin: null) and needs a CORS
-    // preflight — only its own auth path is exempted from the loopback-only
-    // origin rule; everything else stays pinned. NOTE: this middleware runs
-    // on the NESTED router (mounted at /api/v1), so the URI path is already
-    // stripped to "/auth/verify" here.
-    let allowed = if request.uri().path() == "/auth/verify" {
+    // The web lockscreen and the first-boot Setup wizard both run from
+    // file:// (Origin: null) and need a CORS preflight — only their own paths
+    // are exempted from the loopback-only origin rule; everything else stays
+    // pinned. NOTE: this middleware runs on the NESTED router (mounted at
+    // /api/v1), so the URI path is already stripped to "/auth/verify" /
+    // "/setup/apply" here.
+    let allowed = if matches!(
+        request.uri().path(),
+        "/auth/verify" | "/setup/apply" | "/setup/wifi/scan"
+    ) {
         lock_origin_allowed(&headers)
     } else {
         crate::core::server::origin_allowed(&headers)
@@ -2471,13 +2754,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_auth_verify_rejects_empty_password() {
+    async fn test_auth_verify_empty_password_is_not_a_payload_error() {
+        // An empty password must reach the verifier — a blank account unlocks
+        // with just Enter via PAM nullok. In test mode the fake rejects the
+        // empty string, so the result is a normal 401, not a 400 payload
+        // rejection.
         let app = api_router().with_state(test_state());
         let resp = app
             .oneshot(auth_post(json!({ "password": "" }), Some("null")))
             .await
             .unwrap();
-        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[tokio::test]
@@ -2539,6 +2826,142 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+    }
+
+    // ── First-boot Setup wizard ─────────────────────────────────────────
+
+    fn setup_post(body: Value, origin: Option<&str>) -> axum::http::Request<axum::body::Body> {
+        let mut builder = axum::http::Request::builder()
+            .method("POST")
+            .uri("/setup/apply")
+            .header("content-type", "application/json");
+        if let Some(o) = origin {
+            builder = builder.header("origin", o);
+        }
+        builder
+            .body(axum::body::Body::from(serde_json::to_vec(&body).unwrap()))
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_setup_apply_accepts_full_payload() {
+        // Test-mode apply_setup is a no-op; a valid payload yields ok:true.
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(setup_post(
+                json!({
+                    "language": "en_US.UTF-8",
+                    "keyboard": "us",
+                    "timezone": "UTC",
+                    "username": "alice",
+                    "password": "secret",
+                    "wifi_ssid": "",
+                    "wifi_password": ""
+                }),
+                Some("null"),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        let v: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(v["ok"], json!(true));
+    }
+
+    #[tokio::test]
+    async fn test_setup_apply_accepts_empty_payload() {
+        // An all-empty payload (skip everything → keep defaults) is valid.
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(setup_post(json!({}), Some("null")))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_setup_apply_rejects_oversized_password() {
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(setup_post(
+                json!({ "password": "x".repeat(4097) }),
+                Some("null"),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_setup_apply_rejects_foreign_origin() {
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(setup_post(json!({}), Some("https://evil.example")))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    async fn test_setup_wifi_scan_accepts_null_origin() {
+        // Test-mode wifi_scan_networks returns an empty list; the endpoint
+        // must still answer 200 with a `networks` array for the file:// kiosk.
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("GET")
+                    .uri("/setup/wifi/scan")
+                    .header("origin", "null")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        let v: Value = serde_json::from_slice(&body).unwrap();
+        assert!(v["networks"].is_array(), "must return a networks array");
+    }
+
+    #[tokio::test]
+    async fn test_setup_wifi_scan_rejects_foreign_origin() {
+        let app = api_router().with_state(test_state());
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("GET")
+                    .uri("/setup/wifi/scan")
+                    .header("origin", "https://evil.example")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+    }
+
+    #[test]
+    fn test_parse_wifi_list_dedupes_and_sorts() {
+        let out = "HomeNet:80:WPA2\nGuestNet:0:\nHomeNet:60:WPA2\nCafé:45:WPA3\n\n:99:\n";
+        let nets = parse_wifi_list(out);
+        // Hidden (empty SSID) is dropped; HomeNet de-duped to strongest.
+        assert_eq!(nets.len(), 3, "expected 3 unique networks: {nets:?}");
+        assert_eq!(nets[0].ssid, "HomeNet");
+        assert_eq!(nets[0].signal, 80);
+        assert!(nets[0].security.contains("WPA2"));
+        // GuestNet is open (empty security).
+        let guest = nets.iter().find(|n| n.ssid == "GuestNet").unwrap();
+        assert_eq!(guest.security, "");
+        // Sorted strongest-first.
+        let signals: Vec<i32> = nets.iter().map(|n| n.signal).collect();
+        let mut sorted = signals.clone();
+        sorted.sort_by(|a, b| b.cmp(a));
+        assert_eq!(signals, sorted);
     }
 
     #[test]

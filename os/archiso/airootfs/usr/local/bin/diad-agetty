@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# DIAD OS — getty entrypoint. Decides between seamless auto-login and a
+# (case-sensitive) login prompt based on the first-boot identity state.
+set -u
+
+TTY="${1:-tty1}"
+MARKER="/var/lib/diad/identity-setup"
+
+USER="diad"
+LOGIN_REQUIRED=0
+
+if [ -r "${MARKER}" ]; then
+    # The marker is written by diad-identity-setup.sh as POSIX-safe
+    # KEY=VALUE lines: USERNAME, LOGIN_REQUIRED (0|1), PASS_SET (0|1).
+    # shellcheck disable=SC1090
+    . "${MARKER}"
+fi
+USER="${USERNAME:-${USER}}"
+
+if [ "${LOGIN_REQUIRED:-0}" = "1" ]; then
+    # A username (and/or password) was explicitly configured → require a
+    # login. -n skips agetty's own prompt; diad-login does the prompting.
+    exec /usr/bin/agetty -n --noclear --login-program /usr/local/bin/diad-login "${TTY}" linux
+fi
+
+# No identity configured → seamless auto-login, no prompt.
+exec /usr/bin/agetty --autologin "${USER}" --noclear "${TTY}" linux
+
+

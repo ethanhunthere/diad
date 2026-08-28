@@ -17,12 +17,17 @@ HOME_DIR="${HOME:-/home/diad}"
 DIAD_HOME="${HOME_DIR}/.diad"
 LOG_DIR="${DIAD_HOME}/logs"
 LOG_FILE="${LOG_DIR}/display.log"
+MARKER="${DIAD_HOME}/.diad-display-setup-done"
 
 mkdir -p "${LOG_DIR}"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "${LOG_FILE}"
 }
+
+if [[ "${1:-}" != "--force" && -f "${MARKER}" ]]; then
+    exit 0
+fi
 
 if ! command -v swaymsg >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
     log "display-setup: swaymsg or jq not available — skipping."
@@ -64,33 +69,10 @@ compute_scale() {
     fi
 }
 
-ALL_ACTIVE="$(printf '%s' "${OUTPUTS_JSON}" | jq -r '.[] | select(.active == true) | .name')"
-for out in ${ALL_ACTIVE}; do
-    PX="$(printf '%s' "${OUTPUTS_JSON}" | jq -r --arg o "${out}" '.[] | select(.name == $o) | (.current_mode.width // .modes[0].width // 1920)')"
-    SCALE="$(compute_scale "${out}" "${PX}")"
-    CURRENT="$(printf '%s' "${OUTPUTS_JSON}" | jq -r --arg o "${out}" '.[] | select(.name == $o) | .scale // 1')"
-    if [[ "${SCALE}" != "${CURRENT}" ]]; then
-        swaymsg output "${out}" scale "${SCALE}" >/dev/null 2>&1 \
-            && log "display-setup: ${out} scale ${CURRENT} → ${SCALE} (${PX}px wide)."
-    fi
-done
-# Re-read after scaling: rect dimensions are now logical (scaled) units.
-OUTPUTS_JSON="$(swaymsg -t get_outputs 2>/dev/null)" || true
-
-# ---- Only built-in: enforce native resolution ----
-if [[ -z "${BUILTIN}" && -z "${EXTERNALS}" ]]; then
-    log "display-setup: no active outputs detected."
-    exit 0
-fi
-
+# ---- Only built-in: let Sway native KMS manage mode automatically ----
 if [[ -z "${EXTERNALS}" && -n "${BUILTIN}" ]]; then
-    MODE="$(printf '%s' "${OUTPUTS_JSON}" | jq -r --arg o "${BUILTIN}" '.[] | select(.name == $o) | .modes[0] | "\(.width)x\(.height)"')"
-    if [[ -n "${MODE}" ]]; then
-        swaymsg output "${BUILTIN}" resolution "${MODE}" >/dev/null 2>&1
-        log "display-setup: ${BUILTIN} → native ${MODE}."
-    else
-        log "display-setup: ${BUILTIN} active, no preferred mode listed."
-    fi
+    log "display-setup: single output ${BUILTIN} active — using native compositor mode."
+    touch "${MARKER}"
     exit 0
 fi
 
@@ -111,4 +93,5 @@ else
 fi
 
 log "display-setup: complete."
+touch "${MARKER}"
 exit 0

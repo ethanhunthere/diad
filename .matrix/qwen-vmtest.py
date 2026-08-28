@@ -568,6 +568,8 @@ def run_keys(sess, logf):
     time.sleep(8)
     q("grep -c 'rejected request without valid API token' "
       "/home/diad/.diad/daemon.log || echo 0", "MK_WARNCOUNT")
+    q("grep 'rejected request' /home/diad/.diad/daemon.log | tail -8",
+      "MK_WARNTAIL")
     q("ls /etc/systemd/system | grep -cE 'debug-serial|serial-getty' || echo 0",
       "MK_UNITS")
     q("pgrep -cx sway && pgrep -cx waybar && pgrep -cx diad-agent", "MK_DESKTOP")

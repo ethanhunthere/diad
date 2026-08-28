@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# DIAD OS — login program (run by agetty via --login-program when a login is
+# required). Prompts for the username with an exact, case-sensitive match, then
+# hands off to /usr/bin/login for either password auth (PASS_SET=1) or a
+# pre-authenticated session (no password configured).
+set -u
+
+MARKER="/var/lib/diad/identity-setup"
+
+USER="diad"
+PASS_SET=0
+LOGIN_REQUIRED=0
+
+if [ -r "${MARKER}" ]; then
+    # shellcheck disable=SC1090
+    . "${MARKER}"
+fi
+USER="${USERNAME:-${USER}}"
+
+# Safety: if the marker doesn't require a login, don't prompt.
+if [ "${LOGIN_REQUIRED:-0}" != "1" ]; then
+    exec /usr/bin/login -p -f -- "${USER}"
+fi
+
+MAX_ATTEMPTS=3
+attempt=0
+
+while [ "${attempt}" -lt "${MAX_ATTEMPTS}" ]; do
+    attempt=$((attempt + 1))
+    printf '\nDIAD OS login: '
+    IFS= read -r input || { printf '\n'; continue; }
+
+    # Exact, case-sensitive comparison against the configured username.
+    if [ "${input}" = "${USER}" ]; then
+        if [ "${PASS_SET:-0}" = "1" ]; then
+            exec /usr/bin/login -p -- "${USER}"
+        else
+            exec /usr/bin/login -p -f -- "${USER}"
+        fi
+    fi
+
+    printf 'Login incorrect\n'
+done
+
+printf 'Too many failed attempts.\n'
+sleep 2
+exit 1

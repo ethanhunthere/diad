@@ -58,3 +58,9 @@ diad ALL=(root) NOPASSWD: /usr/local/bin/diad-set-password
 #   the web lockscreen's /auth/verify endpoint. The password never reaches
 #   the command line or logs.
 diad ALL=(root) NOPASSWD: /usr/local/bin/diad-lock-auth
+
+# ---- First-boot setup (locale/keyboard/timezone/identity) -------------------
+#   diad-identity-setup.sh --apply  (argv-pinned to --apply; reads the JSON
+#   payload — including the account password — on STDIN only). The graphical
+#   Setup wizard POSTs to the daemon, which pipes the payload here.
+diad ALL=(root) NOPASSWD: /usr/local/bin/diad-identity-setup.sh --apply

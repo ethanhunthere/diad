@@ -8,6 +8,7 @@
 # =============================================================================
 
 swaynag_command /bin/true
+xwayland disable
 
 # ---- Daemon & Secret Storage ----
 exec gnome-keyring-daemon --start --components=secrets
@@ -36,6 +37,12 @@ input type:touchpad {
     natural_scroll enabled
 }
 
+# Linux-style natural scrolling on mice/wheel pointers too — content follows
+# the fingers (the "other direction" vs. the Windows default).
+input type:pointer {
+    natural_scroll enabled
+}
+
 # ---- Appearance & Geometry ----
 font pango:Inter 10
 default_border pixel 2
@@ -56,7 +63,6 @@ client.focused_inactive #333C37 #0F1110 #CBD8D2 #333C37 #333C37
 client.urgent           #FF1744 #161918 #FFFFFF #FF1744 #FF1744
 
 focus_follows_mouse no
-max_render_time 3
 
 # Window Dragging & Resizing Everywhere (Borders, Edges, Corners, Mod+Mouse)
 tiling_drag enabled
@@ -101,9 +107,9 @@ for_window [title=".*Locked.*"] fullscreen enable
 for_window [title=".*Locked.*"] floating enable
 
 # ---- Autostart Services ----
-exec /usr/local/bin/diad-waybar
 exec mako
-exec diad-supervisor.sh
+exec /usr/local/bin/diad-waybar
+exec /usr/local/bin/diad-supervisor.sh
 
 # ---- Mouse & Desktop Bindings ----
 # Right-click context menu on desktop background / root window
@@ -213,23 +219,33 @@ bindsym XF86ScreenSaver exec /usr/local/bin/diad-lock
 bindsym Control+Mod1+l exec /usr/local/bin/diad-lock
 
 # ---- Hardware Control (Audio, Brightness, RFKill) ----
-bindsym XF86MonBrightnessUp exec brightnessctl set +5%
-bindsym XF86MonBrightnessDown exec brightnessctl set 5%-
+# moved to conf.d/media-keys.conf
+# bindsym XF86MonBrightnessUp exec brightnessctl set +5%
+# moved to conf.d/media-keys.conf
+# bindsym XF86MonBrightnessDown exec brightnessctl set 5%-
 bindsym $mod+F6 exec brightnessctl set +5%
 bindsym $mod+F5 exec brightnessctl set 5%-
 
-bindsym XF86AudioRaiseVolume exec wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+
-bindsym XF86AudioLowerVolume exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
-bindsym XF86AudioMute exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
-bindsym XF86AudioMicMute exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+# moved to conf.d/media-keys.conf
+# bindsym XF86AudioRaiseVolume exec wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+
+# moved to conf.d/media-keys.conf
+# bindsym XF86AudioLowerVolume exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+# moved to conf.d/media-keys.conf
+# bindsym XF86AudioMute exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+# moved to conf.d/media-keys.conf
+# bindsym XF86AudioMicMute exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
 bindsym $mod+F12 exec wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+
 bindsym $mod+F11 exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
 bindsym $mod+F10 exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
 
-bindsym XF86AudioPlay exec playerctl play-pause
-bindsym XF86AudioNext exec playerctl next
-bindsym XF86AudioPrev exec playerctl previous
-bindsym XF86AudioStop exec playerctl stop
+# moved to conf.d/media-keys.conf
+# bindsym XF86AudioPlay exec playerctl play-pause
+# moved to conf.d/media-keys.conf
+# bindsym XF86AudioNext exec playerctl next
+# moved to conf.d/media-keys.conf
+# bindsym XF86AudioPrev exec playerctl previous
+# moved to conf.d/media-keys.conf
+# bindsym XF86AudioStop exec playerctl stop
 bindsym XF86RFKill exec /usr/local/bin/diad-rfkill
 
 # ---- Interactive Resize Mode ----
@@ -249,6 +265,9 @@ bindsym $mod+r mode "resize"
 
 # Overrides
 include /etc/diad/sway-overrides.conf
+
+# Laptop media-keys (enabled/disabled at first boot by diad-hardware-setup.sh)
+include /etc/sway/conf.d/media-keys.conf
 
 # ---- Idle Management ----
 exec swayidle -w \

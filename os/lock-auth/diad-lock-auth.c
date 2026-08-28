@@ -32,8 +32,10 @@ static int read_password(void)
     if (fgets(g_password, sizeof(g_password), stdin) == NULL)
         return 0;
     g_password[strcspn(g_password, "\r\n")] = '\0';
-    /* match swaylock's ignore-empty-password: an empty attempt never unlocks */
-    return (g_password[0] != '\0');
+    /* A blank account has no password (PAM nullok accepts the empty string),
+     * so pass the empty line through and let PAM decide. Return 1 when a line
+     * was read, 0 only on EOF (nothing to verify). */
+    return 1;
 }
 
 static int pam_conversation(int num_msg, const struct pam_message **msg,
@@ -84,7 +86,7 @@ int main(void)
         return 1;
 
     if (!read_password())
-        return 1; /* empty stdin or empty password: never unlocks */
+        return 1; /* no line on stdin (EOF): nothing to verify */
 
     pam_handle_t *pamh = NULL;
     int rc = pam_start("system-auth", user, &conv, &pamh);

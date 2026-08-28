@@ -125,7 +125,10 @@ fn render_top_bar(app: &App, width: u16) -> Paragraph<'static> {
         vec![
             Span::styled(
                 " DIAD ",
-                Style::default().fg(Color::Rgb(229, 234, 230)).bg(accent).bold(),
+                Style::default()
+                    .fg(Color::Rgb(229, 234, 230))
+                    .bg(accent)
+                    .bold(),
             ),
             Span::raw(" "),
             Span::styled(status, Style::default().fg(status_color).bold()),
@@ -136,7 +139,10 @@ fn render_top_bar(app: &App, width: u16) -> Paragraph<'static> {
         vec![
             Span::styled(
                 " DIAD ",
-                Style::default().fg(Color::Rgb(229, 234, 230)).bg(accent).bold(),
+                Style::default()
+                    .fg(Color::Rgb(229, 234, 230))
+                    .bg(accent)
+                    .bold(),
             ),
             Span::raw(" │ "),
             Span::styled(
@@ -159,7 +165,10 @@ fn render_top_bar(app: &App, width: u16) -> Paragraph<'static> {
         vec![
             Span::styled(
                 " DIAD ",
-                Style::default().fg(Color::Rgb(229, 234, 230)).bg(accent).bold(),
+                Style::default()
+                    .fg(Color::Rgb(229, 234, 230))
+                    .bg(accent)
+                    .bold(),
             ),
             Span::raw(" │ "),
             Span::styled(
@@ -191,7 +200,11 @@ fn render_top_bar(app: &App, width: u16) -> Paragraph<'static> {
 
     // Right-aligned Window Control buttons matching GUI: [ – ] [ □ ] [ ✕ ]
     let left_len: usize = spans.iter().map(|s| s.content.chars().count()).sum();
-    let controls_str = if width >= 50 { " [ – ] [ □ ] [ ✕ ] " } else { "" };
+    let controls_str = if width >= 50 {
+        " [ – ] [ □ ] [ ✕ ] "
+    } else {
+        ""
+    };
     let controls_len = controls_str.chars().count();
 
     if controls_len > 0 && (width as usize) > left_len + controls_len {
@@ -199,7 +212,10 @@ fn render_top_bar(app: &App, width: u16) -> Paragraph<'static> {
         spans.push(Span::raw(" ".repeat(pad_len)));
         spans.push(Span::styled(
             controls_str,
-            Style::default().fg(Color::Rgb(203, 216, 210)).bg(Color::Rgb(22, 25, 24)).bold(),
+            Style::default()
+                .fg(Color::Rgb(203, 216, 210))
+                .bg(Color::Rgb(22, 25, 24))
+                .bold(),
         ));
     }
 
@@ -215,7 +231,11 @@ fn render_bottom_bar(app: &App, height: u16) -> Paragraph<'_> {
             Span::styled(prompt, Style::default().fg(Color::Rgb(217, 119, 6))),
             Span::styled(masked, Style::default().fg(Color::Rgb(229, 234, 230))),
             Span::styled(
-                if app.connect_input.is_empty() { "▊" } else { "" },
+                if app.connect_input.is_empty() {
+                    "▊"
+                } else {
+                    ""
+                },
                 Style::default().fg(Color::Rgb(179, 32, 50)),
             ),
         ]);
@@ -239,7 +259,10 @@ fn render_bottom_bar(app: &App, height: u16) -> Paragraph<'_> {
                     format!(" {}\u{00a0} ", confirm.label),
                     Style::default().fg(Color::Rgb(217, 119, 6)),
                 ),
-                Span::styled(" [y/N] ", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
+                Span::styled(
+                    " [y/N] ",
+                    Style::default().fg(Color::Rgb(179, 32, 50)).bold(),
+                ),
             ]);
 
             let mut p = Paragraph::new(line).style(Style::default().bg(Color::Rgb(15, 17, 16)));
@@ -293,7 +316,10 @@ fn render_bottom_bar(app: &App, height: u16) -> Paragraph<'_> {
             ])
         } else {
             Line::from(vec![
-                Span::styled("✦ DIAD ❯ ", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
+                Span::styled(
+                    "✦ DIAD ❯ ",
+                    Style::default().fg(Color::Rgb(179, 32, 50)).bold(),
+                ),
                 Span::styled(
                     "Type intent or command... (e.g. 'connect wifi', /help)",
                     Style::default().fg(Color::Rgb(138, 150, 142)),
@@ -467,9 +493,11 @@ fn render_filetree_view(frame: &mut Frame, _app: &App, area: Rect) {
         ListItem::new("  📄 .bashrc"),
     ];
 
-    let tree_list = List::new(tree_items)
-        .block(tree_block)
-        .style(Style::default().bg(Color::Rgb(15, 17, 16)).fg(Color::Rgb(229, 234, 230)));
+    let tree_list = List::new(tree_items).block(tree_block).style(
+        Style::default()
+            .bg(Color::Rgb(15, 17, 16))
+            .fg(Color::Rgb(229, 234, 230)),
+    );
     frame.render_widget(tree_list, layout[0]);
 
     let preview_block = Block::default()
@@ -568,18 +596,26 @@ fn render_system_view(frame: &mut Frame, app: &App, area: Rect) {
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("Ctrl+C/D", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
+            Span::styled(
+                "Ctrl+C/D",
+                Style::default().fg(Color::Rgb(179, 32, 50)).bold(),
+            ),
             Span::raw(" Quit    "),
-            Span::styled("Ctrl+L", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
+            Span::styled(
+                "Ctrl+L",
+                Style::default().fg(Color::Rgb(179, 32, 50)).bold(),
+            ),
             Span::raw(" Clear chat    "),
             Span::styled("Esc", Style::default().fg(Color::Rgb(179, 32, 50)).bold()),
             Span::raw(" Clear input"),
         ]),
     ]);
 
-    let help_para = Paragraph::new(help_text)
-        .block(help_block)
-        .style(Style::default().bg(Color::Rgb(15, 17, 16)).fg(Color::Rgb(229, 234, 230)));
+    let help_para = Paragraph::new(help_text).block(help_block).style(
+        Style::default()
+            .bg(Color::Rgb(15, 17, 16))
+            .fg(Color::Rgb(229, 234, 230)),
+    );
     frame.render_widget(help_para, layout[5]);
 }
 
@@ -627,14 +663,21 @@ fn render_connect_view(frame: &mut Frame, app: &App, area: Rect) {
         Line::from(""),
         Line::from(vec![
             Span::raw("  Press "),
-            Span::styled("Enter", Style::default().fg(Color::Rgb(56, 161, 105)).bold()),
+            Span::styled(
+                "Enter",
+                Style::default().fg(Color::Rgb(56, 161, 105)).bold(),
+            ),
             Span::raw(" to save and validate, "),
             Span::styled("Esc", Style::default().fg(Color::Rgb(138, 150, 142)).bold()),
             Span::raw(" to cancel."),
         ]),
     ])
     .block(info_block)
-    .style(Style::default().bg(Color::Rgb(15, 17, 16)).fg(Color::Rgb(229, 234, 230)))
+    .style(
+        Style::default()
+            .bg(Color::Rgb(15, 17, 16))
+            .fg(Color::Rgb(229, 234, 230)),
+    )
     .wrap(Wrap { trim: true });
     frame.render_widget(info, layout[1]);
 
@@ -646,9 +689,15 @@ fn render_connect_view(frame: &mut Frame, app: &App, area: Rect) {
         .skip(skip)
         .map(|msg| {
             let styled = if msg.starts_with("[You]") {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Rgb(179, 32, 50))))
+                Line::from(Span::styled(
+                    msg.clone(),
+                    Style::default().fg(Color::Rgb(179, 32, 50)),
+                ))
             } else if msg.starts_with("[Error]") {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Rgb(179, 32, 50))))
+                Line::from(Span::styled(
+                    msg.clone(),
+                    Style::default().fg(Color::Rgb(179, 32, 50)),
+                ))
             } else {
                 Line::from(Span::styled(
                     msg.clone(),
@@ -693,9 +742,15 @@ fn render_secure_prompt_view(frame: &mut Frame, app: &App, area: Rect) {
         .skip(skip)
         .map(|msg| {
             let styled = if msg.starts_with("[You]") {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Rgb(179, 32, 50))))
+                Line::from(Span::styled(
+                    msg.clone(),
+                    Style::default().fg(Color::Rgb(179, 32, 50)),
+                ))
             } else if msg.starts_with("[Error]") {
-                Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Rgb(179, 32, 50))))
+                Line::from(Span::styled(
+                    msg.clone(),
+                    Style::default().fg(Color::Rgb(179, 32, 50)),
+                ))
             } else if msg.starts_with("[local]") {
                 Line::from(Span::styled(
                     msg.clone(),
@@ -733,7 +788,11 @@ fn render_provider_picker(frame: &mut Frame, app: &App, area: Rect) {
         frame.render_widget(
             Paragraph::new("No providers configured.")
                 .block(block)
-                .style(Style::default().bg(Color::Rgb(22, 25, 24)).fg(Color::Rgb(229, 234, 230))),
+                .style(
+                    Style::default()
+                        .bg(Color::Rgb(22, 25, 24))
+                        .fg(Color::Rgb(229, 234, 230)),
+                ),
             popup,
         );
         return;
@@ -777,8 +836,17 @@ fn render_provider_picker(frame: &mut Frame, app: &App, area: Rect) {
 
     let list = List::new(items)
         .block(block)
-        .style(Style::default().bg(Color::Rgb(22, 25, 24)).fg(Color::Rgb(229, 234, 230)))
-        .highlight_style(Style::default().bg(Color::Rgb(179, 32, 50)).fg(Color::White).bold());
+        .style(
+            Style::default()
+                .bg(Color::Rgb(22, 25, 24))
+                .fg(Color::Rgb(229, 234, 230)),
+        )
+        .highlight_style(
+            Style::default()
+                .bg(Color::Rgb(179, 32, 50))
+                .fg(Color::White)
+                .bold(),
+        );
 
     let mut state = ratatui::widgets::ListState::default();
     state.select(Some(app.picker_index.min(app.provider_entries.len() - 1)));
@@ -797,7 +865,11 @@ fn render_model_picker(frame: &mut Frame, app: &App, area: Rect) {
         frame.render_widget(
             Paragraph::new("No models listed for this provider.")
                 .block(block)
-                .style(Style::default().bg(Color::Rgb(22, 25, 24)).fg(Color::Rgb(229, 234, 230))),
+                .style(
+                    Style::default()
+                        .bg(Color::Rgb(22, 25, 24))
+                        .fg(Color::Rgb(229, 234, 230)),
+                ),
             popup,
         );
         return;
@@ -822,8 +894,17 @@ fn render_model_picker(frame: &mut Frame, app: &App, area: Rect) {
 
     let list = List::new(items)
         .block(block)
-        .style(Style::default().bg(Color::Rgb(22, 25, 24)).fg(Color::Rgb(229, 234, 230)))
-        .highlight_style(Style::default().bg(Color::Rgb(179, 32, 50)).fg(Color::White).bold());
+        .style(
+            Style::default()
+                .bg(Color::Rgb(22, 25, 24))
+                .fg(Color::Rgb(229, 234, 230)),
+        )
+        .highlight_style(
+            Style::default()
+                .bg(Color::Rgb(179, 32, 50))
+                .fg(Color::White)
+                .bold(),
+        );
 
     let mut state = ratatui::widgets::ListState::default();
     state.select(Some(app.model_index.min(app.model_list.len() - 1)));

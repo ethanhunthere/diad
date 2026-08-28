@@ -61,8 +61,8 @@ export function OnboardingWizard() {
 
   const setPassword = () => {
     setPwError(null);
-    if (pw1.length < 8) {
-      setPwError("Use at least 8 characters.");
+    if (!pw1) {
+      setPwError("Please enter a password.");
       return;
     }
     if (pw1 !== pw2) {
@@ -118,7 +118,7 @@ export function OnboardingWizard() {
                 className="control w-full"
                 type="password"
                 autoFocus
-                placeholder="New password (min 8 characters)"
+                placeholder="New password"
                 value={pw1}
                 onChange={(e) => setPw1(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && setPassword()}
@@ -136,7 +136,7 @@ export function OnboardingWizard() {
             <div className="mt-5 flex justify-end">
               <button
                 className="btn-primary"
-                disabled={pwSending || pw1.length < 8 || pw1 !== pw2}
+                disabled={pwSending || !pw1 || pw1 !== pw2}
                 onClick={setPassword}
               >
                 {pwSending ? "Applying…" : "Set password"} <ArrowRight size={14} />

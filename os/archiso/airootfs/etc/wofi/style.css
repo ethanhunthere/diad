@@ -14,13 +14,13 @@ window {
 }
 
 #input {
-    margin: 14px 14px 10px 14px;
-    padding: 12px 16px;
+    margin: 12px 12px 8px 12px;
+    padding: 10px 14px;
     border-radius: 10px;
     border: 1px solid #333C37;
     background-color: #161918;
     color: #FFFFFF;
-    font-size: 14.5px;
+    font-size: 14px;
     font-weight: 600;
 }
 
@@ -31,7 +31,7 @@ window {
 }
 
 #inner-box {
-    margin: 4px 14px 14px 14px;
+    margin: 4px 12px 12px 12px;
     background-color: transparent;
     overflow-x: hidden;
 }
@@ -59,16 +59,16 @@ scrollbar {
 }
 
 #text {
-    margin: 6px 10px;
+    margin: 4px 10px;
     color: #CBD8D2;
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 500;
 }
 
 #entry {
-    padding: 8px 12px;
+    padding: 5px 12px;
     border-radius: 8px;
-    margin: 2px 0px;
+    margin: 1px 0px;
     border: 1px solid transparent;
     transition: all 120ms ease;
     background-color: transparent;

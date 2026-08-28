@@ -1,5 +1,9 @@
 # DIAD — Intent-Driven Operating System
 
+> **First time here?** Want to understand *where everything lives* without
+> reading code? Start with the guided map: **[`STRUCTURE.md`](STRUCTURE.md)** —
+> a plain-English tour of every folder and file in this project.
+
 DIAD is a minimal, intent-driven operating system built on Arch Linux. It presents exactly two user surfaces:
 
 1. **Brave Browser** — for web browsing and OAuth authentication flows

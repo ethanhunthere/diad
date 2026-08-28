@@ -4,10 +4,9 @@
 // animations. Unlocking requires the account password, verified by the
 // daemon's PAM-backed POST /api/v1/auth/verify endpoint.
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { createRoot } from "react-dom/client";
-import ScrollWaveField from "./components/originkit/ui/scroll-wave-field";
 import MetallicCube from "./components/originkit/ui/metal-rubics";
 import logoWhite from "../../../assets/diad-logo-white.png";
 
@@ -118,6 +117,29 @@ function LockApp() {
   const [error, setError] = useState(false);
   const [checking, setChecking] = useState(false);
 
+  // Chromium launched with `--app` / `--kiosk` often ignores the `autofocus`
+  // attribute because the Wayland window is not "active" at page-load time.
+  // That made the lock screen silently swallow keystrokes ("typing not
+  // allowed"). Focus the password field explicitly: on mount (with retries to
+  // ride out the focus race), when the window regains focus, and whenever the
+  // user clicks anywhere on the lock screen.
+  const inputRef = useRef<HTMLInputElement>(null);
+  const focusInput = useCallback(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    focusInput();
+    const t1 = setTimeout(focusInput, 60);
+    const t2 = setTimeout(focusInput, 250);
+    window.addEventListener("focus", focusInput);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener("focus", focusInput);
+    };
+  }, [focusInput]);
+
   const unlock = useCallback(() => {
     if (unlocked) return;
     setUnlocked(true);
@@ -132,7 +154,7 @@ function LockApp() {
   const handleSubmit = useCallback(
     async (e?: React.FormEvent) => {
       e?.preventDefault();
-      if (!password || checking || unlocked) return;
+      if (checking || unlocked) return;
       setChecking(true);
       setError(false);
       try {
@@ -151,30 +173,16 @@ function LockApp() {
         setError(true);
       } finally {
         setChecking(false);
+        // The field is disabled while `checking`, which drops keyboard focus;
+        // restore it so the user can retype after a failed attempt.
+        setTimeout(() => inputRef.current?.focus(), 0);
       }
     },
     [password, checking, unlocked, unlock],
   );
 
   return (
-    <div style={pageStyle}>
-      {/* Originkit Scroll Wave Field 3D Particle Animation with exact user design */}
-      <div style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none" }}>
-        <ScrollWaveField
-          background="#080512"
-          colors={["#B32032", "#FFC200"]}
-          density={169}
-          dotSize={2}
-          scatter={108}
-          cameraHeight={50}
-          wave={{ waveSpeed: 250, waveHeight: 200, waveLength: 2070 }}
-          tilt={{ rollStart: 0, tiltStart: 45 }}
-          cursor={{ cursorRadius: 25, cursorLift: 45 }}
-          transition={{ type: "spring", stiffness: 800, damping: 60, mass: 1 }}
-          style={{ minWidth: "100%", minHeight: "100%", width: "100%", height: "100%" }}
-        />
-      </div>
-
+    <div style={pageStyle} onPointerDown={focusInput}>
       <div
         style={{
           ...centerCardStyle,
@@ -225,7 +233,7 @@ function LockApp() {
           />
         </div>
 
-        <div style={subtitleStyle}>LOCKED</div>
+        <div style={subtitleStyle}>Secure DIAD</div>
 
         {unlocked ? (
           <div style={unlockedStyle}>
@@ -243,6 +251,7 @@ function LockApp() {
               }}
               placeholder="Password"
               autoFocus
+              ref={inputRef}
               disabled={checking}
               aria-label="Lockscreen password"
               style={{
@@ -269,7 +278,7 @@ function LockApp() {
             )}
             <button
               type="submit"
-              disabled={!password || checking}
+              disabled={checking}
               style={{
                 padding: "9px 28px",
                 background: checking ? "#1E2321" : "#B32032",
@@ -280,8 +289,8 @@ function LockApp() {
                 fontWeight: 700,
                 letterSpacing: "0.12em",
                 textTransform: "uppercase",
-                cursor: !password || checking ? "default" : "pointer",
-                opacity: !password ? 0.55 : 1,
+                cursor: checking ? "default" : "pointer",
+                opacity: 1,
                 marginTop: 2,
                 transition: "all 140ms ease",
               }}

@@ -35,7 +35,7 @@
     "interval": "once"
   },
   "pulseaudio": {
-    "format": "{icon}  {volume}%",
+    "format": "{icon} {volume}%",
     "format-muted": " Muted",
     "format-icons": {
       "default": ["", "", ""]
@@ -43,6 +43,7 @@
     "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
     "on-scroll-up": "wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+",
     "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
+    "on-click-right": "/usr/local/bin/diad-power.sh dialog",
     "tooltip": true,
     "tooltip-format": "Volume: {volume}%\n• Scroll up/down to adjust\n• Click to mute/unmute"
   },
@@ -50,26 +51,30 @@
     "format-wifi": "",
     "format-ethernet": "",
     "format-disconnected": "",
-    "tooltip-format-wifi": "  {essid} ({signalStrength}%)\nIP: {ipaddr}\nFrequency: {frequency} MHz\n\nClick to open Wi-Fi Manager",
-    "tooltip-format-disconnected": "  Wi-Fi Disconnected\n\nClick to scan & connect",
+    "tooltip-format-wifi": "{essid} ({signalStrength}%)\n• Click to manage Wi-Fi",
+    "tooltip-format-ethernet": "{ipaddr}",
+    "tooltip-format-disconnected": "No network — click to open Wi-Fi manager",
     "on-click": "/usr/local/bin/diad-wifi.sh",
-    "interval": 2
+    "interval": 5
   },
   "custom/lock": {
     "format": "",
-    "tooltip": false,
+    "tooltip": true,
+    "tooltip-format": "Lock Screen",
     "on-click": "/usr/local/bin/diad-lock",
     "interval": "once"
   },
   "custom/reboot": {
     "format": "",
-    "tooltip": false,
-    "on-click": "/usr/local/bin/diad-power.sh reboot",
+    "tooltip": true,
+    "tooltip-format": "Restart System",
+    "on-click": "/usr/local/bin/diad-power.sh reboot-confirm",
     "interval": "once"
   },
   "custom/power": {
     "format": "",
-    "tooltip": false,
+    "tooltip": true,
+    "tooltip-format": "Power Menu",
     "on-click": "/usr/local/bin/diad-power.sh dialog",
     "interval": "once"
   }

@@ -38,8 +38,8 @@ rm -rf /tmp/diad-lock-profile
 mkdir -p /tmp/diad-lock-profile
 
 /usr/bin/chromium \
-    --ozone-platform-hint=auto \
     --ozone-platform=wayland \
+    --ozone-platform-hint=auto \
     --user-data-dir=/tmp/diad-lock-profile \
     --no-first-run \
     --no-default-browser-check \

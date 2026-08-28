@@ -21,10 +21,10 @@ clock:x:994:
 disk:x:993:
 input:x:992:diad
 kmem:x:991:
-kvm:x:990:
+kvm:x:990:diad
 lp:x:989:cups
 optical:x:988:
-render:x:987:
+render:x:987:diad
 sgx:x:986:
 storage:x:985:diad
 tty:x:5:

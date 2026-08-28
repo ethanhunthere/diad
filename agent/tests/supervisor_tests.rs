@@ -108,15 +108,42 @@ fn supervisor_rotation_covers_logs_dir_and_daemon_log() {
 fn supervisor_runs_a_waybar_watchdog_loop() {
     let script = supervisor_script();
 
-    // F-14: the supervisor must NOT exit after setup — it becomes a loop.
-    assert!(
-        !script.contains("exit 0"),
-        "supervisor must no longer exit 0 after setup (it is the watchdog loop)"
-    );
+    // F-14: the supervisor must NOT terminate after first-run setup — it
+    // becomes a long-running watchdog loop. Exactly two `exit 0` statements
+    // are legitimate and accounted for:
+    //   1. single-instance lock contention (a second supervisor yields), and
+    //   2. the compositor (sway) dying — the orphan must not re-attach to the
+    //      next session.
     assert!(
         script.contains("while true"),
         "supervisor must run an infinite watchdog loop"
     );
+
+    // The setup gating must fall through to the loop, never `exit 0`.
+    let setup_idx = script
+        .find("setup-complete")
+        .expect("setup gating must reference the setup-complete marker");
+    let loop_idx = script.find("while true").expect("watchdog loop missing");
+    let setup_region = &script[setup_idx..loop_idx];
+    assert!(
+        setup_region.contains("diad-setup"),
+        "supervisor must launch the graphical setup wizard (diad-setup)"
+    );
+    assert!(
+        !setup_region.contains("exit 0"),
+        "setup must not exit 0 — it must fall through to the watchdog loop"
+    );
+
+    // Every `exit 0` must be one of the two legitimate lifecycle exits above.
+    for (idx, _) in script.match_indices("exit 0") {
+        let context = &script[idx.saturating_sub(80)..(idx + 80).min(script.len())];
+        let legitimate = context.contains("another instance holds the lock")
+            || context.contains("compositor") && context.contains("exiting with session");
+        assert!(
+            legitimate,
+            "unexpected exit 0 outside lock-contention or compositor-death guards: {context}"
+        );
+    }
 
     // Relaunch check at 10 s cadence, exact-name match so we never match
     // e.g. a shell running `waybar --help`.
@@ -128,9 +155,18 @@ fn supervisor_runs_a_waybar_watchdog_loop() {
 
     // Relaunch must use the same flags Sway uses (spec 6.6 / sway config),
     // so the relaunched bar looks identical and honors conf-write changes.
+    // The supervisor delegates to the `diad-waybar` wrapper (which pkills
+    // strays first); the wrapper execs waybar with the exact Sway flags.
     assert!(
-        script.contains("waybar -c /etc/waybar/config -s /etc/waybar/style.css"),
-        "watchdog must relaunch waybar with Sway's exact flags"
+        script.contains("diad-waybar"),
+        "watchdog must relaunch waybar via the diad-waybar wrapper"
+    );
+    let waybar_wrapper = repo_path("os/archiso/airootfs/usr/local/bin/diad-waybar");
+    let waybar_body = std::fs::read_to_string(&waybar_wrapper)
+        .unwrap_or_else(|e| panic!("cannot read diad-waybar: {e}"));
+    assert!(
+        waybar_body.contains("waybar -c /etc/waybar/config -s /etc/waybar/style.css"),
+        "diad-waybar must exec waybar with Sway's exact flags"
     );
 }
 

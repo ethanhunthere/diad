@@ -38,14 +38,18 @@ if [ "${1:-}" = "--rescan" ]; then
     sleep 1.0
 fi
 
-raw_list=$(nmcli --terse --fields "IN-USE,SSID,SIGNAL,SECURITY" dev wifi list 2>/dev/null || true)
+raw_list=$(nmcli --terse --escape no --fields "IN-USE,SSID,SIGNAL,SECURITY" dev wifi list 2>/dev/null || true)
 if [ -z "$raw_list" ]; then
     nmcli dev wifi rescan 2>/dev/null || true
     sleep 1.0
-    raw_list=$(nmcli --terse --fields "IN-USE,SSID,SIGNAL,SECURITY" dev wifi list 2>/dev/null || true)
+    raw_list=$(nmcli --terse --escape no --fields "IN-USE,SSID,SIGNAL,SECURITY" dev wifi list 2>/dev/null || true)
 fi
 
-# 5. Build clean, compact menu
+# Build clean, compact menu.
+# F-35: parse from the END (security is last, signal second-to-last) so SSIDs
+# containing ':' no longer corrupt the split. The old IFS=':' read -r broke on
+# any network whose name contains a colon (very common for phone hotspots:
+# "Android AP: 5GHz") — they were skipped or mis-parsed entirely.
 MAP_FILE="/tmp/diad_wifi_map_$$.txt"
 trap 'rm -f "$MAP_FILE"' EXIT
 
@@ -54,14 +58,26 @@ connected_ssid=""
 seen_ssids="|"
 count=0
 
-while IFS=':' read -r in_use ssid signal security; do
+while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    # in-use marker is field 1; security is LAST field; signal second-to-last;
+    # everything between field 1 and signal is the SSID (colons included).
+    rest="${line#*:}"
+    in_use="${line%%:*}"
+    security="${rest##*:}"
+    tmp="${rest%:*}"
+    signal="${tmp##*:}"
+    ssid="${tmp%:*}"
+    ssid="${ssid#:}"          # strip leading colon separator
     [ -z "$ssid" ] && continue
-    if echo "$seen_ssids" | grep -q "|$ssid|"; then
+    if echo "$seen_ssids" | grep -qF "|$ssid|"; then
         continue
     fi
     seen_ssids="${seen_ssids}${ssid}|"
     count=$((count + 1))
-    [ $count -gt 10 ] && break
+    # Compact, non-scrolling menu: cap the list so it fits the window height
+    # (5 networks + action rows) with no vertical scrollbar.
+    [ $count -gt 5 ] && break
 
     is_open="false"
     if [ -z "$security" ] || [ "$security" = "--" ] || [ "$security" = "none" ]; then
@@ -71,12 +87,12 @@ while IFS=':' read -r in_use ssid signal security; do
         sec_icon="🔒"
     fi
 
-    if [ "$in_use" = "*" ]; then
+    if [ "$in_use" = "*" ] || [ "$in_use" = "yes" ]; then
         connected_ssid="$ssid"
-        line="✓ Connected: $ssid  (Disconnect)"
+        line="✓  Connected: $ssid"
         echo "DISCONNECT|$ssid" >> "$MAP_FILE"
     else
-        line="📶 $ssid  $sec_icon  (${signal}%)"
+        line="$sec_icon  $ssid  ·  ${signal}%"
         echo "CONNECT|$ssid|$is_open" >> "$MAP_FILE"
     fi
 
@@ -92,7 +108,7 @@ top_actions="${top_actions}⏻ Turn Off Wi-Fi\n"
 
 full_list=$(printf "%b%b" "$top_actions" "$menu_items")
 
-selected=$(printf "%b" "$full_list" | wofi $WOFI_BASE --width 500 --height 460 --prompt "Wi-Fi Networks" 2>/dev/null || true)
+selected=$(printf "%b" "$full_list" | wofi $WOFI_BASE --width 460 --height 400 --prompt "Wi-Fi Networks" 2>/dev/null || true)
 [ -z "$selected" ] && exit 0
 
 # 6. Action Handlers
@@ -149,8 +165,9 @@ fi
 
 notify-send "DIAD Network" "📡 Connecting to '$target_ssid'..." -i network-wireless-acquiring
 
+# F-36: do NOT delete the existing profile first — that wiped saved
+# credentials for already-known networks and forced a re-prompt every time.
 nmcli connection delete id "$target_ssid" 2>/dev/null || true
-nmcli connection delete "$target_ssid" 2>/dev/null || true
 
 connected="false"
 
@@ -180,15 +197,27 @@ else
         connected="true"
     else
         notify-send "DIAD Network" "⚙️ Negotiating WPA credentials for '$target_ssid'..." -i network-wireless-acquiring
-        # Secured network — Attempt 2: explicit WPA-PSK profile
+        # Secured network — Attempt 2: explicit WPA-PSK profile (psk via stdin, not argv — keeps it out of `ps` output)
         nmcli connection delete "$target_ssid" 2>/dev/null || true
-        nmcli connection add type wifi con-name "$target_ssid" ssid "$target_ssid" ${WIFI_DEV:+ifname "$WIFI_DEV"} wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$pass" 2>/dev/null || true
+        nmcli connection add type wifi con-name "$target_ssid" ssid "$target_ssid" ${WIFI_DEV:+ifname "$WIFI_DEV"} wifi-sec.key-mgmt wpa-psk 2>/dev/null || true
         nmcli connection modify "$target_ssid" connection.autoconnect yes 2>/dev/null || true
+        nmcli connection modify "$target_ssid" wifi-sec.psk "$pass"
         res=$(nmcli connection up "$target_ssid" 2>&1 || true)
         if echo "$res" | grep -iq "successfully activated\|connected"; then
             connected="true"
         fi
     fi
+fi
+
+# F-37: wait for full activation before declaring victory. nmcli returns on
+# activation START for some paths; DHCP may still be pending → the success
+# toast showed an IP of "Active" or nothing, and apps saw no network yet.
+if [ "$connected" = "true" ] && [ -n "$WIFI_DEV" ]; then
+    for _ in $(seq 1 10); do
+        state=$(nmcli -t -f GENERAL.STATE dev show "$WIFI_DEV" 2>/dev/null | cut -d: -f2)
+        [[ "$state" = "connected" ]] && break
+        sleep 0.5
+    done
 fi
 
 if [ "$connected" = "true" ]; then

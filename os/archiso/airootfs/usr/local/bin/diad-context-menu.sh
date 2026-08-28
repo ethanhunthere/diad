@@ -22,12 +22,10 @@ DIAD AI Agent (Workspace 1)
 ⌨ View Keyboard Shortcuts (Super+K)
 🔒 Lock Screen (Super+Shift+P)
 ⏻ Power & System Menu (Super+P)
-────────────────────────────────────────
-✕ Close Menu
 MENU
 )
 
-choice=$(printf "%b" "$menu" | wofi $WOFI_BASE --width 480 --height 540 --prompt "DIAD Quick Menu" 2>/dev/null || true)
+choice=$(printf "%b" "$menu" | wofi $WOFI_BASE --width 480 --height 620 --prompt "DIAD Quick Menu" 2>/dev/null || true)
 [ -z "$choice" ] && exit 0
 
 case "$choice" in

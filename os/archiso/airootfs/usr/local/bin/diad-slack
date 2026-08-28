@@ -21,9 +21,12 @@ if command -v epiphany >/dev/null 2>&1; then
     exec /usr/bin/epiphany --profile="${PROFILE}" --application-mode "https://app.slack.com/client"
 fi
 
-# 4. Chromium app window fallback
+# 4. Chromium app window fallback — dedicated user-data-dir keeps it isolated
+# from the main browser's cookies/storage (mirrors the epiphany --profile path).
 if command -v chromium >/dev/null 2>&1; then
-    exec /usr/bin/chromium --app="https://app.slack.com/client" --ozone-platform-hint=auto --ozone-platform=wayland
+    PROFILE="${HOME}/.local/share/diad-apps/slack-chromium"
+    mkdir -p "${PROFILE}"
+    exec /usr/bin/chromium --user-data-dir="${PROFILE}" --app="https://app.slack.com/client" --ozone-platform-hint=auto --ozone-platform=wayland
 fi
 
 notify-send "Slack" "Could not launch Slack application" -u critical

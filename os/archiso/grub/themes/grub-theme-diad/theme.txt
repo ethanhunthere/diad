@@ -7,14 +7,9 @@ desktop-color: "#0d0e15"
 
 title-text: ""
 title-color: "#f8fafc"
-title-font: "unicode.pf2"
+title-font: "unicode"
 
 message-color: "#94a3b8"
-message-font: "unicode.pf2"
+message-font: "unicode"
 
-terminal-font: "unicode.pf2"
-terminal-border-color: "#333852"
-terminal-left-margin: 25%
-terminal-right-margin: 25%
-terminal-top-margin: 55%
-terminal-bottom-margin: 10%
+terminal-font: "unicode"

@@ -18,7 +18,12 @@ iw
 jq
 libnotify
 libsecret
-linux-firmware
+linux-firmware-amdgpu
+linux-firmware-atheros
+linux-firmware-intel
+linux-firmware-mediatek
+linux-firmware-other
+linux-firmware-realtek
 linux-lts
 mako
 mkinitcpio-archiso
@@ -28,6 +33,15 @@ noto-fonts
 noto-fonts-emoji
 openssl
 otf-font-awesome
+ttf-font-awesome
+mesa
+mesa-utils
+vulkan-icd-loader
+vulkan-intel
+vulkan-radeon
+libva-mesa-driver
+xf86-video-amdgpu
+xf86-video-intel
 pacman-contrib
 pacman-mirrorlist
 pciutils
@@ -56,4 +70,5 @@ wpa_supplicant
 xdg-desktop-portal-gtk
 xdg-desktop-portal-wlr
 zram-generator
+seatd
 zstd

@@ -189,7 +189,9 @@ impl ToolRegistry {
                 // append pending components (mirrors filesystem.rs::canonicalize_for_sandbox).
                 let expanded = shellexpand::tilde(path).to_string();
                 let p = std::path::Path::new(&expanded);
-                if p.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+                if p.components()
+                    .any(|c| matches!(c, std::path::Component::ParentDir))
+                {
                     return false; // Reject raw `..` components outright.
                 }
                 let mut pending: Vec<std::ffi::OsString> = Vec::new();

@@ -80,3 +80,14 @@ sudo rm /etc/diad/perf-baseline.json && diad-bench.sh --check
 # Re-run all setup scripts without rebooting:
 sudo diad-perf-tier.sh && diad-network-setup.sh && diad-power-setup.sh
 ```
+
+## Known issues
+
+### Manual console login on tty2+ hangs after the username (QEMU)
+
+Observed in VM testing (2026-08-24): agetty prints `diad login:`, keystrokes
+echo but are never consumed, and agetty sleeps in S state. The autologin path
+(tty1 → sway) is unaffected. Suspected seatd/sway VT-management interplay on
+emulated VTs rather than a PAM fault. Workarounds: use the autologin session,
+or the serial console. Not yet root-caused; tracked in
+`.matrix/qwen-test/HANDOVER_2026-08-24.md`.

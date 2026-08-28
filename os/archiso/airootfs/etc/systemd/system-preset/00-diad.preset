@@ -18,7 +18,6 @@
 # /etc/diad/perf-tier before multi-user.target and finishes in milliseconds,
 # so it adds no boot delay, while the agent/compositor read its output.
 enable diad-firewall.service
-enable diad-identity-setup.service
 enable diad-perf-tier.service
 enable fstrim.timer
 enable NetworkManager.service
@@ -39,6 +38,10 @@ disable tracker-miner-fs.service
 # --- Never run on DIAD ----------------------------------------------------
 mask NetworkManager-wait-online.service
 mask systemd-networkd-wait-online.service
+mask systemd-networkd.service
+mask systemd-networkd.socket
+mask systemd-networkd-varlink.socket
+mask systemd-networkd-varlink-metrics.socket
 mask systemd-rfkill-poll.service
 mask debug-shell.service
 mask serial-getty@.service
@@ -51,3 +54,24 @@ enable *
 mask systemd-homed.service
 mask systemd-userdbd.socket
 mask systemd-homed-activate.service
+
+# F-34: bloat units pulled in by dependencies (krb5 via curl GSSAPI, sensors,
+# sndio, journal-remote/upload, git daemon): never run on DIAD.
+# Masks MUST come after "enable *".
+mask krb5-kdc.service
+mask krb5-kadmind.service
+mask lm_sensors.service
+mask sensord.service
+mask sndiod.service
+mask systemd-journal-upload.service
+disable systemd-journal-remote.socket
+disable git-daemon.socket
+
+# Disable earlyoom to prevent premature session kills
+mask earlyoom.service
+
+# F-40: zram swap must be explicitly enabled (the "enable *" line above runs
+# before zram-generator's generated units exist, so they were missed and the
+# live ISO booted with NO swap — memory pressure went straight to the
+# kernel OOM killer).
+enable systemd-zram-setup@zram0.service

@@ -15,16 +15,33 @@ export interface ApiError extends Error {
 let cachedToken: string | null = null;
 let tokenPromise: Promise<string | null> | null = null;
 
+/** Fetch /gui-token with a small retry/backoff: a page can load while the
+ * daemon is still writing the token (503), and a one-shot failure must not
+ * degrade into permanent unauthenticated requests. */
+async function fetchGuiToken(attempt = 0): Promise<string | null> {
+  try {
+    const res = await fetch("/gui-token", { cache: "no-store" });
+    if (res.ok) {
+      const body = (await res.json()) as { token?: string };
+      if (body?.token) return body.token;
+    }
+  } catch {
+    /* transient fetch error: fall through to retry */
+  }
+  if (attempt < 3) {
+    await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+    return fetchGuiToken(attempt + 1);
+  }
+  return null;
+}
+
 export function apiToken(): Promise<string | null> {
   if (cachedToken) return Promise.resolve(cachedToken);
   if (!tokenPromise) {
-    tokenPromise = fetch("/gui-token")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((body: { token?: string } | null) => {
-        cachedToken = body?.token ?? null;
-        return cachedToken;
-      })
-      .catch(() => null);
+    tokenPromise = fetchGuiToken().then((t) => {
+      cachedToken = t;
+      return cachedToken;
+    });
   }
   return tokenPromise;
 }

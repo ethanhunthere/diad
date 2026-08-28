@@ -7,6 +7,8 @@
 # it). Ordered, non-blocking boot:
 #
 #   (a) idempotent storage/display/network/power setup (marker-gated inside)
+#   (f) first-run setup wizard — launched FIRST (before the daemon) so its
+#       fullscreen kiosk covers the desktop immediately; no desktop flash
 #   (b) DIAD daemon — wait for 127.0.0.1:7860/health up to 10 s (20 x 0.5 s);
 #       on timeout log the daemon tail and set FALLBACK=1
 #   (c) workspace 1: daemon healthy → DIAD AGENT GUI (brave --app); otherwise
@@ -15,7 +17,6 @@
 #       NO respawn loop (RBRO-004 WP-04): the browser opens only on click
 #   (e) workspace 3: DIAD Launchpad respawn loop (5 s, quiet), only while the
 #       daemon serves it
-#   (f) first-run wizard (independent window — never blocks the boot)
 #   (g) steady state: waybar/mako/cliphist watchdogs (10 s) + daemon health
 #       (restart max 2, then TUI fallback) + periodic log rotation
 #   (h) RBRO-004 WP-08 flood backstop in steady state: workspace limits
@@ -354,55 +355,89 @@ log "supervisor: sway output: $(cat /tmp/sway.log 2>/dev/null || echo 'none')"
 ) &
 
 # ---- (b) DIAD daemon & 3-Workspace Surface Initialization ----
+# Single-instance lock: exactly one supervisor may spawn surfaces. A second
+# invocation would open a DUPLICATE agent GUI at login (two windows).
+SUPERVISOR_LOCK="${XDG_RUNTIME_DIR}/diad-supervisor.lock"
+if ! mkdir "${SUPERVISOR_LOCK}" 2>/dev/null; then
+    log "supervisor: another instance holds the lock — exiting (no duplicate surfaces)"
+    exit 0
+fi
+
 FALLBACK=0
 DAEMON_RESTARTS=0
 DAEMON_GRACE_UNTIL=0
 
+# The supervisor is exec'd by sway, so $PPID is the compositor. When sway
+# dies (crash, exit), this orphan must die with it — otherwise it re-attaches
+# to the NEXT session and double-spawns waybar/GUI surfaces (real-hw crash
+# loop symptom, 2026-08-25).
+SWAY_PID=$PPID
+
+# ---- (f) first-run setup wizard — launched FIRST, before the daemon and the
+# three workspaces, so its fullscreen kiosk covers the desktop immediately.
+# This is what prevents a flash of the bare desktop: by the time the user
+# finishes the six steps the daemon (spawned just below, in parallel) is
+# healthy and the desktop + GUI are already open underneath, ready to appear
+# the instant the wizard closes. ----
+if [[ ! -f /var/lib/diad/setup-complete ]]; then
+    if command -v diad-agent >/dev/null 2>&1; then
+        log "supervisor: first-run setup wizard (graphical) — launching first"
+        diad-setup >/dev/null 2>&1 &
+    else
+        log "supervisor: first-run setup via foot (TUI fallback) — launching first"
+        foot --app-id=foot --title "DIAD Setup" \
+            -e sh -c "diad-identity-setup.sh; diad-first-run.sh" >/dev/null 2>&1 &
+    fi
+fi
+
 launch_agent_tui() {
-    foot --app-id=foot --title "DIAD AGENT" -e diad-agent --tui >/dev/null 2>&1 &
-    log "supervisor: TUI fallback opened on workspace 1"
+    foot --app-id=foot --title "DIAD AGENT" sh -c "diad-agent --tui 2>/dev/null || exec bash" >/dev/null 2>&1 &
+    log "supervisor: TUI agent/shell opened on workspace 1"
 }
 launch_agent_gui() {
-    brave --app=http://127.0.0.1:7860 >/dev/null 2>&1 &
+    /usr/local/bin/brave --app=http://127.0.0.1:7860 >/dev/null 2>&1 &
 }
 
 if command -v diad-agent >/dev/null 2>&1; then
     nohup diad-agent --daemon >> "${DIAD_HOME}/daemon.log" 2>&1 &
     log "supervisor: DIAD daemon starting (pid $!)"
 
-    # Workspace 1: Launch DIAD AGENT Studio if not already open
-    if [[ $(count_or_unknown agent_window_count) == "0" ]]; then
-        brave --app=http://127.0.0.1:7860 >/dev/null 2>&1 &
-        log "supervisor: DIAD AGENT Hub spawned on workspace 1"
-    fi
-
-    # Fast-poll for daemon readiness in background
-    (
-        healthy=0
-        for _ in $(seq 1 40); do
-            if daemon_healthy; then
-                healthy=1
-                break
-            fi
-            sleep 0.05
-        done
-        if [[ ${healthy} -eq 0 ]]; then
-            log "supervisor: DIAD daemon failed to respond — engaging TUI fallback"
-            launch_agent_tui
+    # Wait up to 3s for daemon health before spawning agent GUI
+    healthy=0
+    for _ in $(seq 1 60); do
+        if curl -sf http://127.0.0.1:7860/health >/dev/null 2>&1; then
+            healthy=1
+            break
         fi
-    ) &
+        sleep 0.05
+    done
+
+    # Workspace 1: DIAD AGENT — GUI preferred, no TUI flash. The foot TUI is
+    # only opened as a fallback when the daemon never answers; a healthy daemon
+    # goes straight to the browser GUI (the real agent surface).
+    if [[ ${healthy} -eq 1 ]]; then
+        launch_agent_gui
+        log "supervisor: DIAD AGENT GUI spawned on workspace 1"
+        # Workspace 3: DIAD Launchpad (Telegram + Slack). Spawned once, in the
+        # background after a short delay, so it never competes with the ws1 GUI
+        # for startup CPU/GPU. The sway title rules route it to workspace 3, but
+        # the title can race the page load (map-time title is the URL), so we
+        # also move it explicitly once it has mapped — belt and suspenders.
+        (
+            sleep 1
+            /usr/local/bin/brave --app=http://127.0.0.1:7860/launch >/dev/null 2>&1 &
+            sleep 2
+            swaymsg '[title="DIAD Launchpad"] move container to workspace "COMMS"' >/dev/null 2>&1 || true
+        ) &
+        log "supervisor: DIAD Launchpad (ws3) spawn scheduled"
+    else
+        launch_agent_tui
+        log "supervisor: daemon unhealthy — TUI fallback on workspace 1"
+    fi
 else
     log "supervisor: diad-agent not found — TUI fallback"
     FALLBACK=1
     launch_agent_tui
-fi
-
-# ---- (f) first-run wizard ----
-if [[ ! -f "${DIAD_HOME}/.first-run-complete" ]]; then
-    if [[ ${FALLBACK} -eq 1 ]]; then
-        log "supervisor: first-run wizard via foot (TUI mode)"
-        foot --app-id=foot --title "DIAD Setup" -e diad-first-run.sh >/dev/null 2>&1 &
-    fi
 fi
 
 # ---- end-of-boot: focus workspace 1 on primary output ----
@@ -418,9 +453,18 @@ fi
 #          (restart max 2, then TUI fallback) + periodic log rotation ----
 cycles=0
 while true; do
+    # Session lifecycle: die with the compositor that exec'd us, so an orphan
+    # from a crashed session never re-attaches to the next one.
+    if ! kill -0 "${SWAY_PID}" 2>/dev/null; then
+        log "supervisor: compositor (pid ${SWAY_PID}) gone — exiting with session"
+        exit 0
+    fi
+    # Waybar: use the wrapper (kills strays first) but ONLY when truly absent,
+    # checked atomically via pgrep -x BEFORE spawn. The wrapper's own pkill
+    # plus this check closes the double-bar race from both sides.
     if ! pgrep -x waybar >/dev/null 2>&1; then
         log "supervisor: waybar not running — relaunching"
-        waybar -c /etc/waybar/config -s /etc/waybar/style.css >/dev/null 2>&1 &
+        /usr/local/bin/diad-waybar >/dev/null 2>&1 &
     fi
     if ! pgrep -x mako >/dev/null 2>&1; then
         log "supervisor: mako not running — relaunching"

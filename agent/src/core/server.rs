@@ -108,14 +108,29 @@ fn token_matches(presented: &str, expected: &str) -> bool {
 
 /// Extract the bearer token from an `Authorization: Bearer <t>` header.
 fn bearer_from_headers(headers: &axum::http::HeaderMap) -> Option<String> {
-    let v = headers.get(axum::http::header::AUTHORIZATION)?.to_str().ok()?;
+    let v = headers
+        .get(axum::http::header::AUTHORIZATION)?
+        .to_str()
+        .ok()?;
     let rest = v.strip_prefix("Bearer ")?;
     Some(rest.trim().to_string())
 }
 
-/// Whether this request path is exempt from token auth. Only /health is.
+/// Whether this request path is exempt from token auth.
+///
+/// The web lockscreen (`/auth/verify`) and the first-boot Setup wizard
+/// (`/setup/apply`, `/setup/wifi/scan`) run from a `file://` kiosk browser
+/// with no bearer token and an opaque `Origin: null`. They are authenticated
+/// by their own origin/host gate (`rest_origin_gate` + `lock_origin_allowed`)
+/// instead of the bearer token — a `file://` page has no way to fetch the
+/// token without first passing a CORS-gated request. `ends_with` is used so
+/// the exemption holds whether the path arrives stripped (nested router) or
+/// full (`/api/v1/...`).
 fn auth_exempt(path: &str) -> bool {
     path == "/health"
+        || path.ends_with("/auth/verify")
+        || path.ends_with("/setup/apply")
+        || path.ends_with("/setup/wifi/scan")
 }
 
 /// Check the token from header or `?token=` query param. WS clients may also
@@ -135,10 +150,7 @@ fn request_token(headers: &axum::http::HeaderMap, query: Option<&str>) -> Option
 
 /// Axum middleware enforcing bearer-token auth on everything except /health.
 /// Accepts `Authorization: Bearer <token>` or `?token=<token>`.
-async fn auth_middleware(
-    req: axum::extract::Request,
-    next: Next,
-) -> Response {
+async fn auth_middleware(req: axum::extract::Request, next: Next) -> Response {
     let path = req.uri().path().to_string();
     if auth_exempt(&path) {
         return next.run(req).await;
@@ -163,7 +175,6 @@ async fn auth_middleware(
         axum::http::StatusCode::UNAUTHORIZED.into_response()
     }
 }
-
 
 /// Validates whether an HTTP Origin header comes from an allowed local source.
 /// Non-browser clients (TUI, foot, supervisor, curl) send no Origin (None) -> allowed.
@@ -240,7 +251,8 @@ async fn handle_socket(socket: WebSocket, state: Arc<DaemonState>, auth_pending:
             Ok(Some(Ok(WsMessage::Text(text)))) => {
                 let t = text.trim();
                 let presented = t.strip_prefix("token:").unwrap_or(t);
-                let ok = token_matches(presented, API_TOKEN.get().map(|s| s.as_str()).unwrap_or(""));
+                let ok =
+                    token_matches(presented, API_TOKEN.get().map(|s| s.as_str()).unwrap_or(""));
                 if !ok {
                     tracing::warn!("ws client failed first-message token auth — closing");
                     return;

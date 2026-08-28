@@ -53,7 +53,20 @@ else
 fi
 
 # ---- Audio Subsystem Initialization (PipeWire & ALSA) ----
-systemctl --user start pipewire pipewire-pulse wireplumber 2>/dev/null || true
+# F-38: `systemctl --user start` only works when a systemd user session exists.
+# In the Sway session the units are normally socket/user-activated already, but
+# on first boot this ran BEFORE the user manager was ready (it runs in the
+# supervisor's background setup block) and silently failed → no audio, dead
+# volume slider. Enable (not just start) so they auto-start with every session,
+# and retry briefly if the user manager isn't up yet.
+if ! systemctl --user enable --now pipewire pipewire-pulse wireplumber 2>/dev/null; then
+    for _ in $(seq 1 10); do
+        if systemctl --user enable --now pipewire pipewire-pulse wireplumber 2>/dev/null; then
+            break
+        fi
+        sleep 0.5
+    done
+fi
 (
     sleep 0.5
     wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 2>/dev/null || true

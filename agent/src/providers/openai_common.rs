@@ -113,7 +113,12 @@ pub struct ChatFunctionDelta {
 /// if tools are passed in the request body.
 pub fn model_supports_tools(model: &str) -> bool {
     let m = model.to_lowercase();
-    if m.contains("distill") || m.contains("deepseek-r1") || m.contains("deepseek-reasoner") || m.contains("o1-mini") || m.contains("gemma2") {
+    if m.contains("distill")
+        || m.contains("deepseek-r1")
+        || m.contains("deepseek-reasoner")
+        || m.contains("o1-mini")
+        || m.contains("gemma2")
+    {
         return false;
     }
     true

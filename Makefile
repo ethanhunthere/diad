@@ -1,4 +1,4 @@
-.PHONY: build build-release run test fmt lint check gui lock iso iso-clean clean all help
+.PHONY: build build-release run test fmt lint check gui lock setup iso iso-clean clean all help
 
 # === Agent ===
 AGENT_DIR := agent
@@ -47,6 +47,8 @@ LOCK_DIR := os/lockscreen
 LOCK_AUTH_DIR := os/lock-auth
 LOCK_DIST_DIR := $(ISO_DIR)/airootfs/usr/share/diad/lockscreen/dist
 LOCK_AUTH_BIN := $(ISO_DIR)/airootfs/usr/local/bin/diad-lock-auth
+SETUP_DIR := os/setup
+SETUP_DIST_DIR := $(ISO_DIR)/airootfs/usr/share/diad/setup/dist
 
 # F-23 (spec 6.8) — reproducible builds: mkarchiso embeds SOURCE_DATE_EPOCH
 # into every timestamped file in the ISO, so `make iso` is byte-reproducible
@@ -70,12 +72,22 @@ lock:
 	chmod 0755 $(LOCK_AUTH_BIN)
 	@echo "Lockscreen build complete."
 
+# Build the first-boot Setup wizard (language → keyboard → timezone → account
+# → Wi-Fi) into the ISO airootfs. Served from file:// by diad-setup in kiosk
+# mode; POSTs its selections to the daemon's /api/v1/setup/apply endpoint.
+setup:
+	@echo "Building Setup wizard..."
+	@echo "  Bundling os/setup -> $(SETUP_DIST_DIR)..."
+	cd $(SETUP_DIR) && npm ci && npm run build
+	@echo "Setup wizard build complete."
+
 # The ISO depends on the GUI build: the daemon embeds frontend/dist with
 # rust-embed, so the GUI must be built BEFORE the release binary.
-iso: gui lock
+iso: gui lock setup
 	@echo "Building DIAD ISO..."
 	@echo "  [0/6] Pinned reproducible timestamp SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH)..."
-	cd $(AGENT_DIR) && RUSTFLAGS="-C target-cpu=x86-64-v3 -C link-arg=-Wl,--as-needed" cargo build --release
+	@echo "  [1/6] Compiling diad-agent (baseline x86-64; v3 target-cpu SIGILLs pre-AVX2 CPUs)..."
+	cd $(AGENT_DIR) && RUSTFLAGS="-C link-arg=-Wl,--as-needed" cargo build --release
 	@echo "  [2/6] Staging diad-agent into the ISO profile..."
 	mkdir -p $(ISO_DIR)/airootfs/usr/local/bin
 	cp $(TARGET_DIR)/release/$(BINARY) $(ISO_DIR)/airootfs/usr/local/bin/$(BINARY)

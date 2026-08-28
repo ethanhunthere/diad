@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# diad-setup — diadOS first-boot setup wizard orchestrator.
+#
+# Shows the graphical Setup wizard (language → keyboard → timezone → account
+# → Wi-Fi) fullscreen in a kiosk browser ONCE on first boot, then hands back
+# to the desktop. Mirrors the `diad-lock` launcher's kiosk pattern, but:
+#   * it is NOT a sway "mode" — the desktop is already up behind it;
+#   * completion is signalled by the root helper writing
+#     /var/lib/diad/setup-complete (the daemon pipes the wizard's JSON there
+#     via sudo diad-identity-setup.sh --apply).
+#
+# If the window is closed without completing, safe defaults are applied so
+# the desktop is never stuck behind a dead wizard.
+#
+# Called once by diad-supervisor.sh (launched FIRST, before the daemon, when
+# /var/lib/diad/setup-complete is absent). Re-run manually with: diad-setup
+
+set -uo pipefail
+
+MARK="/var/lib/diad/setup-complete"
+URL="file:///usr/share/diad/setup/dist/index.html"
+
+# Already configured? Do nothing.
+[[ -f "$MARK" ]] && exit 0
+
+# Isolated kiosk profile
+rm -rf /tmp/diad-setup-profile
+mkdir -p /tmp/diad-setup-profile
+
+/usr/bin/chromium \
+    --ozone-platform=wayland \
+    --ozone-platform-hint=auto \
+    --user-data-dir=/tmp/diad-setup-profile \
+    --no-first-run \
+    --no-default-browser-check \
+    --kiosk \
+    --start-fullscreen \
+    --app="$URL" &
+CPID=$!
+
+# Wait for the wizard window to appear (up to ~15 s)
+for _ in $(seq 1 300); do
+    if swaymsg -t get_tree 2>/dev/null | grep -qi "Setup"; then
+        swaymsg -q '[title=".*Setup.*"] fullscreen enable' 2>/dev/null || true
+        swaymsg -q '[title=".*Setup.*"] focus' 2>/dev/null || true
+        break
+    fi
+    sleep 0.05
+done
+
+# Keep the wizard on top while its window lives; exit as soon as the helper
+# has written the completion marker.
+while swaymsg -t get_tree 2>/dev/null | grep -qi "Setup"; do
+    [[ -f "$MARK" ]] && break
+    sleep 0.2
+done
+
+# Window closed without completing → apply safe defaults so boot proceeds.
+if [[ ! -f "$MARK" ]]; then
+    printf '%s' '{"language":"en_US.UTF-8","keyboard":"us","timezone":"UTC","username":"","password":""}' \
+        | sudo /usr/local/bin/diad-identity-setup.sh --apply >/dev/null 2>&1 || true
+fi
+
+# Tear down the kiosk window + browser
+swaymsg -q '[title=".*Setup.*"] kill' 2>/dev/null || true
+kill -9 "$CPID" 2>/dev/null || true
+pkill -9 -f "diad-setup-profile" 2>/dev/null || true
+pkill -9 -f "setup/dist/index.html" 2>/dev/null || true
+rm -rf /tmp/diad-setup-profile
+
+exit 0

@@ -1,5 +1,7 @@
 # mako — DIAD OS Notification Daemon
-font=Inter 10
+# Liberation Sans is shipped on the ISO (Inter is not in the repo pool);
+# a missing font made mako crash-loop (supervisor relaunched it every 10 s).
+font=Liberation Sans 10
 
 background-color=#0d0e15ea
 text-color=#f8fafc

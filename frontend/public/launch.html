@@ -210,15 +210,28 @@
     const status = document.getElementById("status");
 
     // Bearer-token bootstrap (same mechanism as the React GUI): /gui-token is
-    // same-origin and origin/host-guarded, so this page may read it.
-    const diadToken = fetch("/gui-token", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((b) => (b && b.token ? b.token : ""))
-      .catch(() => "");
+    // same-origin and origin/host-guarded, so this page may read it. Retry
+    // while the daemon warms up; never send an empty Authorization header.
+    async function fetchGuiToken(attempt) {
+      try {
+        const r = await fetch("/gui-token", { cache: "no-store" });
+        if (r.ok) {
+          const b = await r.json();
+          if (b && b.token) return b.token;
+        }
+      } catch (e) { /* transient: retry */ }
+      if ((attempt || 0) < 3) {
+        await new Promise((res) => setTimeout(res, 300 * ((attempt || 0) + 1)));
+        return fetchGuiToken((attempt || 0) + 1);
+      }
+      return "";
+    }
+    let diadToken = fetchGuiToken(0);
     function authed(opts) {
+      diadToken = diadToken.then((t) => (t ? t : fetchGuiToken(0)));
       return diadToken.then((t) => {
         const o = Object.assign({}, opts);
-        o.headers = Object.assign({ Authorization: "Bearer " + t }, o.headers || {});
+        if (t) o.headers = Object.assign({ Authorization: "Bearer " + t }, o.headers || {});
         return o;
       });
     }

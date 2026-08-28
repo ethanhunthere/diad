@@ -21,9 +21,12 @@ if command -v epiphany >/dev/null 2>&1; then
     exec /usr/bin/epiphany --profile="${PROFILE}" --application-mode "https://web.telegram.org/a/"
 fi
 
-# 4. Chromium app window fallback
+# 4. Chromium app window fallback — dedicated user-data-dir keeps it isolated
+# from the main browser's cookies/storage (mirrors the epiphany --profile path).
 if command -v chromium >/dev/null 2>&1; then
-    exec /usr/bin/chromium --app="https://web.telegram.org/a/" --ozone-platform-hint=auto --ozone-platform=wayland
+    PROFILE="${HOME}/.local/share/diad-apps/telegram-chromium"
+    mkdir -p "${PROFILE}"
+    exec /usr/bin/chromium --user-data-dir="${PROFILE}" --app="https://web.telegram.org/a/" --ozone-platform-hint=auto --ozone-platform=wayland
 fi
 
 notify-send "Telegram" "Could not launch Telegram application" -u critical

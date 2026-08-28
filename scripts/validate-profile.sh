@@ -38,4 +38,23 @@ if (( missing > 0 )); then
     exit 1
 fi
 
-echo "validate-profile: OK — all ${count} file_permissions entries exist in airootfs."
+# Reverse check: a file that is executable in the source airootfs but NOT
+# listed in file_permissions will land in the ISO as 0644 (non-executable),
+# because mkarchiso copies with --no-preserve=ownership,mode. That silently
+# breaks boot scripts (e.g. the getty autologin wrapper).
+unlisted=0
+while IFS= read -r f; do
+    rel="/${f#${AIROOTFS}/}"
+    if ! grep -qF "[\"${rel}\"]" <(sed -n '/^file_permissions=(/,/^)/p' "${PROFILE}"); then
+        echo "UNLISTED executable (will lose +x in ISO): ${rel}" >&2
+        unlisted=$((unlisted + 1))
+    fi
+done < <(find "${AIROOTFS}" -type f -perm /111 -print | sort)
+
+if (( unlisted > 0 )); then
+    echo "validate-profile: FAILED — ${unlisted} executable file(s) not listed in file_permissions." >&2
+    echo "  Add them to profiledef.sh with :755 (or drop the +x bit if unused)." >&2
+    exit 1
+fi
+
+echo "validate-profile: OK — ${count} entries valid; no unlisted executables."

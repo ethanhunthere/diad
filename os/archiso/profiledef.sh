@@ -34,9 +34,11 @@ file_permissions=(
     ["/home/diad"]="1000:1000:755"
     ["/home/diad/.bashrc"]="1000:1000:644"
     ["/home/diad/.bash_profile"]="1000:1000:644"
+    ["/home/diad/.hushlogin"]="1000:1000:644"
     ["/home/diad/.config/foot/foot.ini"]="1000:1000:644"
     ["/home/diad/.config/sway/config"]="1000:1000:644"
     ["/etc/skel/.bash_profile"]="0:0:644"
+    ["/etc/skel/.hushlogin"]="0:0:644"
     ["/etc/skel/.config/foot/foot.ini"]="0:0:644"
     ["/etc/xdg/foot/foot.ini"]="0:0:644"
 
@@ -53,6 +55,7 @@ file_permissions=(
 
     # --- sudo: strict 0440 root-owned or sudo ignores it ---
     ["/etc/sudoers.d/diad"]="0:0:440"
+    ["/etc/sudoers.d/00-wheel"]="0:0:440"
 
     # --- security / networking ---
     ["/etc/nftables.conf"]="0:0:600"
@@ -72,8 +75,8 @@ file_permissions=(
     # --- systemd units / drop-ins ---
     ["/etc/systemd/system/getty@tty1.service.d/autologin.conf"]="0:0:644"
     ["/etc/systemd/system/diad-firewall.service"]="0:0:644"
-    ["/etc/systemd/system/diad-identity-setup.service"]="0:0:644"
     ["/etc/systemd/system/diad-perf-tier.service"]="0:0:644"
+    ["/etc/default/earlyoom"]="0:0:644"
 
     # --- udev rules ---
     ["/etc/udev/rules.d/98-diad-runtime-pm.rules"]="0:0:644"
@@ -85,6 +88,7 @@ file_permissions=(
     ["/etc/modprobe.d/diad-blacklist.conf"]="0:0:644"
     ["/etc/tmpfiles.d/diad-power.conf"]="0:0:644"
     ["/etc/systemd/system-preset/00-diad.preset"]="0:0:644"
+    ["/etc/systemd/logind.conf.d/diad-powerkey.conf"]="0:0:644"
     ["/usr/share/glib-2.0/schemas/99_diad_dark.gschema.override"]="0:0:644"
     ["/usr/share/backgrounds/diad/wallpaper.png"]="0:0:644"
     ["/usr/share/backgrounds/diad/wallpaper.svg"]="0:0:644"
@@ -112,7 +116,6 @@ file_permissions=(
     ["/usr/local/bin/diad-network-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-power-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-power.sh"]="0:0:755"
-    ["/usr/local/bin/diad-splash.sh"]="0:0:755"
     ["/usr/local/bin/diad-storage-setup.sh"]="0:0:755"
     ["/usr/local/bin/diad-supervisor.sh"]="0:0:755"
     ["/usr/local/bin/diad-windowctl"]="0:0:755"
@@ -138,10 +141,21 @@ file_permissions=(
     ["/usr/local/bin/diad-waybar"]="0:0:755"
     ["/usr/local/bin/diad-rfkill"]="0:0:755"
     ["/usr/local/bin/diad-screenshot"]="0:0:755"
+    # Boot chain: dynamic autologin wrapper used by getty@tty1.service.d/
+    # autologin.conf — MUST be executable or getty never starts (boot hang).
+    ["/usr/local/bin/diad-agetty"]="0:0:755"
+    ["/usr/local/bin/diad-login"]="0:0:755"
+    # Desktop helpers invoked from the sway config / context menu.
+    ["/usr/local/bin/diad-clipboard.sh"]="0:0:755"
+    ["/usr/local/bin/diad-context-menu.sh"]="0:0:755"
+    ["/usr/local/bin/diad-shortcuts.sh"]="0:0:755"
     # Web lockscreen: kiosk orchestrator (sway lock mode) + PAM auth helper
     # (compiled from os/lock-auth/diad-lock-auth.c at ISO build time).
     ["/usr/local/bin/diad-lock"]="0:0:755"
     ["/usr/local/bin/diad-lock-auth"]="0:0:755"
+    # First-boot Setup wizard: kiosk orchestrator spawned by the supervisor
+    # (section f) — shows os/setup/dist/index.html fullscreen on first boot.
+    ["/usr/local/bin/diad-setup"]="0:0:755"
     ["/etc/wofi/style.css"]="0:0:644"
     ["/usr/local/bin/brave"]="0:0:755"
 )

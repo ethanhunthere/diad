@@ -1,0 +1,3 @@
+# DIAD — EarlyOOM configuration
+# Protect system core services, sway compositor, foot terminal, and diad-agent from OOM kill.
+EARLYOOM_ARGS="-r 60 -m 3 -s 0 --avoid '^(sway|swaybg|waybar|mako|foot|diad-agent|systemd|dbus-daemon|pipewire|wireplumber)$' --prefer '^(chromium|brave)$'"

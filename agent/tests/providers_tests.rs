@@ -43,28 +43,45 @@ fn test_all_16_providers_creation_and_models() {
 
     for p in all_providers {
         if p != "ollama" {
-            vault.store_token(p, &format!("mock-key-for-{p}")).expect("token stored");
+            vault
+                .store_token(p, &format!("mock-key-for-{p}"))
+                .expect("token stored");
         }
     }
 
     let factory = ProviderFactory::new(vault, config);
 
     for provider_name in all_providers {
-        assert!(factory.has_key(provider_name), "Factory must recognize {provider_name} key");
-        
+        assert!(
+            factory.has_key(provider_name),
+            "Factory must recognize {provider_name} key"
+        );
+
         let models = factory.models_for(provider_name);
-        assert!(!models.is_empty(), "Provider {provider_name} must offer models");
+        assert!(
+            !models.is_empty(),
+            "Provider {provider_name} must offer models"
+        );
 
         // Test default creation
         let default_prov = factory.create(provider_name);
-        assert!(default_prov.is_some(), "Default creation failed for {provider_name}");
+        assert!(
+            default_prov.is_some(),
+            "Default creation failed for {provider_name}"
+        );
         let default_prov = default_prov.unwrap();
-        assert!(default_prov.provider_name().to_lowercase().contains(provider_name));
+        assert!(default_prov
+            .provider_name()
+            .to_lowercase()
+            .contains(provider_name));
 
         // Test instantiation of every single model listed for this provider
         for model in &models {
             let instance = factory.create_with_model(provider_name, Some(model));
-            assert!(instance.is_some(), "Failed to create {provider_name} with model {model}");
+            assert!(
+                instance.is_some(),
+                "Failed to create {provider_name} with model {model}"
+            );
             let inst = instance.unwrap();
             assert!(inst.provider_name().contains(model));
         }
@@ -73,7 +90,7 @@ fn test_all_16_providers_creation_and_models() {
 
 #[test]
 fn test_reasoning_and_tool_rules_for_models() {
-    use diad_agent::providers::openai_common::{model_supports_tools, is_reasoning_model};
+    use diad_agent::providers::openai_common::{is_reasoning_model, model_supports_tools};
 
     // Reasoning models should be identified
     assert!(is_reasoning_model("o1"));
@@ -120,26 +137,24 @@ fn test_groq_and_model_switching() {
 #[test]
 fn test_openai_common_request_building_and_chunk_parsing() {
     use diad_agent::providers::openai_common::{build_chat_request, OpenAiSseState};
-    use diad_agent::providers::traits::{Message, ToolDefinition, StreamEvent};
+    use diad_agent::providers::traits::{Message, StreamEvent, ToolDefinition};
 
     let messages = vec![
         Message::system("You are an assistant"),
         Message::user("List files in directory"),
     ];
 
-    let tools = vec![
-        ToolDefinition {
-            name: "file_list".into(),
-            description: "List directory files".into(),
-            parameters: serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string"}
-                },
-                "required": ["path"]
-            }),
-        }
-    ];
+    let tools = vec![ToolDefinition {
+        name: "file_list".into(),
+        description: "List directory files".into(),
+        parameters: serde_json::json!({
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"}
+            },
+            "required": ["path"]
+        }),
+    }];
 
     let req = build_chat_request("gpt-4o", &messages, &tools, 4096, true);
     assert_eq!(req.model, "gpt-4o");
@@ -200,4 +215,3 @@ fn test_openai_common_request_building_and_chunk_parsing() {
         _ => panic!("Expected StreamEnd event"),
     }
 }
-
