@@ -1,4 +1,4 @@
-.PHONY: build build-release run test fmt lint check gui lock setup iso iso-clean clean all help
+.PHONY: build build-release run test fmt lint check gui lock setup iso iso-clean flash clean all help
 
 # === Agent ===
 AGENT_DIR := agent
@@ -114,6 +114,28 @@ iso: gui lock setup
 
 iso-clean:
 	sudo rm -rf work out
+
+# === Flash ===
+# Write the built ISO to a USB device. Defaults to /dev/sda; override with
+# `make flash FLASH_DEV=/dev/sdX`. Refuses to run unless the target block
+# device is marked removable (guards against clobbering an internal disk).
+ISO_FILE := out/$(ISO_NAME)-$(shell date -u -d @$(SOURCE_DATE_EPOCH) +%Y.%m.%d)-x86_64.iso
+FLASH_DEV ?= /dev/sda
+
+flash:
+	@test -f "$(ISO_FILE)" || (echo "ERROR: $(ISO_FILE) not found — run 'make iso' first" && exit 1)
+	@test -b "$(FLASH_DEV)" || (echo "ERROR: $(FLASH_DEV) is not a block device" && exit 1)
+	@dev=$$(basename "$(FLASH_DEV)"); \
+	if [ "$$(cat /sys/block/$$dev/removable 2>/dev/null)" != "1" ]; then \
+		echo "REFUSING: $(FLASH_DEV) is not marked removable — aborting to protect internal disks."; \
+		echo "If you are certain, use FLASH_DEV=/dev/... explicitly (this guard can be bypassed)."; \
+		exit 1; \
+	fi
+	@echo "Flashing $(ISO_FILE) ($(shell lsblk -dn -o SIZE,TYPE,MODEL $(FLASH_DEV) 2>/dev/null | tr -s ' '))"
+	@echo "WARNING: this DESTROYS all data on $(FLASH_DEV)."
+	sudo dd if="$(ISO_FILE)" of="$(FLASH_DEV)" bs=4M status=progress conv=fsync
+	sudo sync
+	@echo "Flash complete — you can now eject $(FLASH_DEV) and boot from it."
 
 # === Virtual Machine (Instant Testing) ===
 vm: qemu
